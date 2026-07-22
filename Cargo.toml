@@ -17,6 +17,7 @@ serde_urlencoded = "0.7" # Slack SDKs post form-encoded by default
 base64 = "0.22"
 rand = "0.10"
 futures-util = "0.3"
+tower-http = { version = "0.6", features = ["cors"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use axum::Router;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderValue, Method, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, get, on, post};
 use futures_util::{SinkExt, StreamExt};
@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use sqlx::SqlitePool;
 use tokio::sync::broadcast;
+use tower_http::cors::CorsLayer;
 
 const TICKET_TTL: Duration = Duration::from_secs(30);
 
@@ -89,7 +90,24 @@ pub fn app(state: AppState) -> Router {
         .route("/logout", post(auth::logout))
         .route("/rtm", get(rtm_ws))
         .nest("/api", api)
+        .layer(cors())
         .with_state(state)
+}
+
+/// The web client is served from a different origin in development (the Vite dev
+/// server). A single configured origin rather than `Any`: these endpoints read the
+/// `Authorization` header, and `Any` would let any page on the internet spend a
+/// user's token.
+fn cors() -> CorsLayer {
+    let origin = std::env::var("GEAR6_CORS_ORIGIN")
+        .unwrap_or_else(|_| "http://localhost:5173".into())
+        .parse::<HeaderValue>()
+        .expect("GEAR6_CORS_ORIGIN is not a valid header value");
+
+    CorsLayer::new()
+        .allow_origin(origin)
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
 }
 
 #[derive(Deserialize)]
