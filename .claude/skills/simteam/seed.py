@@ -5,7 +5,8 @@
 Channels default to a generic set; pass a comma list to name them after whatever the
 team is supposedly building.
 
-Writes {"url":..., "users":{name: token}, "channels":{name: C0000000N}} to <out.json>.
+Writes {"url":..., "users":{name: token}, "channels":{name: C0000000N},
+"owns":{name: [chan,...]}} to <out.json>.
 Idempotent: re-running against a live db reuses existing users and channels.
 Talks to a server that is already running; it never starts one.
 """
@@ -26,6 +27,18 @@ URL = os.environ.get("GEAR6_URL", "http://localhost:3000").rstrip("/")
 CAST = ["dana.m", "kai", "rahul.j", "samual", "adi", "deshpandey"]
 CHANNELS = ["general", "standup", "eng-core", "eng-api", "incidents", "bugs"]
 PASSWORD = "password1"
+
+# Who reads what, as positions in the channel list above — the eng channels get
+# renamed per product, so ownership cannot be written as literal names. Everyone
+# holds #standup because the day opens and closes there.
+OWNS = {
+    "dana.m": [1, 0],
+    "kai": [2, 1],
+    "rahul.j": [3, 1],
+    "samual": [2, 3, 1],
+    "adi": [5, 1, 0],
+    "deshpandey": [4, 1],
+}
 
 
 def call(path, data, token=None):
@@ -66,10 +79,17 @@ def main():
     assert not missing, missing
     channels = {c: channels[c] for c in wanted}  # drop channels this run did not ask for
 
-    json.dump({"url": URL, "users": users, "channels": channels}, open(out, "w"), indent=1)
+    # An unexpected channel list means the positions in OWNS mean nothing; give
+    # everyone everything rather than route people to the wrong subsystem.
+    owns = {
+        n: [wanted[i] for i in idx] if len(wanted) == len(CHANNELS) else list(wanted)
+        for n, idx in OWNS.items()
+    }
+
+    json.dump({"url": URL, "users": users, "channels": channels, "owns": owns}, open(out, "w"), indent=1)
     print(f"seeded {len(users)} users, {len(channels)} channels -> {out}")
     for name in CAST:
-        print(f"  {name:9} {users[name]}")
+        print(f"  {name:9} {users[name]}  owns {', '.join(owns[name])}")
     for name in wanted:
         print(f"  #{name:9} {channels[name]}")
 
