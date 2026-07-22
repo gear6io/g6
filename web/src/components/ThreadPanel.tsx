@@ -17,10 +17,18 @@ export function ThreadPanel({ messages, users, onClose, onSend }: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const [parent, ...replies] = messages;
 
   return (
-    <aside className="thread">
+    <aside className="thread" aria-label="Thread">
       <header>
         <span>Thread</span>
         <button className="icon" onClick={onClose} title="Close">

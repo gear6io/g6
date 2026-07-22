@@ -43,12 +43,18 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
         <p className="muted">Sign in, or pick a new name to create an account.</p>
         <input
           autoFocus
+          name="username"
+          autoComplete="username"
+          aria-label="Username"
           placeholder="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="password"
+          name="password"
+          autoComplete="current-password"
+          aria-label="Password"
           placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

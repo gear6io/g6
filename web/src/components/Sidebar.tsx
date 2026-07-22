@@ -49,27 +49,34 @@ export function Sidebar(props: Props) {
         <form className="create" onSubmit={create}>
           <input
             autoFocus
+            aria-label="New channel name"
             placeholder="new-channel"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
           />
           {error && <div className="error">{error}</div>}
         </form>
       )}
 
       <ul>
-        {channels.map((c) => (
-          <li key={c.id}>
-            <button
-              className={c.id === current ? "channel active" : "channel"}
-              onClick={() => onSelect(c.id)}
-            >
-              <span className="hash">{c.is_private ? "\u{1F512}" : "#"}</span>
-              <span className="name">{c.name}</span>
-              {unread.has(c.id) && c.id !== current && <span className="dot" />}
-            </button>
-          </li>
-        ))}
+        {channels.map((c) => {
+          const active = c.id === current;
+          const isUnread = unread.has(c.id) && !active;
+          return (
+            <li key={c.id}>
+              <button
+                className={`channel${active ? " active" : ""}${isUnread ? " unread" : ""}`}
+                aria-current={active ? "true" : undefined}
+                onClick={() => onSelect(c.id)}
+              >
+                <span className="hash">{c.is_private ? "\u{1F512}" : "#"}</span>
+                <span className="name">{c.name}</span>
+                {isUnread && <span className="dot" aria-label="unread" />}
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       <footer>

@@ -7,13 +7,24 @@
   --line: #e8e8e8;
   --link: #1264a3;
   --danger: #c73a3a;
-  font-family: Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* The built-in curves are too weak to read as intentional at these durations. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-size: 15px;
   color: var(--ink);
 }
 
 * {
   box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: 2px;
+}
+/* Blue on aubergine is unreadable; the sidebar gets its own ring. */
+.sidebar :focus-visible {
+  outline-color: #fff;
 }
 
 body {
@@ -25,6 +36,10 @@ body {
 button {
   font: inherit;
   cursor: pointer;
+  transition: transform 160ms var(--ease-out), background-color 120ms ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 input,
@@ -121,6 +136,14 @@ main {
   background: var(--danger);
   padding: 2px 8px;
   border-radius: 10px;
+  animation: pop-in 160ms var(--ease-out);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
 }
 .empty {
   margin: auto;
@@ -190,11 +213,16 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.channel.unread .name {
+  font-weight: 700;
+  color: #fff;
+}
 .channel .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #fff;
+  flex: none;
 }
 
 .sidebar .create {
@@ -243,7 +271,11 @@ main {
 .messages {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain; /* Reaching the top must not scroll the page behind it. */
   padding: 8px 0 16px;
+}
+.loader {
+  min-height: 20px; /* Reserved so the prepend scroll anchor does not shift when the text swaps. */
 }
 
 .msg {
@@ -252,8 +284,10 @@ main {
   padding: 4px 20px;
   position: relative;
 }
-.msg:hover {
-  background: #f8f8f8;
+@media (hover: hover) and (pointer: fine) {
+  .msg:hover {
+    background: #f8f8f8;
+  }
 }
 
 .avatar {
@@ -273,12 +307,20 @@ main {
   width: 36px;
   flex: none;
   font-size: 11px;
-  color: transparent;
+  color: var(--muted);
   text-align: right;
   line-height: 22px;
 }
-.msg.compact:hover .gutter {
-  color: var(--muted);
+/* Only hide it where a hover can bring it back — on touch it stays visible. */
+@media (hover: hover) and (pointer: fine) {
+  .msg.compact .gutter {
+    color: transparent;
+    transition: color 120ms ease;
+  }
+  .msg.compact:hover .gutter,
+  .msg.compact:focus-within .gutter {
+    color: var(--muted);
+  }
 }
 
 .msg .body {
@@ -337,15 +379,27 @@ main {
   position: absolute;
   right: 20px;
   top: 4px;
-  display: none;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 4px;
   font-size: 12px;
   padding: 2px 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
 }
-.msg:hover .reply-action {
-  display: block;
+/* display:none can't transition and drops the button from keyboard reach. Touch keeps it shown. */
+@media (hover: hover) and (pointer: fine) {
+  .reply-action {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.96);
+    transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+  }
+  .msg:hover .reply-action,
+  .msg:focus-within .reply-action {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
 }
 
 .divider {
@@ -373,13 +427,19 @@ main {
   padding: 12px 20px 16px;
 }
 .composer textarea {
+  display: block;
   width: 100%;
   min-height: 42px;
+  max-height: 200px; /* Matches the clamp in Composer.tsx. */
   padding: 10px;
   border: 1px solid #bbb;
   border-radius: 8px;
-  resize: vertical;
+  resize: none; /* The box grows with the text instead. */
   outline-color: var(--active);
+  transition: border-color 120ms ease;
+}
+.composer textarea:focus {
+  border-color: var(--active);
 }
 
 .thread {
@@ -388,6 +448,8 @@ main {
   flex-direction: column;
   border-left: 1px solid var(--line);
   min-width: 0;
+  background: #fff;
+  animation: thread-in 200ms var(--ease-out);
 }
 .thread header {
   display: flex;
@@ -396,4 +458,44 @@ main {
   padding: 12px 20px;
   border-bottom: 1px solid var(--line);
   font-weight: 700;
+}
+
+@keyframes thread-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+/* Side-by-side stops working once the message column is squeezed under ~260px. */
+@media (max-width: 900px) {
+  .thread {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(420px, 100%);
+    box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active:not(:disabled) {
+    transform: none;
+  }
+  .thread {
+    animation: none;
+  }
+  .offline {
+    animation-name: fade-in;
+  }
+  .reply-action,
+  .msg:hover .reply-action,
+  .msg:focus-within .reply-action {
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }

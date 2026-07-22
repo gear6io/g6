@@ -34,6 +34,9 @@ export default function App() {
   const threadRef = useRef(thread);
   threadRef.current = thread;
 
+  // Stable so ThreadPanel's Escape listener is not torn down on every render.
+  const closeThread = useCallback(() => setThread(undefined), []);
+
   const signOut = useCallback(() => {
     setMe(null);
     setChannels([]);
@@ -248,7 +251,7 @@ export default function App() {
         <ThreadPanel
           messages={thread.messages}
           users={users}
-          onClose={() => setThread(undefined)}
+          onClose={closeThread}
           onSend={sendReply}
         />
       )}
