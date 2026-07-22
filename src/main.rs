@@ -320,7 +320,8 @@ mod tests {
             &format!("channel={ch}&text=hi+@astha+in+%23general"),
         )
         .await;
-        assert_eq!(m["message"]["text"], "hi <@U00000001> in <#C00000001|general>");
+        // No `|name` label in the stored text: names are resolved from the sidecar at read time.
+        assert_eq!(m["message"]["text"], "hi <@U00000001> in <#C00000001>");
         assert_eq!(m["message"]["mentions"]["U00000001"], "astha");
         assert_eq!(m["message"]["mentions"]["C00000001"], "general");
 

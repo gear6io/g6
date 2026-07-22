@@ -101,8 +101,11 @@ pub async fn encode(db: &SqlitePool, text: &str) -> Result<String, ApiError> {
                 Some(id) => format!("<@{}>", user_id(*id)),
                 None => continue,
             },
+            // No `|name` label: a channel can be renamed, and a label baked into the
+            // stored text would then be a lie. Readers get the live name from the
+            // `mentions` sidecar. Slack writes the label; here the id is the record.
             _ => match channels.get(&name) {
-                Some(id) => format!("<#{}|{}>", channel_id(*id), name),
+                Some(id) => format!("<#{}>", channel_id(*id)),
                 None => continue,
             },
         };
@@ -224,8 +227,8 @@ mod tests {
 
         assert_eq!(enc("hi @astha").await, "hi <@U00000001>");
         assert_eq!(enc("@astha").await, "<@U00000001>");
-        assert_eq!(enc("see #dev_ops now").await, "see <#C00000001|dev_ops> now");
-        assert_eq!(enc("@astha and #dev_ops").await, "<@U00000001> and <#C00000001|dev_ops>");
+        assert_eq!(enc("see #dev_ops now").await, "see <#C00000001> now");
+        assert_eq!(enc("@astha and #dev_ops").await, "<@U00000001> and <#C00000001>");
         assert_eq!(enc("@here").await, "<!here>");
         assert_eq!(enc("@channel @everyone").await, "<!channel> <!everyone>");
         // Case folds, sentence punctuation is not part of the name.
@@ -245,7 +248,9 @@ mod tests {
     async fn decorates_with_resolved_names() {
         let db = db().await;
         let mut msgs = vec![
-            json!({ "text": "hi <@U00000001> in <#C00000001|dev_ops>" }),
+            // The second form is what a Slack SDK sends: a stale label the sidecar overrides.
+            json!({ "text": "hi <@U00000001> in <#C00000001>" }),
+            json!({ "text": "renamed since: <#C00000001|old_name>" }),
             json!({ "text": "nothing to see" }),
             json!({ "text": "<@U00000009> left the team" }),
             json!({ "text": "<!here> heads up" }),
@@ -253,8 +258,13 @@ mod tests {
         decorate(&db, &mut msgs).await.unwrap();
 
         assert_eq!(msgs[0]["mentions"], json!({ "U00000001": "astha", "C00000001": "dev_ops" }));
-        assert!(msgs[1].get("mentions").is_none(), "no mentions means no key");
-        assert!(msgs[2].get("mentions").is_none(), "a deleted id resolves to nothing");
-        assert!(msgs[3].get("mentions").is_none(), "broadcasts name nobody");
+        assert_eq!(
+            msgs[1]["mentions"],
+            json!({ "C00000001": "dev_ops" }),
+            "the sidecar carries the current name, whatever label the text froze"
+        );
+        assert!(msgs[2].get("mentions").is_none(), "no mentions means no key");
+        assert!(msgs[3].get("mentions").is_none(), "a deleted id resolves to nothing");
+        assert!(msgs[4].get("mentions").is_none(), "broadcasts name nobody");
     }
 }

@@ -45,8 +45,10 @@ eqm("hi <@U00000002>", 'hi <span class="mention me">@U00000002</span>');
 eqm("<@U00000009>", '<span class="mention">@U00000009</span>');
 eqm("<@U00000009|ghost>", '<span class="mention">@ghost</span>');
 eqm("<!here>", '<span class="mention broadcast">@here</span>');
+// Channel tokens are stored bare; the sidecar name wins over any label an SDK froze in.
+eqm("<#C00000001>", '<span class="mention channel" data-channel="C00000001">#dev_ops</span>');
 eqm(
-  "<#C00000001|dev_ops>",
+  "<#C00000001|old_name>",
   '<span class="mention channel" data-channel="C00000001">#dev_ops</span>',
 );
 // The pill is stashed like a code span, so the _italic_ pass cannot eat the name.
