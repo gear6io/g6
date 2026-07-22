@@ -1,5 +1,6 @@
 mod api;
 mod auth;
+mod mentions;
 mod slack;
 
 use std::collections::HashMap;
@@ -310,6 +311,21 @@ mod tests {
         )
         .await;
         assert_eq!(via_reply["messages"].as_array().unwrap().len(), 3);
+
+        // mentions are linkified on write and resolved on read
+        let m = call(
+            &app,
+            "/api/chat.postMessage",
+            t,
+            &format!("channel={ch}&text=hi+@astha+in+%23general"),
+        )
+        .await;
+        assert_eq!(m["message"]["text"], "hi <@U00000001> in <#C00000001|general>");
+        assert_eq!(m["message"]["mentions"]["U00000001"], "astha");
+        assert_eq!(m["message"]["mentions"]["C00000001"], "general");
+
+        let hist = call(&app, "/api/conversations.history", t, &format!("channel={ch}&limit=1")).await;
+        assert_eq!(hist["messages"][0]["mentions"]["U00000001"], "astha");
 
         assert_eq!(
             call(&app, "/api/conversations.history", t, "channel=C99999999").await["error"],

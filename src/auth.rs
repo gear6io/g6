@@ -65,23 +65,21 @@ impl FromRequestParts<AppState> for Auth {
 
 #[derive(Deserialize)]
 pub struct Credentials {
-    username: Option<String>,
-    password: Option<String>,
+    username: String,
+    password: String,
 }
 
 fn validate(c: &Credentials) -> Result<(&str, &str), ApiError> {
-    let username = c.username.as_deref().unwrap_or("").trim();
-    let password = c.password.as_deref().unwrap_or("");
-    if username.is_empty()
-        || username.len() > 32
-        || !username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
+    if c.username.is_empty()
+        || c.username.len() > 32
+        || !c.username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
     {
         return Err(ApiError("invalid_username"));
     }
-    if password.len() < 8 {
+    if c.password.len() < 8 {
         return Err(ApiError("password_too_short"));
     }
-    Ok((username, password))
+    Ok((&c.username, &c.password))
 }
 
 pub async fn register(State(state): State<AppState>, Args(c): Args<Credentials>) -> ApiResult {

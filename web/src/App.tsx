@@ -236,11 +236,18 @@ export default function App() {
               channel={channel.id}
               messages={messages}
               users={users}
+              meId={me.user_id}
               hasMore={!!cursor}
               onLoadOlder={loadOlder}
               onOpenThread={openThread}
+              onOpenChannel={setCurrent}
             />
-            <Composer placeholder={`Message #${channel.name}`} onSend={send} />
+            <Composer
+              placeholder={`Message #${channel.name}`}
+              onSend={send}
+              users={[...users.values()]}
+              channels={channels}
+            />
           </>
         ) : (
           <div className="empty">Create a channel to get started.</div>
@@ -251,8 +258,11 @@ export default function App() {
         <ThreadPanel
           messages={thread.messages}
           users={users}
+          meId={me.user_id}
+          channels={channels}
           onClose={closeThread}
           onSend={sendReply}
+          onOpenChannel={setCurrent}
         />
       )}
     </div>

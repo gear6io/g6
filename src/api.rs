@@ -11,6 +11,7 @@ use sqlx::FromRow;
 
 use crate::AppState;
 use crate::auth::Auth;
+use crate::mentions;
 use crate::slack::{
     ApiError, ApiResult, Args, TEAM_ID, TS_MAX, channel_id, decode_cursor, encode_cursor, now_secs,
     now_ts, parse_channel_id, parse_user_id, team_name, ts_succ, user_id,
@@ -255,9 +256,11 @@ pub async fn conversations_history(
 
     let (rows, has_more) = paginate(rows, limit);
     let next = has_more.then(|| encode_cursor(rows.last().map_or("", |r| r.ts.as_str())));
+    let mut messages: Vec<Value> = rows.iter().map(MsgRow::to_json).collect();
+    mentions::decorate(&state.db, &mut messages).await?;
     Ok(Json(json!({
         "ok": true,
-        "messages": rows.iter().map(MsgRow::to_json).collect::<Vec<_>>(),
+        "messages": messages,
         "has_more": has_more,
         "pin_count": 0,
         "response_metadata": metadata(next),
@@ -306,9 +309,11 @@ pub async fn conversations_replies(
 
     let (rows, has_more) = paginate(rows, limit);
     let next = has_more.then(|| encode_cursor(rows.last().map_or("", |r| r.ts.as_str())));
+    let mut messages: Vec<Value> = rows.iter().map(MsgRow::to_json).collect();
+    mentions::decorate(&state.db, &mut messages).await?;
     Ok(Json(json!({
         "ok": true,
-        "messages": rows.iter().map(MsgRow::to_json).collect::<Vec<_>>(),
+        "messages": messages,
         "has_more": has_more,
         "response_metadata": metadata(next),
     })))
@@ -342,12 +347,16 @@ pub async fn chat_post_message(
     if text.is_empty() {
         return Err(ApiError("no_text"));
     }
-    if text.len() > MAX_TEXT {
-        return Err(ApiError("msg_too_long"));
-    }
 
     let ch_id = parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
     load_channel(&state, ch_id).await?;
+
+    // Linkify before the length check: "@astha" is stored as "<@U00000001>", and
+    // what is stored is what the limit is about.
+    let text = mentions::encode(&state.db, &text).await?;
+    if text.len() > MAX_TEXT {
+        return Err(ApiError("msg_too_long"));
+    }
 
     // Replying to a reply re-parents to the real root, which is what Slack does
     // and what clients expect. Keeps threads exactly one level deep.
@@ -405,6 +414,8 @@ pub async fn chat_post_message(
     if let Some(root) = &root {
         message.as_object_mut().unwrap().insert("thread_ts".into(), json!(root));
     }
+    // Before the clone, so the websocket echo carries the sidecar too.
+    mentions::decorate(&state.db, std::slice::from_mut(&mut message)).await?;
 
     let mut event = message.clone();
     event.as_object_mut().unwrap().insert("channel".into(), json!(channel_id(ch_id)));

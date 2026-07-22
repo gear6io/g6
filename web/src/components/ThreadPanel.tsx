@@ -1,16 +1,20 @@
 import { useEffect, useRef } from "react";
-import type { Message as Msg, User } from "../types";
+import type { Channel, Message as Msg, User } from "../types";
 import { Message } from "./Message";
 import { Composer } from "./Composer";
 
 type Props = {
   messages: Msg[]; // oldest first, parent included — conversations.replies returns it that way
   users: Map<string, User>;
+  meId: string;
+  channels: Channel[];
   onClose: () => void;
   onSend: (text: string) => Promise<void>;
+  onOpenChannel: (id: string) => void;
 };
 
-export function ThreadPanel({ messages, users, onClose, onSend }: Props) {
+export function ThreadPanel(props: Props) {
+  const { messages, users, meId, channels, onClose, onSend, onOpenChannel } = props;
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = box.current;
@@ -36,7 +40,9 @@ export function ThreadPanel({ messages, users, onClose, onSend }: Props) {
         </button>
       </header>
       <div className="messages" ref={box}>
-        {parent && <Message msg={parent} users={users} />}
+        {parent && (
+          <Message msg={parent} users={users} meId={meId} onOpenChannel={onOpenChannel} />
+        )}
         {replies.length > 0 && (
           <div className="divider">
             <span>
@@ -45,10 +51,15 @@ export function ThreadPanel({ messages, users, onClose, onSend }: Props) {
           </div>
         )}
         {replies.map((m) => (
-          <Message key={m.ts} msg={m} users={users} />
+          <Message key={m.ts} msg={m} users={users} meId={meId} onOpenChannel={onOpenChannel} />
         ))}
       </div>
-      <Composer placeholder="Reply…" onSend={onSend} />
+      <Composer
+        placeholder="Reply…"
+        onSend={onSend}
+        users={[...users.values()]}
+        channels={channels}
+      />
     </aside>
   );
 }

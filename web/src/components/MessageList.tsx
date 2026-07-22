@@ -7,16 +7,19 @@ type Props = {
   channel: string;
   messages: Msg[]; // oldest first
   users: Map<string, User>;
+  meId: string;
   hasMore: boolean;
   onLoadOlder: () => Promise<void>;
   onOpenThread: (m: Msg) => void;
+  onOpenChannel: (id: string) => void;
 };
 
 const GROUP_WINDOW_SECS = 300;
 const sameDay = (a: string, b: string) =>
   new Date(Number(a) * 1000).toDateString() === new Date(Number(b) * 1000).toDateString();
 
-export function MessageList({ channel, messages, users, hasMore, onLoadOlder, onOpenThread }: Props) {
+export function MessageList(props: Props) {
+  const { channel, messages, users, meId, hasMore, onLoadOlder, onOpenThread, onOpenChannel } = props;
   const box = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // Was the reader pinned to the bottom before this render?
   const anchor = useRef<number | null>(null); // scrollHeight captured before prepending a page.
@@ -78,7 +81,14 @@ export function MessageList({ channel, messages, users, hasMore, onLoadOlder, on
                 <span>{dayOf(m.ts)}</span>
               </div>
             )}
-            <Message msg={m} users={users} compact={compact} onOpenThread={() => onOpenThread(m)} />
+            <Message
+              msg={m}
+              users={users}
+              meId={meId}
+              compact={compact}
+              onOpenThread={() => onOpenThread(m)}
+              onOpenChannel={onOpenChannel}
+            />
           </div>
         );
       })}

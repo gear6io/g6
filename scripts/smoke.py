@@ -53,6 +53,13 @@ seen = [m["text"] for page in c.conversations_history(channel=ch, limit=1) for m
 assert seen[0] == "page2", f"history must be newest-first, got {seen}"
 assert "page0" in seen and "hello" in seen, seen
 
+# A bot writes plain "@smoke"; the server linkifies it. This is the whole reason
+# the mention grammar lives server-side instead of in the web client.
+m = c.chat_postMessage(channel=ch, text=f"ping @smoke in #{name}")["message"]
+assert m["text"] == f"ping <{'@' + me['user_id']}> in <#{ch}|{name}>", m["text"]
+assert m["mentions"][me["user_id"]] == "smoke", m
+assert m["mentions"][ch] == name, m
+
 users = c.users_list()["members"]
 assert any(u["name"] == "smoke" for u in users), users
 assert c.users_info(user=me["user_id"])["user"]["name"] == "smoke"

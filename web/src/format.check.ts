@@ -35,6 +35,30 @@ eq("one\ntwo", "one<br>two");
 eq("2 * 3 * 4", "2 * 3 * 4");
 eq("snake_case_name", "snake_case_name");
 
+// Mentions: the server sends tokens in `text` plus a resolved `mentions` sidecar.
+const ctx = { mentions: { U00000001: "astha", C00000001: "dev_ops" }, meId: "U00000002" };
+const eqm = (raw: string, want: string) => assert.equal(renderText(raw, ctx), want);
+
+eqm("hi <@U00000001>", 'hi <span class="mention">@astha</span>');
+eqm("hi <@U00000002>", 'hi <span class="mention me">@U00000002</span>');
+// No sidecar entry and no inline label: the id is all there is to show.
+eqm("<@U00000009>", '<span class="mention">@U00000009</span>');
+eqm("<@U00000009|ghost>", '<span class="mention">@ghost</span>');
+eqm("<!here>", '<span class="mention broadcast">@here</span>');
+eqm(
+  "<#C00000001|dev_ops>",
+  '<span class="mention channel" data-channel="C00000001">#dev_ops</span>',
+);
+// The pill is stashed like a code span, so the _italic_ pass cannot eat the name.
+assert.ok(!renderText("<#C00000001|dev_ops>", ctx).includes("<em>"));
+// A token inside a code span stays literal.
+eqm("`<@U00000001>`", "<code>&lt;@U00000001&gt;</code>");
+// Sidecar names are data, not markup.
+assert.equal(
+  renderText("<@U00000003>", { mentions: { U00000003: "<img src=x>" } }),
+  '<span class="mention">@&lt;img src=x&gt;</span>',
+);
+
 assert.equal(avatarOf("piyush", "U00000001").color, avatarOf("piyush", "U00000001").color);
 assert.notEqual(avatarOf("a", "U00000001").color, avatarOf("b", "U00000002").color);
 

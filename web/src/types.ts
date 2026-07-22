@@ -16,6 +16,8 @@ export type Message = {
   /** Only present on parents that have replies. */
   reply_count?: number;
   latest_reply?: string;
+  /** Server-resolved sidecar for the `<@U…>` / `<#C…>` tokens in `text`. Omitted when there are none. */
+  mentions?: Record<string, string>;
 };
 
 export type User = {

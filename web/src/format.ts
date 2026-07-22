@@ -26,22 +26,40 @@ const emphasis = (m: string) =>
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** What the server sends alongside a message so mentions can render a name, not an id. */
+export type RenderCtx = { mentions?: Record<string, string>; meId?: string };
+
 /**
- * Slack's `mrkdwn` subset. Everything is HTML-escaped first, so the only tags in
- * the output are the ones this function inserts — that is what makes the result
- * safe to hand to dangerouslySetInnerHTML.
+ * Slack's `mrkdwn` subset plus its mention tokens. Everything is HTML-escaped
+ * first, so the only tags in the output are the ones this function inserts — that
+ * is what makes the result safe to hand to dangerouslySetInnerHTML.
  *
  * Code spans are lifted out before the emphasis pass and restored afterwards, so
  * `*` and `_` inside code stay literal. The placeholder is delimited by NUL,
  * which is stripped from the input first so authored text can never forge one.
+ *
+ * Mention pills ride the same stash: a name like `dev_ops` would otherwise be
+ * eaten by the `_italic_` pass. They are decoded after escaping, hence `&lt;@…&gt;`.
  */
-export function renderText(raw: string): string {
+export function renderText(raw: string, ctx: RenderCtx = {}): string {
   const code: string[] = [];
+  // Sidecar names are raw text; a token's inline label already went through escapeHtml.
+  const label = (id: string, inline?: string) =>
+    (ctx.mentions?.[id] !== undefined ? escapeHtml(ctx.mentions[id]) : inline) || id;
   const stash = (html: string) => `\u0000${code.push(html) - 1}\u0000`;
 
   let s = escapeHtml(raw.replace(/\u0000/g, ""))
     .replace(/```\n?([\s\S]*?)```/g, (_, body: string) => stash(`<pre>${body.replace(/\n$/, "")}</pre>`))
-    .replace(/`([^`\n]+)`/g, (_, body: string) => stash(`<code>${body}</code>`));
+    .replace(/`([^`\n]+)`/g, (_, body: string) => stash(`<code>${body}</code>`))
+    .replace(/&lt;@(U\d+)(?:\|([^&|]*))?&gt;/g, (_, id: string, name?: string) =>
+      stash(`<span class="mention${id === ctx.meId ? " me" : ""}">@${label(id, name)}</span>`),
+    )
+    .replace(/&lt;!(here|channel|everyone)(?:\|[^&]*)?&gt;/g, (_, kind: string) =>
+      stash(`<span class="mention broadcast">@${kind}</span>`),
+    )
+    .replace(/&lt;#(C\d+)(?:\|([^&|]*))?&gt;/g, (_, id: string, name?: string) =>
+      stash(`<span class="mention channel" data-channel="${id}">#${label(id, name)}</span>`),
+    );
 
   s = s
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
