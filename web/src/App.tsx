@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "./api";
-import type { Channel, Message, RtmMessage, User } from "./types";
+import type { Channel, Message, Presence, Profile, RtmEvent, User } from "./types";
 import { useRtm } from "./useRtm";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
 import { MessageList } from "./components/MessageList";
 import { ThreadPanel } from "./components/ThreadPanel";
 import { Composer } from "./components/Composer";
+import { Profile as ProfileForm } from "./components/Profile";
 
 /** Upsert by `ts`, keeping oldest-first order. `ts` is unique per channel, so it is the identity. */
 function merge(list: Message[], incoming: Message[]): Message[] {
@@ -22,7 +23,10 @@ export default function App() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [current, setCurrent] = useState<string>();
   const [users, setUsers] = useState<Map<string, User>>(new Map());
+  const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
   const [unread, setUnread] = useState<Set<string>>(new Set());
+  const [profile, setProfile] = useState<Profile>();
+  const [editing, setEditing] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [cursor, setCursor] = useState<string>();
@@ -43,6 +47,9 @@ export default function App() {
     setCurrent(undefined);
     setMessages([]);
     setThread(undefined);
+    setProfile(undefined);
+    setPresence(new Map());
+    setEditing(false);
   }, []);
 
   useEffect(() => {
@@ -68,7 +75,12 @@ export default function App() {
 
   useEffect(() => {
     if (!me) return;
-    api.usersList().then((list) => setUsers(new Map(list.map((u) => [u.id, u]))));
+    // The roster carries presence, so the sidebar is correct before any event lands.
+    api.usersList().then((list) => {
+      setUsers(new Map(list.map((u) => [u.id, u])));
+      setPresence(new Map(list.map((u) => [u.id, u.presence])));
+    });
+    api.usersProfileGet().then(setProfile);
     api.conversationsList().then((list) => {
       setChannels(list);
       setCurrent((c) => c ?? list[0]?.id);
@@ -111,7 +123,18 @@ export default function App() {
   // ---------------------------------------------------------------- live events
 
   const onEvent = useCallback(
-    (ev: RtmMessage) => {
+    (ev: RtmEvent) => {
+      // The socket carries workspace state as well as messages now.
+      if (ev.type === "presence_change") {
+        setPresence((p) => new Map(p).set(ev.user, ev.presence));
+        return;
+      }
+      if (ev.type === "user_change" || ev.type === "team_join") {
+        setUsers((m) => new Map(m).set(ev.user.id, ev.user));
+        if (ev.user.id === me?.user_id) setProfile(ev.user.profile);
+        return;
+      }
+
       // One socket carries every channel; anything else is just an unread marker.
       if (ev.channel !== currentRef.current) {
         setUnread((u) => new Set(u).add(ev.channel));
@@ -136,11 +159,13 @@ export default function App() {
         }
       }
 
+      // Backstop only: `team_join` normally beats the first message from a new
+      // account, but a socket that dropped over the registration would miss it.
       if (!users.has(ev.user)) {
         api.usersInfo(ev.user).then((u) => setUsers((m) => new Map(m).set(u.id, u)));
       }
     },
-    [users],
+    [users, me],
   );
 
   /** After a dropped socket: pull anything posted while we were away. */
@@ -195,6 +220,13 @@ export default function App() {
     );
   }
 
+  /** Optimistic: the server echoes a `presence_change` that confirms or corrects it. */
+  async function setAway(away: boolean) {
+    if (!me) return;
+    setPresence((p) => new Map(p).set(me.user_id, away ? "away" : "active"));
+    await api.usersSetPresence(away ? "away" : "auto");
+  }
+
   async function createChannel(name: string) {
     const ch = await api.conversationsCreate(name);
     setChannels((cs) => [...cs, ch]);
@@ -212,15 +244,27 @@ export default function App() {
     <div className="app">
       <Sidebar
         team={me.team}
-        me={me.user}
+        me={profile?.display_name || profile?.real_name || me.user}
         meId={me.user_id}
+        presence={presence.get(me.user_id) ?? "away"}
         channels={channels}
         current={current}
         unread={unread}
         onSelect={setCurrent}
         onCreate={createChannel}
+        onEditProfile={() => setEditing(true)}
         onLogout={() => api.logout().then(signOut)}
       />
+
+      {editing && profile && (
+        <ProfileForm
+          profile={profile}
+          away={(presence.get(me.user_id) ?? "away") === "away"}
+          onSaved={setProfile}
+          onPresence={setAway}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       <main>
         {channel ? (

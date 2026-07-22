@@ -67,9 +67,23 @@ impl FromRequestParts<AppState> for Auth {
 pub struct Credentials {
     username: String,
     password: String,
+    /// Optional: gear6 signs you in with a username. It exists so
+    /// `users.lookupByEmail` has something to find.
+    email: Option<String>,
 }
 
-fn validate(c: &Credentials) -> Result<(&str, &str), ApiError> {
+/// Folded to lowercase and superficially sane. Deliberately not RFC 5322 — the only
+/// thing that can really validate an address is sending mail to it, and folding is
+/// what matters here because the unique index is exact-match.
+pub fn normalize_email(raw: &str) -> Result<String, ApiError> {
+    let e = raw.trim().to_lowercase();
+    let shaped = e.split_once('@').is_some_and(|(user, domain)| {
+        !user.is_empty() && domain.len() > 2 && domain.contains('.') && !domain.starts_with('.')
+    });
+    (shaped && e.len() <= 255).then_some(e).ok_or(ApiError("invalid_email"))
+}
+
+fn validate(c: &Credentials) -> Result<(&str, &str, Option<String>), ApiError> {
     if c.username.is_empty()
         || c.username.len() > 32
         || !c.username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
@@ -79,11 +93,15 @@ fn validate(c: &Credentials) -> Result<(&str, &str), ApiError> {
     if c.password.len() < 8 {
         return Err(ApiError("password_too_short"));
     }
-    Ok((&c.username, &c.password))
+    let email = match c.email.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
+        Some(e) => Some(normalize_email(e)?),
+        None => None,
+    };
+    Ok((&c.username, &c.password, email))
 }
 
 pub async fn register(State(state): State<AppState>, Args(c): Args<Credentials>) -> ApiResult {
-    let (username, password) = validate(&c)?;
+    let (username, password, email) = validate(&c)?;
 
     // argon2 is CPU-bound by design; running it on the async runtime would stall
     // every other request on this worker.
@@ -92,22 +110,40 @@ pub async fn register(State(state): State<AppState>, Args(c): Args<Credentials>)
         .await
         .map_err(|_| ApiError("internal_error"))?;
 
-    let res = sqlx::query("INSERT INTO users (username, password_hash, created) VALUES (?, ?, ?)")
-        .bind(username)
-        .bind(&hash)
-        .bind(now_secs())
-        .execute(&state.db)
-        .await;
+    // Slack seeds real_name from the account name and leaves display_name empty.
+    let res = sqlx::query(
+        "INSERT INTO users (username, password_hash, created, updated, real_name, email)
+         VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(username)
+    .bind(&hash)
+    .bind(now_secs())
+    .bind(now_secs())
+    .bind(username)
+    .bind(&email)
+    .execute(&state.db)
+    .await;
 
-    match res {
-        Ok(r) => Ok(Json(json!({ "ok": true, "user_id": user_id(r.last_insert_rowid()) }))),
-        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => Err(ApiError("name_taken")),
-        Err(e) => Err(e.into()),
-    }
+    let id = match res {
+        Ok(r) => r.last_insert_rowid(),
+        // Two unique constraints now, and the caller needs to know which one bit.
+        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
+            return Err(ApiError(if e.message().contains("email") {
+                "email_taken"
+            } else {
+                "name_taken"
+            }));
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    let user = crate::api::load_user(&state, id).await?;
+    let _ = state.tx.send(json!({ "type": "team_join", "user": user.to_json() }));
+    Ok(Json(json!({ "ok": true, "user_id": user_id(id) })))
 }
 
 pub async fn login(State(state): State<AppState>, Args(c): Args<Credentials>) -> ApiResult {
-    let (username, password) = validate(&c)?;
+    let (username, password, _) = validate(&c)?;
 
     let row: Option<(i64, String)> =
         sqlx::query_as("SELECT id, password_hash FROM users WHERE username = ?")

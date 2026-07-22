@@ -1,4 +1,4 @@
-import type { Channel, Message, User } from "./types";
+import type { Channel, Message, Presence, Profile, User } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const TOKEN_KEY = "gear6.token";
@@ -123,12 +123,13 @@ export async function postMessage(channel: string, text: string, thread_ts?: str
 
 // ------------------------------------------------------------------ users, rtm
 
-export async function usersList(): Promise<User[]> {
-  const all: User[] = [];
+/** `presence` is opt-in server-side; without it the roster boots with nobody active. */
+export async function usersList(): Promise<(User & { presence: Presence })[]> {
+  const all: (User & { presence: Presence })[] = [];
   let cursor: string | undefined;
   do {
-    const b = await call("users.list", { limit: 200, cursor });
-    all.push(...(b.members as User[]));
+    const b = await call("users.list", { limit: 200, cursor, presence: true });
+    all.push(...(b.members as (User & { presence: Presence })[]));
     cursor = cursorOf(b);
   } while (cursor);
   return all;
@@ -138,6 +139,22 @@ export async function usersList(): Promise<User[]> {
 export async function usersInfo(user: string): Promise<User> {
   const b = await call("users.info", { user });
   return b.user as User;
+}
+
+export async function usersProfileGet(): Promise<Profile> {
+  const b = await call("users.profile.get");
+  return b.profile as Profile;
+}
+
+/** Only the named fields are touched; anything left out keeps its stored value. */
+export async function usersProfileSet(profile: Partial<Profile>): Promise<Profile> {
+  const b = await call("users.profile.set", { profile });
+  return b.profile as Profile;
+}
+
+/** `auto` hands presence back to the websocket; `away` pins it regardless. */
+export async function usersSetPresence(presence: "auto" | "away"): Promise<void> {
+  await call("users.setPresence", { presence });
 }
 
 /** The returned URL carries a one-shot ticket that expires in 30s — never cache it. */

@@ -247,6 +247,34 @@ main {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.sidebar .me:hover {
+  text-decoration: underline;
+}
+
+/* The dot rides the avatar so presence needs no legend. Only the sidebar renders
+   one today, but anchoring on .avatar means a roster could reuse it as-is. */
+.avatar {
+  position: relative;
+}
+.presence {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  /* Punches a hole in the avatar so the dot reads at any background colour. */
+  border: 2px solid var(--aubergine);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #d9d3d9;
+}
+.presence.active {
+  background: #2bac76;
+  box-shadow: none;
 }
 
 .icon {
@@ -338,6 +366,14 @@ main {
 .msg .time {
   font-size: 12px;
   color: var(--muted);
+}
+/* A shortcode, not a glyph — there is no emoji table, so it is styled as a token. */
+.status-emoji {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 .msg .text {
   line-height: 22px;
@@ -520,7 +556,74 @@ main {
   }
 }
 
+/* ------------------------------------------------------------------ profile */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.4);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 10;
+  animation: fade-in 120ms var(--ease-out);
+}
+.profile {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+.profile h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.profile label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.profile input {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+}
+.profile .row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.profile .actions {
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.profile .actions button:last-child {
+  background: var(--active);
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-weight: 700;
+}
+.profile .actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
+
   button:active:not(:disabled) {
     transform: none;
   }

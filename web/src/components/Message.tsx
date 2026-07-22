@@ -13,7 +13,10 @@ type Props = {
 
 export function Message({ msg, users, meId, compact, onOpenThread, onOpenChannel }: Props) {
   const user = users.get(msg.user);
-  const name = user?.profile.display_name || user?.name || msg.user;
+  // Slack's fallback order. `real_name` is seeded from the username at registration,
+  // so the bare id only shows for an author this tab has never resolved.
+  const name = user?.profile.display_name || user?.profile.real_name || user?.name || msg.user;
+  const status = user?.profile.status_emoji;
   const avatar = avatarOf(name, msg.user);
   const replies = msg.reply_count ?? 0;
 
@@ -30,6 +33,12 @@ export function Message({ msg, users, meId, compact, onOpenThread, onOpenChannel
         {!compact && (
           <div className="meta">
             <span className="author">{name}</span>
+            {/* Shortcode, not a glyph — there is no emoji table, so show it as typed. */}
+            {status && (
+              <span className="status-emoji" title={user?.profile.status_text || status}>
+                {status}
+              </span>
+            )}
             <span className="time">{timeOf(msg.ts)}</span>
           </div>
         )}

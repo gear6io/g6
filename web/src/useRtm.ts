@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { rtmConnect } from "./api";
-import type { RtmMessage } from "./types";
+import type { RtmEvent } from "./types";
 
 const PING_MS = 30_000;
 const MAX_BACKOFF_MS = 30_000;
@@ -13,7 +13,7 @@ const MAX_BACKOFF_MS = 30_000;
  * again rather than reusing the URL. `onResync` fires after a *re*connection so the
  * caller can backfill whatever it missed while the socket was down.
  */
-export function useRtm(enabled: boolean, onEvent: (m: RtmMessage) => void, onResync: () => void) {
+export function useRtm(enabled: boolean, onEvent: (e: RtmEvent) => void, onResync: () => void) {
   const [connected, setConnected] = useState(false);
 
   // Handlers change on every render; the socket must not.
@@ -57,9 +57,12 @@ export function useRtm(enabled: boolean, onEvent: (m: RtmMessage) => void, onRes
         everConnected = true;
       };
 
+      // `hello` and `pong` are protocol chatter; everything else is workspace state.
       ws.onmessage = (e) => {
         const event = JSON.parse(e.data as string);
-        if (event.type === "message") handlers.current.onEvent(event as RtmMessage);
+        if (event.type !== "hello" && event.type !== "pong") {
+          handlers.current.onEvent(event as RtmEvent);
+        }
       };
 
       ws.onclose = () => {

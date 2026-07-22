@@ -64,6 +64,34 @@ users = c.users_list()["members"]
 assert any(u["name"] == "smoke" for u in users), users
 assert c.users_info(user=me["user_id"])["user"]["name"] == "smoke"
 
+# The SDK form-encodes `profile` as a JSON *string*, which is the shape the web
+# client never sends and therefore the one only this script can catch.
+email = f"smoke+{os.getpid()}@example.com"
+prof = c.users_profile_set(profile={"display_name": "Smoke Test", "title": "SRE", "email": email})
+assert prof["profile"]["display_name"] == "Smoke Test", prof["profile"]
+assert prof["profile"]["title"] == "SRE", prof["profile"]
+
+c.users_profile_set(name="status_emoji", value=":coffee:")
+prof = c.users_profile_get()["profile"]
+assert prof["status_emoji"] == ":coffee:", prof
+assert prof["display_name"] == "Smoke Test", "a single-field set must not clear the rest"
+assert c.users_info(user=me["user_id"])["user"]["profile"]["title"] == "SRE"
+
+assert c.users_lookupByEmail(email=email)["user"]["id"] == me["user_id"]
+
+c.users_setPresence(presence="away")
+pres = c.users_getPresence(user=me["user_id"])  # the SDK requires `user`, even for yourself
+assert pres["presence"] == "away", pres
+assert pres["manual_away"] is True, pres
+c.users_setPresence(presence="auto")
+
+# The SDK sends booleans as 1/0, not true/false — a real trap for the arg extractor.
+roster = c.users_list(presence=True)["members"]
+assert all(u["presence"] in ("active", "away") for u in roster), roster
+
+assert c.users_identity()["user"]["name"] == "Smoke Test"
+assert any(x["id"] == ch for x in c.users_conversations()["channels"])
+
 rtm = c.rtm_connect()
 assert rtm["url"].startswith("ws") and "ticket=" in rtm["url"], rtm
 assert rtm["self"]["id"] == me["user_id"], rtm

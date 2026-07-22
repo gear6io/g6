@@ -1,21 +1,24 @@
 import { useState } from "react";
-import type { Channel } from "../types";
+import type { Channel, Presence } from "../types";
 import { avatarOf } from "../format";
 
 type Props = {
   team: string;
   me: string;
   meId: string;
+  presence: Presence;
   channels: Channel[];
   current?: string;
   unread: Set<string>;
   onSelect: (id: string) => void;
   onCreate: (name: string) => Promise<void>;
+  onEditProfile: () => void;
   onLogout: () => void;
 };
 
 export function Sidebar(props: Props) {
-  const { team, me, meId, channels, current, unread, onSelect, onCreate, onLogout } = props;
+  const { team, me, meId, presence, channels, current, unread } = props;
+  const { onSelect, onCreate, onEditProfile, onLogout } = props;
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -82,8 +85,11 @@ export function Sidebar(props: Props) {
       <footer>
         <span className="avatar" style={{ background: avatar.color }}>
           {avatar.initials}
+          <span className={`presence ${presence}`} aria-label={presence} />
         </span>
-        <span className="me">{me}</span>
+        <button className="me link" onClick={onEditProfile} title="Edit your profile">
+          {me}
+        </button>
         <button className="link" onClick={onLogout}>
           Sign out
         </button>

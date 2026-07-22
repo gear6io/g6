@@ -87,6 +87,22 @@ where
     }
 }
 
+/// Every boolean argument goes through this.
+///
+/// `slack_sdk` form-encodes booleans as `1`/`0` (its `convert_bool_to_0_1`), while
+/// `serde_urlencoded` only parses `true`/`false` — so a plain `Option<bool>` field
+/// makes the whole call fail with `invalid_arguments` the moment a Python bot passes
+/// one. JSON bodies still deliver a real bool, hence the `Value` in the middle.
+pub fn lenient_bool<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<bool>, D::Error> {
+    use serde::Deserialize;
+    Ok(match Option::<serde_json::Value>::deserialize(d)? {
+        Some(serde_json::Value::Bool(b)) => Some(b),
+        Some(serde_json::Value::String(s)) => Some(matches!(s.as_str(), "1" | "true")),
+        Some(serde_json::Value::Number(n)) => Some(n.as_i64() != Some(0)),
+        _ => None,
+    })
+}
+
 pub fn user_id(id: i64) -> String {
     format!("U{id:08}")
 }
@@ -165,6 +181,7 @@ mod tests {
     struct Sample {
         channel: String,
         limit: Option<u32>,
+        #[serde(default, deserialize_with = "lenient_bool")]
         inclusive: Option<bool>,
     }
 
@@ -212,6 +229,33 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         assert!(extract(missing).await.is_err());
+    }
+
+    /// slack_sdk form-encodes `inclusive=True` as `inclusive=1`. Before
+    /// `lenient_bool` that failed to parse and took the whole call down with
+    /// `invalid_arguments` — which looks nothing like a boolean problem from the
+    /// caller's side. Same trap for `is_private` and `presence`.
+    #[tokio::test]
+    // Check if the same happens with Go SDK, if not remove
+    async fn args_accepts_python_style_booleans() {
+        for (body, want) in [("1", Some(true)), ("0", Some(false)), ("true", Some(true))] {
+            let req = Request::builder()
+                .method(Method::POST)
+                .uri("/api/x")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(format!("channel=C1&inclusive={body}")))
+                .unwrap();
+            assert_eq!(extract(req).await.unwrap().inclusive, want, "inclusive={body}");
+        }
+
+        // A JSON caller still sends a real boolean.
+        let json = Request::builder()
+            .method(Method::POST)
+            .uri("/api/x")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"channel":"C1","inclusive":true}"#))
+            .unwrap();
+        assert_eq!(extract(json).await.unwrap().inclusive, Some(true));
     }
 
     /// slack_sdk sends an argument-less call as Content-Length: 0 labelled
