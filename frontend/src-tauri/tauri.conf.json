@@ -5,12 +5,12 @@
   "identifier": "xyz.block.buzz.app",
   "build": {
     "beforeDevCommand": {
-      "script": "exec ./node_modules/.bin/vite",
+      "script": "exec env VITE_GEAR6=1 ./node_modules/.bin/vite",
       "cwd": "..",
       "wait": false
     },
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "VITE_GEAR6=1 pnpm build",
     "frontendDist": "../dist"
   },
   "app": {

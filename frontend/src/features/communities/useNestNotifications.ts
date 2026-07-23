@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-import { USE_GEAR6 } from "@/shared/api/gear6/mode";
+import { USE_HTTP_API } from "@/shared/api/mode";
 
 const MIGRATION_TOAST_KEY = "buzz-legacy-nest-migrated-notified";
 
@@ -25,7 +25,7 @@ const MIGRATION_TOAST_KEY = "buzz-legacy-nest-migrated-notified";
 export function useNestNotifications(): void {
   useEffect(() => {
     // gear6 mode: no nostr/nest backend emits these events.
-    if (USE_GEAR6) return;
+    if (USE_HTTP_API) return;
     const unlistenReposError = listen<string>("repos-dir-error", (event) => {
       toast.error("Repos directory not applied", {
         description: event.payload,

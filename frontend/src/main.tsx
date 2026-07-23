@@ -14,8 +14,8 @@ import { PoofBurstProvider } from "@/shared/ui/PoofBurstProvider";
 import { Toaster } from "@/shared/ui/sonner";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { rtm } from "@/shared/lib/rtm-client";
-import { USE_GEAR6 } from "@/shared/api/gear6/mode";
-import { gear6GetIdentity } from "@/shared/api/gear6/invoke";
+import { USE_HTTP_API } from "@/shared/api/mode";
+import { getApiIdentity } from "@/shared/api/invoke";
 
 // Boot the backend connection the moment the app loads (fire-and-forget).
 rtm.connect();
@@ -116,12 +116,12 @@ async function installE2eBridgeIfConfigured() {
 // gear6 mode: seed a single community + mark onboarding complete so the
 // nostr-era setup/onboarding gates pass without a nostr identity. The pubkey is
 // the gear6 user id; get_profile/get_identity resolve the app to "ready".
-async function seedGear6Session() {
-  if (!USE_GEAR6) return;
+async function seedApiSession() {
+  if (!USE_HTTP_API) return;
   const relayUrl = import.meta.env.VITE_RELAY_URL ?? "ws://localhost:3000";
   const COMMUNITY_ID = "gear6";
   try {
-    const identity = await gear6GetIdentity();
+    const identity = await getApiIdentity();
     window.localStorage.setItem(
       "buzz-communities",
       JSON.stringify([
@@ -140,7 +140,7 @@ async function seedGear6Session() {
       "true",
     );
   } catch (err) {
-    console.warn("[gear6] seedGear6Session failed:", err);
+    console.warn("[gear6] seedApiSession failed:", err);
   }
 }
 
@@ -148,7 +148,7 @@ async function bootstrap() {
   resetDevWebviewStateFromUrl();
   configureDevE2eBridgeFromUrl();
   await installE2eBridgeIfConfigured();
-  await seedGear6Session();
+  await seedApiSession();
   await migrateLegacyCommunityStorageBeforeRender();
   renderApp();
 }

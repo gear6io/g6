@@ -9,7 +9,7 @@ function baseUrl(): string {
   return relayHttpFromWs(ws);
 }
 
-export async function gear6Get<T>(
+export async function apiGet<T>(
   endpoint: string,
   params?: Record<string, string | number | boolean | undefined>,
 ): Promise<T> {
@@ -24,7 +24,7 @@ export async function gear6Get<T>(
   return (await res.json()) as T;
 }
 
-export async function gear6Post<T>(
+export async function apiPost<T>(
   endpoint: string,
   body?: Record<string, unknown>,
 ): Promise<T> {

@@ -3,4 +3,4 @@
 //
 // This is deliberately NOT `!isTauri()`: in the desktop webview `isTauri()` is
 // true, yet we still want gear6, so the decision must be an explicit build flag.
-export const USE_GEAR6 = import.meta.env.VITE_GEAR6 === "1";
+export const USE_HTTP_API = import.meta.env.VITE_GEAR6 === "1";

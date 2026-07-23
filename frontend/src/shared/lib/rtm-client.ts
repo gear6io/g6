@@ -15,6 +15,11 @@
  * when a 3rd app (admin-web/mobile) needs it; not worth monorepo infra for 2 copies.
  */
 
+import {
+  messageToRelayEvent,
+  isRtmMessage,
+} from "@/shared/api/eventAdapter";
+import { relayClient } from "@/shared/api/relayClient";
 import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
 
 const PING_INTERVAL_MS = 30_000;
@@ -81,8 +86,16 @@ export class RtmClient {
       this.startPing();
     };
     ws.onmessage = (ev) => {
-      // ponytail: no UI consumes chat events yet — just observe the wire.
-      console.log("[rtm]", ev.data);
+      let frame: unknown;
+      try {
+        frame = JSON.parse(typeof ev.data === "string" ? ev.data : "");
+      } catch {
+        return; // non-JSON (shouldn't happen); ignore.
+      }
+      // Only message frames drive the timeline; hello/pong are keepalive noise.
+      if (isRtmMessage(frame)) {
+        relayClient.dispatchRtmEvent(messageToRelayEvent(frame));
+      }
     };
     ws.onerror = (ev) => {
       console.error("[rtm] socket error", ev);

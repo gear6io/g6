@@ -18,12 +18,12 @@ type RawProfile = {
   has_profile_event?: boolean;
 };
 
-type RawUserProfileSummary = Omit<RawProfile, "pubkey" | "about"> & {
+export type RawUserProfileSummary = Omit<RawProfile, "pubkey" | "about"> & {
   name?: string | null;
   is_agent?: boolean;
 };
 
-type RawUsersBatchResponse = {
+export type RawUsersBatchResponse = {
   profiles: Record<string, RawUserProfileSummary>;
   missing: string[];
 };

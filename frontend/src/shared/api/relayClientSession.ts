@@ -35,6 +35,8 @@ import {
   prepareSubscriptionEvent,
 } from "@/shared/api/relayClosedRecovery";
 import { replayLiveSubscriptions } from "@/shared/api/relayReconnectReplay";
+import { eventMatchesFilter } from "@/shared/api/eventAdapter";
+import { postChatMessage } from "@/shared/api/postMessage";
 import {
   activateRateLimit,
   parseRateLimitHint,
@@ -48,7 +50,7 @@ import {
 } from "@/shared/api/relayReconnectPolicy";
 import { RelayStallWatchdog } from "@/shared/api/relayStallWatchdog";
 import { closeWebSocket } from "@/shared/api/relayWebSocketClose";
-import { USE_GEAR6 } from "@/shared/api/gear6/mode";
+import { USE_HTTP_API } from "@/shared/api/mode";
 import { buildThreadReferenceTags } from "@/features/messages/lib/threading";
 const RECONNECT_BASE_DELAY_MS = 1_000,
   RECONNECT_MAX_DELAY_MS = 30_000,
@@ -296,6 +298,10 @@ export class RelayClient {
     mentionPubkeys: string[] = [],
     extraTags: string[][] = [],
   ) {
+    // gear6 mode: no nostr socket — POST chat.postMessage. Mentions resolve
+    // server-side from raw text, so mentionPubkeys/extraTags aren't needed.
+    if (USE_HTTP_API) return postChatMessage(channelId, content);
+
     await this.ensureConnected();
 
     const tags: string[][] = [["h", channelId]];
@@ -502,7 +508,7 @@ export class RelayClient {
   private async ensureConnected() {
     // gear6 mode: the nostr relay transport is replaced by the gear6 /rtm stream
     // (Phase C). Never open the (removed) native websocket plugin.
-    if (USE_GEAR6) return;
+    if (USE_HTTP_API) return;
     if (shouldRefuseConnect({ terminal: this.terminal })) {
       // Session is terminal (e.g. relay rejected auth). Refuse to connect
       // until an explicit re-engagement (disconnect()/preconnect()) clears
@@ -649,7 +655,7 @@ export class RelayClient {
 
   private async sendRaw(payload: unknown[]) {
     // gear6 mode: no nostr socket to write to; drop the frame (REQ/EVENT/CLOSE).
-    if (USE_GEAR6) return;
+    if (USE_HTTP_API) return;
     if (this.wsId === null) {
       throw new Error("Relay socket is not connected.");
     }
@@ -864,6 +870,22 @@ export class RelayClient {
 
     this.authRequest.pendingEventId = event.id;
     await this.sendRaw(["AUTH", event]);
+  }
+
+  /**
+   * gear6 mode: inject an event pushed by the /rtm stream. Unlike a nostr relay,
+   * /rtm carries one stream for every channel with no subId routing, so match the
+   * event against every live subscription's filter (the #h/kind filtering the
+   * relay would do server-side) and fan out to each match — reusing the exact
+   * live-dispatch path (`prepareSubscriptionEvent` + `onEvent`) real events take.
+   */
+  dispatchRtmEvent(event: RelayEvent) {
+    for (const [, sub] of this.subscriptions) {
+      if (sub.mode !== "live") continue;
+      if (!eventMatchesFilter(sub.filter, event)) continue;
+      if (!prepareSubscriptionEvent(sub, event)) continue;
+      sub.onEvent(event);
+    }
   }
 
   private handleEvent(subId: string, event: RelayEvent) {

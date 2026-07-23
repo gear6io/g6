@@ -1,6 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-import { USE_GEAR6 } from "@/shared/api/gear6/mode";
-import { gear6Invoke } from "@/shared/api/gear6/invoke";
+import { USE_HTTP_API } from "@/shared/api/mode";
+import { apiInvoke } from "@/shared/api/invoke";
 import {
   activateRateLimit,
   parseRateLimitHint,
@@ -302,8 +302,8 @@ export async function invokeTauri<T>(
   command: string,
   args?: Record<string, unknown>,
 ): Promise<T> {
-  if (USE_GEAR6) {
-    return gear6Invoke<T>(command, args);
+  if (USE_HTTP_API) {
+    return apiInvoke<T>(command, args);
   }
   try {
     return await tauriInvoke<T>(command, args);
