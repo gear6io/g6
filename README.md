@@ -27,6 +27,46 @@ Missing (frontend features need them):
 - Admin: roles, member management, moderation
 - Everything agent/workflow/project-shaped (§2) has zero backend surface
 
+## 1b. Feature matrix — frontend features vs backend support
+
+Every feature the frontend ships (`frontend/src/features/*`) against what the gear6 backend (`src/`) provides today:
+
+| Feature | Frontend | Backend status | What backend lacks |
+|---|---|---|---|
+| Channels (list/create/join) | `channels/` | ✅ Implemented | — |
+| Message history + threads | `messages/`, `chat/` | ✅ Implemented | — |
+| Post message | `messages/` | ✅ Implemented (`chat.postMessage`) | Frontend not wired to it |
+| Presence | `presence/` | ✅ Implemented (derived, socket-based) | — |
+| User profiles | `profile/` | ⚠️ Partial (`users.profile.get/set`) | Avatar/image upload |
+| Auth / sessions | `onboarding/`, `settings/` | ⚠️ Partial (register/login/logout exist) | No frontend login flow; dev bypass in use |
+| Edit / delete message | `messages/` | ❌ Missing | `chat.update`, `chat.delete` |
+| Reactions | `messages/` | ❌ Missing | `reactions.add/remove` + rtm event |
+| DMs | `messages/`, `home/` | ❌ Missing | `conversations.open`, IM listing |
+| Channel management (topic/purpose/rename/archive/leave/invite/kick/roles) | `channels/`, `sidebar/` | ❌ Missing | `conversations.setTopic/.setPurpose/.rename/.archive/.leave/.invite/.kick/.members` |
+| File/media upload + download | `messages/` (composer, attachments) | ❌ Missing | `files.*`, storage, thumbnails |
+| Search (messages, users) | `search/` | ❌ Missing | `search.messages`, user search |
+| Typing indicators | `chat/` | ❌ Missing | typing rtm events |
+| Pins / saved items | `messages/` | ❌ Missing | `pins.*`, `stars.*` |
+| Custom emoji | `custom-emoji/` | ❌ Missing | `emoji.*` + upload |
+| User status (custom status) | `user-status/` | ❌ Missing | status fields + API |
+| Notifications / unreads | `notifications/`, `home/` | ❌ Missing | unread counts, read markers, mention badges |
+| Reminders | `reminders/` | ❌ Missing | `reminders.*` |
+| Communities / workspaces | `communities/`, `community-members/` | ❌ Missing | multi-workspace model (single implicit workspace today) |
+| Moderation | `moderation/` | ❌ Missing | roles, bans, reports |
+| Channel templates | `channel-templates/` | ❌ Missing | template CRUD |
+| Canvas | `channels/` (canvas UI) | ❌ Missing | canvas get/set |
+| Agents / personas / teams | `agents/` | ❌ Missing | whole agent domain (CRUD, runtimes, approvals, snapshots, models discovery) |
+| Agent memory | `agent-memory/` | ❌ Missing | memory store API |
+| Workflows | `workflows/` | ❌ Missing | workflow CRUD + runs + approvals |
+| Projects / git (repos, PRs, issues) | `projects/` | ❌ Missing | repo hosting, `/git/*` transport, PR/issue model |
+| Pulse (social notes/feed) | `pulse/` | ❌ Missing | notes/feed/likes API |
+| Forum | `forum/` | ❌ Missing | forum posts API |
+| Huddles (audio) | `huddle/` | ❌ Missing | huddle signaling/media |
+| Mesh compute (local LLM) | `mesh-compute/` | ❌ Missing | mesh node lifecycle + model catalog (was desktop-side, stubbed) |
+| Local / identity archive | `local-archive/`, `identity-archive/` | ❌ Missing | archive read/write, save subscriptions |
+| Invites | `communities/` (invite flows) | ❌ Missing | invite create/claim |
+| Link previews | `messages/` | ❌ Missing | unfurl endpoint |
+
 ## 2. Frontend gear6 adapter (`frontend/src/shared/api/gear6/invoke.ts`) — "Phase D"
 
 ~160 distinct Tauri commands invoked across the app; **6 mapped** (`is_shared_identity`, `get_default_relay_url`, `get_channels`, `get_identity`, `get_profile`, `apply_workspace`). All others return `[]` + console warning. Unmapped, by domain:
