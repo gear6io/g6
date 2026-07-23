@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "code-review-graph": {
-      "command": "/Users/asthajyoti/code/gear6/.venv/bin/python3.14",
+      "command": "/Users/asthajyoti/code/gear6/.venv/bin/code-review-graph",
       "args": [
-        "-m",
-        "code_review_graph",
         "serve"
       ],
       "cwd": "/Users/asthajyoti/code/gear6",

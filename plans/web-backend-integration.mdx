@@ -1,0 +1,47 @@
+# Wire `web/` up to the backend
+
+## Context
+
+An earlier task copied Buzz's OSS frontends (`web/`, `admin-web/`, `desktop/`, `mobile/`) wholesale into gear6 as a starting point, explicitly deferring integration to "a different task." That task is now. This plan wires the `web/` app's *connection layer* to the real backend (`src/`) — this frontend is gear6, not a client of some separate "gear6" service.
+
+Two facts materially shaped this plan, confirmed via exploration and user decisions:
+
+1. **`web/`'s only real features are unrelated to chat**: a git-repo browser (Nostr kind:30617/30618 announcement events + isomorphic-git over a `/git/*` smart-HTTP transport) and an invite-claim landing page. The backend has no repo/git/invite concept — it's a Slack-like API (users, conversations, messages, presence). **User decision: leave these Nostr-shaped feature files completely untouched.** They will fail to connect (no `/rtm` NIP-01 support, no `/git/*` route) — that's accepted, deferred to a future backend cycle.
+2. **A native web client already existed** (git history, commit `2056365`) with `Login`, `Sidebar`, `MessageList`, `ThreadPanel`, `Composer`, `api.ts`, `useRtm.ts` — fully wired to the backend's real API. It was overwritten by the Buzz copy. **User decision: do not restore it — keep Buzz's `web/` as the live app** and adapt it instead.
+
+Given those two decisions, "connect the FE to the backend" cannot mean "make the repo-browser work" (no backend surface exists for that, out of scope) — it means: establish a real, working connection from `web/` to the backend (auth handshake + `/rtm` WebSocket), as new plumbing alongside the untouched Nostr-shaped code, so the app *starts connected* the moment it boots. Since `web/` has no login UI at all (Buzz's identity model is NIP-07/ephemeral-keypair, not username+password), and building one is out of scope here, **auth is disabled backend-side** via an opt-in dev flag so the connection can be established with zero credentials — the smallest change that satisfies "FE starts connected," while the normal auth path stays fully intact and unit-tested for whenever a real login flow is added later.
+
+## Changes
+
+### 1. Backend (`src/`)
+
+**Fix the broken build first**: `src/main.rs` currently has an uncommitted `.route("/ws", get(nostr_ws))` where `nostr_ws` is undefined (a stray edit from earlier this session, before this plan existed). Remove that line — no Nostr-protocol compatibility layer is being built; the plan instead adapts the FE to the backend's real API.
+
+**Add an opt-in auth bypass** in `src/auth.rs`, `Auth::from_request_parts` (currently `src/auth.rs:38-64`):
+- New env-gated helper `auth_disabled() -> bool` (reads `GEAR6_DISABLE_AUTH`, same truthy-string parsing style as elsewhere in the codebase).
+- When the `Authorization` header is **absent** and `auth_disabled()` is true: resolve (or lazily create, `INSERT ... ON CONFLICT(username) DO NOTHING`) a fixed `dev` user and return `Auth { id, username: "dev", token_sha256: String::new() }` instead of erring `not_authed`.
+- When a header **is** present, behavior is unchanged (real token still validated, `invalid_auth` on mismatch) — this only relaxes the "no header at all" case, so real login/logout/register continue to work exactly as before and the existing `end_to_end` test (`src/main.rs:324+`, which asserts `not_authed`/`invalid_auth` with no env var set) is unaffected since the flag defaults off.
+- Print one `eprintln!` warning at startup (in `main()`, `src/main.rs:253-265`) when the flag is active, matching the existing `eprintln!` style used for the rtm-lag warning — so an accidentally-deployed bypass is visible in logs, not silent.
+- No changes needed to `api.rs` handlers — `rtm_connect` (`api.rs:815`) and every other handler already take `auth: Auth` generically and don't care how it was resolved.
+
+**Config**: add `.env.example` at gear6 root (none currently exists) documenting `DATABASE_URL`, `PORT`, `GEAR6_PUBLIC_URL`, `GEAR6_WS_URL`, `GEAR6_CORS_ORIGIN` (already-read vars, undocumented today), plus the new `GEAR6_DISABLE_AUTH=true` for local FE dev. `GEAR6_CORS_ORIGIN` default (`http://localhost:5173`) already matches `web/`'s Vite dev port default — no code change needed there.
+
+### 2. `web/` frontend
+
+**New file**: `web/src/shared/lib/rtm-client.ts` — the only new frontend code (naming follows the existing `relay-url.ts`/`nostr-client.ts` convention). Responsibilities:
+- Reuse existing `relayHttpBaseUrl()` from `shared/lib/relay-url.ts` (already generic — no Nostr-specific logic in it, safe to reuse as-is) to resolve the backend's HTTP origin.
+- `connect()`: `POST {base}/api/rtm.connect` with no `Authorization` header (auth disabled backend-side) → backend mints a dev-user ticket and returns `{ok:true, url: "ws://.../rtm?ticket=..."}` → open `new WebSocket(url)`.
+- Handle the `/rtm` wire protocol as already reverse-engineered: log `{"type":"hello"}` on connect, send `{"type":"ping"}` every ~30s and expect `{"type":"pong"}`, reconnect with capped backoff on close (mirroring the shape of the deleted-but-proven `useRtm.ts` reconnect loop, simplified since no UI currently consumes chat events).
+- No token storage, no login form — nothing to store since the backend bypass requires no credentials.
+
+**Wire it in**: call `connect()` once at module scope in `web/src/main.tsx` (fire-and-forget, `console.log`/`console.error` on state changes) — boots the connection the moment the app loads, with zero changes to any existing component or route.
+
+**Explicitly untouched** (per user decision): `nostr-client.ts`, `nostr-signer.ts`, `nip98.ts`, `relay-url.ts`, `features/repos/*`, `features/invite/*`. These keep talking their Nostr-shaped protocol and will fail against the backend (expected, deferred).
+
+**Config**: add `web/.env.example` documenting `VITE_RELAY_URL` (the existing env var name already read by 5 files) defaulting to `ws://localhost:3000` — the backend's own default — so the untouched Nostr-shaped files at least resolve to a real, consistent host rather than an undefined one, even though their requests will still fail.
+
+## Verification
+
+1. `cargo build` at gear6 root — confirms the broken `/ws` route is fixed and the crate compiles.
+2. `cargo test` — confirms `end_to_end` (and everything else) still passes unchanged (auth bypass is opt-in, off by default).
+3. Manual end-to-end: `GEAR6_DISABLE_AUTH=true cargo run` (backend on `:3000`), `cd web && npm run dev` (Vite on `:5173`), open the browser, confirm in devtools Network/WS tab that `rtm-client.ts` opens `/rtm`, receives `{"type":"hello"}`, and the ping/pong keepalive fires every ~30s without the socket closing.
