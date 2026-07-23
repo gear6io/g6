@@ -256,6 +256,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = SqlitePool::connect(&url).await?;
     sqlx::migrate!().run(&db).await?;
 
+    if auth::auth_disabled() {
+        eprintln!("WARNING: GEAR6_DISABLE_AUTH is set — unauthenticated requests resolve as the 'dev' user");
+    }
+
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".into());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     println!("gear6 listening on {}", listener.local_addr()?);

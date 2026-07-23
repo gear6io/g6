@@ -35,18 +35,34 @@ pub struct Auth {
     pub token_sha256: String,
 }
 
+/// Local FE dev only. When set truthy, a request with NO `Authorization` header is
+/// resolved as a fixed `dev` user instead of rejected — so `web/`, which has no
+/// login UI, can still open `/rtm`. A present header is validated as normal.
+pub fn auth_disabled() -> bool {
+    matches!(
+        std::env::var("GEAR6_DISABLE_AUTH").as_deref().map(str::trim),
+        Ok("1") | Ok("true") | Ok("yes")
+    )
+}
+
 impl FromRequestParts<AppState> for Auth {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         // Header only. Slack also permits a `token` body arg, but no current SDK
         // sends it that way, and reading it would mean consuming the body here.
-        let token = parts
+        let header = parts
             .headers
             .get(header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.strip_prefix("Bearer "))
-            .ok_or(ApiError("not_authed"))?;
+            .and_then(|v| v.strip_prefix("Bearer "));
+
+        let token = match header {
+            Some(t) => t,
+            // No header at all: only relaxed for local dev; otherwise unchanged.
+            None if auth_disabled() => return dev_user(state).await,
+            None => return Err(ApiError("not_authed")),
+        };
 
         let hash = token_hash(token.trim());
         let row: Option<(i64, String)> = sqlx::query_as(
@@ -61,6 +77,25 @@ impl FromRequestParts<AppState> for Auth {
         let (id, username) = row.ok_or(ApiError("invalid_auth"))?;
         Ok(Auth { id, username, token_sha256: hash })
     }
+}
+
+/// Resolve — creating on first use — the fixed `dev` user that unauthenticated
+/// requests map to when `GEAR6_DISABLE_AUTH` is set. The empty `password_hash` is
+/// unusable, so `dev` can never actually log in through the password path.
+async fn dev_user(state: &AppState) -> Result<Auth, ApiError> {
+    sqlx::query(
+        "INSERT INTO users (username, password_hash, created, updated, real_name)
+         VALUES ('dev', '', ?, ?, 'dev') ON CONFLICT(username) DO NOTHING",
+    )
+    .bind(now_secs())
+    .bind(now_secs())
+    .execute(&state.db)
+    .await?;
+
+    let (id,): (i64,) = sqlx::query_as("SELECT id FROM users WHERE username = 'dev'")
+        .fetch_one(&state.db)
+        .await?;
+    Ok(Auth { id, username: "dev".into(), token_sha256: String::new() })
 }
 
 #[derive(Deserialize)]

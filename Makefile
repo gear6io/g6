@@ -1,8 +1,11 @@
-.PHONY: run-server run-fe
+.PHONY: run-server run-fe build-graph
 
 run-server:
-	cargo run
+	GEAR6_DISABLE_AUTH=true cargo run
 
 # `npm install` is idempotent and skips work when node_modules is current.
 run-fe:
 	cd web && npm install && npm run dev
+
+build-graph:
+	.venv/bin/code-review-graph build   
