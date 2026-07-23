@@ -48,6 +48,7 @@ import {
 } from "@/shared/api/relayReconnectPolicy";
 import { RelayStallWatchdog } from "@/shared/api/relayStallWatchdog";
 import { closeWebSocket } from "@/shared/api/relayWebSocketClose";
+import { USE_GEAR6 } from "@/shared/api/gear6/mode";
 import { buildThreadReferenceTags } from "@/features/messages/lib/threading";
 const RECONNECT_BASE_DELAY_MS = 1_000,
   RECONNECT_MAX_DELAY_MS = 30_000,
@@ -499,6 +500,9 @@ export class RelayClient {
   }
 
   private async ensureConnected() {
+    // gear6 mode: the nostr relay transport is replaced by the gear6 /rtm stream
+    // (Phase C). Never open the (removed) native websocket plugin.
+    if (USE_GEAR6) return;
     if (shouldRefuseConnect({ terminal: this.terminal })) {
       // Session is terminal (e.g. relay rejected auth). Refuse to connect
       // until an explicit re-engagement (disconnect()/preconnect()) clears
@@ -644,6 +648,8 @@ export class RelayClient {
   }
 
   private async sendRaw(payload: unknown[]) {
+    // gear6 mode: no nostr socket to write to; drop the frame (REQ/EVENT/CLOSE).
+    if (USE_GEAR6) return;
     if (this.wsId === null) {
       throw new Error("Relay socket is not connected.");
     }

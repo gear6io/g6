@@ -1,5 +1,6 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { USE_GEAR6 } from "@/shared/api/gear6/mode";
 import type { StartCommunityOnboardingInput } from "@/features/onboarding/communityOnboarding";
 
 export type AddCommunityDeepLinkPayload = {
@@ -113,6 +114,8 @@ async function drainPendingCommunityDeepLinks(deps: DeepLinkDeps) {
 export async function listenForDeepLinks(
   deps: DeepLinkDeps,
 ): Promise<UnlistenFn> {
+  // gear6 mode: no nostr backend emits these deep-link events.
+  if (USE_GEAR6) return () => {};
   let drainRunning = false;
   let drainRequested = false;
   const drain = () => {
@@ -160,6 +163,7 @@ export async function listenForDeepLinks(
 export function listenForMessageDeepLinks(
   onOpen: (payload: MessageDeepLinkPayload) => void,
 ): Promise<UnlistenFn> {
+  if (USE_GEAR6) return Promise.resolve(() => {});
   return listen<MessageDeepLinkPayload>("deep-link-message", (event) => {
     onOpen(event.payload);
   });
@@ -168,6 +172,7 @@ export function listenForMessageDeepLinks(
 export function listenForNostrBindDeepLinks(
   onOpen: (payload: NostrBindDeepLinkPayload) => void,
 ): Promise<UnlistenFn> {
+  if (USE_GEAR6) return Promise.resolve(() => {});
   return listen<NostrBindDeepLinkPayload>("deep-link-nostr-bind", (event) => {
     onOpen(event.payload);
   });

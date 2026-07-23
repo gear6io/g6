@@ -5,7 +5,7 @@ run-server:
 
 # `npm install` is idempotent and skips work when node_modules is current.
 run-fe:
-	cd frontend && npm install && npm run dev
+	cd frontend && pnpm install && pnpm tauri dev
 
 build-graph:
 	.venv/bin/code-review-graph build   
