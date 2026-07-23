@@ -7,6 +7,10 @@ import "@/shared/styles/globals.css";
 import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { Toaster } from "@/shared/ui/sonner";
 import { TooltipProvider } from "@/shared/ui/tooltip";
+import { rtm } from "@/shared/lib/rtm-client";
+
+// Boot the backend connection the moment the app loads (fire-and-forget).
+rtm.connect();
 
 const queryClient = new QueryClient({
   defaultOptions: {

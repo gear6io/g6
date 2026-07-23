@@ -1,3 +1,7 @@
+// DEAD CODE — not wired into gear6 (removed from routes.ts).
+// Buzz Nostr repo browser; the gear6 backend serves no kind:30617 events
+// or git smart-HTTP, so this cannot load. Retained for a future forge.
+// See web/src/features/repos/README.md.
 import { useQuery } from "@tanstack/react-query";
 import { queryEvents, type NostrEvent } from "@/shared/lib/nostr-client";
 import { relayWsUrl } from "@/shared/lib/relay-url";

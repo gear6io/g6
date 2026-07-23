@@ -1,16 +1,18 @@
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-test("home page loads with Buzz branding", async ({ page }) => {
+test("home page loads with gear6 branding", async ({ page }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("main").getByRole("img", { name: "Buzz" }),
+    page.getByRole("main").getByRole("img", { name: "gear6" }),
   ).toBeVisible();
 });
 
-test("home page shows repositories section", async ({ page }) => {
+test("home page shows the gear6 placeholder", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Repositories")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "gear6" }),
+  ).toBeVisible();
 });
 
 test("invite requires age and legal consent before opening Buzz", async ({

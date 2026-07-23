@@ -24,5 +24,10 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  // DEAD CODE — the Buzz repo browser is unwired from gear6 (its routes were
+  // removed from src/app/routes/). Its files reference /repos/* router paths
+  // that no longer exist, so they cannot typecheck against the live route tree.
+  // Excluded until revived. See src/features/repos/README.md.
+  "exclude": ["src/features/repos"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

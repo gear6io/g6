@@ -1,3 +1,7 @@
+// DEAD CODE — not wired into gear6 (removed from routes.ts).
+// Buzz Nostr repo browser; the gear6 backend serves no kind:30617 events
+// or git smart-HTTP, so this cannot load. Retained for a future forge.
+// See web/src/features/repos/README.md.
 /**
  * Renders a single repo blob fetched via `useGitBlob`. Designed to be safe by
  * construction: no JS/HTML execution path, no SVG-as-image (SVG can carry
