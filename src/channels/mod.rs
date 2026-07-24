@@ -107,11 +107,7 @@ impl ChannelRow {
     }
 }
 
-pub async fn load_channel(
-    state: &AppState,
-    id: i64,
-    viewer: i64,
-) -> Result<ChannelRow, ApiError> {
+pub async fn load_channel(state: &AppState, id: i64, viewer: i64) -> Result<ChannelRow, ApiError> {
     sqlx::query_as(&format!("SELECT {CHANNEL_COLS} FROM channels WHERE id = ?"))
         .bind(viewer)
         .bind(id)
@@ -170,7 +166,10 @@ fn membership_event(state: &AppState, kind: &str, user: i64, ch: i64, inviter: O
         "team": TEAM_ID,
     });
     if let Some(inviter) = inviter {
-        event.as_object_mut().unwrap().insert("inviter".into(), json!(user_id(inviter)));
+        event
+            .as_object_mut()
+            .unwrap()
+            .insert("inviter".into(), json!(user_id(inviter)));
     }
     let _ = state.tx.send(event);
 }

@@ -89,8 +89,14 @@ pub async fn conversations_invite(
     let ch_id = crate::slack::parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
     load_channel(&state, ch_id, auth.id).await?;
 
-    let ids: Vec<&str> =
-        a.users.as_deref().unwrap_or("").split(',').map(str::trim).filter(|s| !s.is_empty()).collect();
+    let ids: Vec<&str> = a
+        .users
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
     if ids.is_empty() {
         return Err(ApiError("no_user"));
     }

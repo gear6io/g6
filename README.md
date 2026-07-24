@@ -15,7 +15,7 @@ Snapshot of what is missing or still to be done, mapped 2026-07-23 on branch `fe
 
 ## 1. Backend (`src/`) — missing API surface
 
-Implemented: `auth.test`, `conversations.{list,info,members,create,rename,setTopic,setPurpose,setDescription,archive,unarchive,join,leave,invite,kick,history,replies}`, `admin.conversations.{delete,convertToPrivate,convertToPublic}`, `chat.postMessage`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
+Implemented: `auth.test`, `conversations.{list,info,members,create,rename,setTopic,setPurpose,setDescription,archive,unarchive,join,leave,invite,kick,history,replies}`, `admin.conversations.{delete,convertToPrivate,convertToPublic}`, `chat.postMessage`, `reactions.{add,remove}`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
 
 `conversations.setDescription` is not a Slack method — `description` is a gear6 column the web client edits alongside topic and purpose.
 
@@ -23,7 +23,7 @@ Membership (`channel_members`) is metadata, not an access control list: it answe
 
 Missing (frontend features need them):
 
-- Messaging: `chat.update`, `chat.delete`, `reactions.add/remove`, typing events, pins, saved items
+- Messaging: `chat.update`, `chat.delete`, typing events, pins, saved items
 - Channels: `conversations.open` (DMs), per-channel roles (Slack has none either), canvas, channel TTL
 - Files/media: upload, download, thumbnails (no `files.*` at all)
 - Search: `search.messages`, user search
@@ -44,7 +44,7 @@ Every feature the frontend ships (`frontend/src/features/*`) against what the ge
 | User profiles | `profile/` | ⚠️ Partial (`users.profile.get/set`) | Avatar/image upload |
 | Auth / sessions | `onboarding/`, `settings/` | ⚠️ Partial (register/login/logout exist) | No frontend login flow; dev bypass in use |
 | Edit / delete message | `messages/` | ❌ Missing | `chat.update`, `chat.delete` |
-| Reactions | `messages/` | ❌ Missing | `reactions.add/remove` + rtm event |
+| Reactions | `messages/` | ✅ Implemented (`reactions.add/remove`, `reaction_added`/`reaction_removed` rtm frames, `reactions` on every history/replies message) | Custom-emoji images (no custom-emoji backend, so a custom reaction renders as `:name:`) |
 | DMs | `messages/`, `home/` | ❌ Missing | `conversations.open`, IM listing |
 | Channel management (topic/purpose/rename/archive/delete/join/leave/invite/kick/members) | `channels/`, `sidebar/` | ✅ Implemented | Per-channel roles (creator is owner, everyone else member — Slack has no roles either), canvas, channel TTL |
 | File/media upload + download | `messages/` (composer, attachments) | ❌ Missing | `files.*`, storage, thumbnails |
@@ -75,7 +75,7 @@ Every feature the frontend ships (`frontend/src/features/*`) against what the ge
 
 ~160 distinct Tauri commands invoked across the app; **6 mapped** (`is_shared_identity`, `get_default_relay_url`, `get_channels`, `get_identity`, `get_profile`, `apply_workspace`). All others return `[]` + console warning. Unmapped, by domain:
 
-- **Messaging**: `get_channel_window`, `search_messages`, `edit_message`, `delete_message`, `add_reaction`, `remove_reaction`, `open_dm`, `hide_dm`, `download_file`
+- **Messaging**: `get_channel_window`, `search_messages`, `edit_message`, `delete_message`, `open_dm`, `hide_dm`, `download_file`
 - **Channels**: `create_channel`, `update_channel`, `delete_channel`, `join_channel`, `leave_channel`, `archive_channel`, `unarchive_channel`, `set_channel_topic`, `set_channel_purpose`, `add_channel_members`, `remove_channel_member`, `change_channel_member_role`, `get_channel_details`, `ensure_starter_channels`, `get_canvas`, `set_canvas`
 - **Channel templates**: `create/update/delete/list/duplicate_channel_template`
 - **Media**: `upload_media`, `upload_media_bytes`, `pick_and_upload_media`, `pick_and_upload_image`, `fetch_media_bytes`, `download_image`, `save_png_data_url`, `copy_image_to_clipboard`, `fetch_link_preview_title`, `fetch_workspace_icon`

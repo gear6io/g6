@@ -674,3 +674,51 @@ test("CHANNEL_TIMELINE_CONTENT_KINDS matches isTimelineContentEvent", () => {
     );
   }
 });
+
+// The HTTP backend keys a message (channel, ts) and has no 64-hex event ids, so
+// its synthetic reaction events reference their message by a composite id. A
+// guard that accepts hex only drops every one of them — pills then survive only
+// as optimistic state and vanish on reopening the channel.
+test("composite ids: reactions attach, and a deletion takes one back", () => {
+  const messageId = "C00000001:1784743404.449472";
+  const reactionId = `${messageId}:U00000010:eyes:1784883086.025305`;
+  const compositeIdMessage = streamMessage({
+    id: messageId,
+    kind: 40002,
+    tags: [
+      ["h", CHANNEL_ID],
+      ["ts", "1784743404.449472"],
+    ],
+  });
+  const reaction = {
+    id: reactionId,
+    pubkey: "U00000010",
+    kind: 7,
+    created_at: 1_784_883_086,
+    content: "👀",
+    tags: [
+      ["e", messageId],
+      ["h", CHANNEL_ID],
+    ],
+    sig: "",
+  };
+
+  const [withPill] = formatTimelineMessages(
+    [compositeIdMessage, reaction],
+    null,
+    "u00000010",
+    null,
+  );
+  assert.equal(withPill.reactions?.length, 1);
+  assert.equal(withPill.reactions?.[0].emoji, "👀");
+  assert.equal(withPill.reactions?.[0].count, 1);
+  assert.equal(withPill.reactions?.[0].reactedByCurrentUser, true);
+
+  const [withoutPill] = formatTimelineMessages(
+    [compositeIdMessage, reaction, deletionEvent(5, reactionId, { id: `deletion:${reactionId}` })],
+    null,
+    "u00000010",
+    null,
+  );
+  assert.equal(withoutPill.reactions, undefined);
+});

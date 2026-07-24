@@ -1,11 +1,11 @@
 //! Wire primitives shared by every method handler: the Slack error envelope, the
 //! dual-encoding argument extractor, ID rendering, and cursor/ts encoding.
 
+use axum::Json;
 use axum::body::Bytes;
 use axum::extract::{FromRequest, Request};
 use axum::http::{Method, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
 use serde::de::DeserializeOwned;
@@ -24,7 +24,11 @@ pub struct ApiError(pub &'static str);
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (StatusCode::OK, Json(json!({ "ok": false, "error": self.0 }))).into_response()
+        (
+            StatusCode::OK,
+            Json(json!({ "ok": false, "error": self.0 })),
+        )
+            .into_response()
     }
 }
 
@@ -82,7 +86,9 @@ where
         if is_json {
             serde_json::from_slice(&body).map(Args).map_err(|_| bad())
         } else {
-            serde_urlencoded::from_bytes(&body).map(Args).map_err(|_| bad())
+            serde_urlencoded::from_bytes(&body)
+                .map(Args)
+                .map_err(|_| bad())
         }
     }
 }
@@ -198,7 +204,11 @@ mod tests {
     // here surfaces much later as something that looks like an auth bug.
     #[tokio::test]
     async fn args_accepts_query_form_and_json() {
-        let want = Sample { channel: "C1".into(), limit: Some(5), inclusive: Some(true) };
+        let want = Sample {
+            channel: "C1".into(),
+            limit: Some(5),
+            inclusive: Some(true),
+        };
 
         let get = Request::builder()
             .method(Method::GET)
@@ -210,7 +220,10 @@ mod tests {
         let form = Request::builder()
             .method(Method::POST)
             .uri("/api/x")
-            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded; charset=utf-8")
+            .header(
+                header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded; charset=utf-8",
+            )
             .body(Body::from("channel=C1&limit=5&inclusive=true"))
             .unwrap();
         assert_eq!(extract(form).await.unwrap(), want);
@@ -245,7 +258,11 @@ mod tests {
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .body(Body::from(format!("channel=C1&inclusive={body}")))
                 .unwrap();
-            assert_eq!(extract(req).await.unwrap().inclusive, want, "inclusive={body}");
+            assert_eq!(
+                extract(req).await.unwrap().inclusive,
+                want,
+                "inclusive={body}"
+            );
         }
 
         // A JSON caller still sends a real boolean.

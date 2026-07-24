@@ -1,7 +1,7 @@
 mod api;
 mod auth;
 mod channels;
-mod mentions;
+mod messages;
 mod slack;
 
 use std::collections::HashMap;
@@ -59,7 +59,12 @@ impl AppState {
 
     /// (open sockets, manually away) — the raw pair, for `users.getPresence`.
     pub fn presence_state(&self, user_id: i64) -> (usize, bool) {
-        self.presence.lock().unwrap().get(&user_id).copied().unwrap_or((0, false))
+        self.presence
+            .lock()
+            .unwrap()
+            .get(&user_id)
+            .copied()
+            .unwrap_or((0, false))
     }
 
     pub fn presence_of(&self, user_id: i64) -> &'static str {
@@ -105,23 +110,68 @@ pub fn app(state: AppState) -> Router {
 
     let api = Router::new()
         .route("/auth.test", on(both, api::auth_test))
-        .route("/conversations.list", on(both, channels::conversations_list))
-        .route("/conversations.info", on(both, channels::conversations_info))
-        .route("/conversations.members", on(both, channels::conversations_members))
-        .route("/conversations.create", on(both, channels::conversations_create))
-        .route("/conversations.rename", on(both, channels::conversations_rename))
-        .route("/conversations.setTopic", on(both, channels::conversations_set_topic))
-        .route("/conversations.setPurpose", on(both, channels::conversations_set_purpose))
+        .route(
+            "/conversations.list",
+            on(both, channels::conversations_list),
+        )
+        .route(
+            "/conversations.info",
+            on(both, channels::conversations_info),
+        )
+        .route(
+            "/conversations.members",
+            on(both, channels::conversations_members),
+        )
+        .route(
+            "/conversations.create",
+            on(both, channels::conversations_create),
+        )
+        .route(
+            "/conversations.rename",
+            on(both, channels::conversations_rename),
+        )
+        .route(
+            "/conversations.setTopic",
+            on(both, channels::conversations_set_topic),
+        )
+        .route(
+            "/conversations.setPurpose",
+            on(both, channels::conversations_set_purpose),
+        )
         // Not a Slack method: `description` is a gear6 field the web client edits.
-        .route("/conversations.setDescription", on(both, channels::conversations_set_description))
-        .route("/conversations.archive", on(both, channels::conversations_archive))
-        .route("/conversations.unarchive", on(both, channels::conversations_unarchive))
-        .route("/conversations.join", on(both, channels::conversations_join))
-        .route("/conversations.leave", on(both, channels::conversations_leave))
-        .route("/conversations.invite", on(both, channels::conversations_invite))
-        .route("/conversations.kick", on(both, channels::conversations_kick))
+        .route(
+            "/conversations.setDescription",
+            on(both, channels::conversations_set_description),
+        )
+        .route(
+            "/conversations.archive",
+            on(both, channels::conversations_archive),
+        )
+        .route(
+            "/conversations.unarchive",
+            on(both, channels::conversations_unarchive),
+        )
+        .route(
+            "/conversations.join",
+            on(both, channels::conversations_join),
+        )
+        .route(
+            "/conversations.leave",
+            on(both, channels::conversations_leave),
+        )
+        .route(
+            "/conversations.invite",
+            on(both, channels::conversations_invite),
+        )
+        .route(
+            "/conversations.kick",
+            on(both, channels::conversations_kick),
+        )
         // Slack keeps deletion and visibility conversion on the admin surface.
-        .route("/admin.conversations.delete", on(both, channels::admin_conversations_delete))
+        .route(
+            "/admin.conversations.delete",
+            on(both, channels::admin_conversations_delete),
+        )
         .route(
             "/admin.conversations.convertToPrivate",
             on(both, channels::admin_conversations_convert_to_private),
@@ -130,14 +180,33 @@ pub fn app(state: AppState) -> Router {
             "/admin.conversations.convertToPublic",
             on(both, channels::admin_conversations_convert_to_public),
         )
-        .route("/conversations.history", on(both, api::conversations_history))
-        .route("/conversations.replies", on(both, api::conversations_replies))
-        .route("/chat.postMessage", on(both, api::chat_post_message))
+        .route(
+            "/conversations.history",
+            on(both, messages::conversations_history),
+        )
+        .route(
+            "/conversations.replies",
+            on(both, messages::conversations_replies),
+        )
+        .route("/chat.postMessage", on(both, messages::chat_post_message))
+        // No `reactions.get`/`reactions.list`: history and replies already carry
+        // the `reactions` decoration every client reads.
+        .route(
+            "/reactions.add",
+            on(both, messages::reactions::reactions_add),
+        )
+        .route(
+            "/reactions.remove",
+            on(both, messages::reactions::reactions_remove),
+        )
         .route("/users.list", on(both, api::users_list))
         .route("/users.info", on(both, api::users_info))
         .route("/users.identity", on(both, api::users_identity))
         .route("/users.lookupByEmail", on(both, api::users_lookup_by_email))
-        .route("/users.conversations", on(both, channels::users_conversations))
+        .route(
+            "/users.conversations",
+            on(both, channels::users_conversations),
+        )
         .route("/users.profile.get", on(both, api::users_profile_get))
         .route("/users.profile.set", on(both, api::users_profile_set))
         .route("/users.getPresence", on(both, api::users_get_presence))
@@ -231,7 +300,11 @@ async fn rtm_socket(socket: WebSocket, state: AppState, user_id: i64) {
     let (mut sink, mut stream) = socket.split();
     let mut rx = state.tx.subscribe();
 
-    if sink.send(Message::text(r#"{"type":"hello"}"#)).await.is_err() {
+    if sink
+        .send(Message::text(r#"{"type":"hello"}"#))
+        .await
+        .is_err()
+    {
         return;
     }
 
@@ -274,13 +347,14 @@ async fn rtm_socket(socket: WebSocket, state: AppState, user_id: i64) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://gear6.db?mode=rwc".into());
+    let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://gear6.db?mode=rwc".into());
     let db = SqlitePool::connect(&url).await?;
     sqlx::migrate!().run(&db).await?;
 
     if auth::auth_disabled() {
-        eprintln!("WARNING: GEAR6_DISABLE_AUTH is set — unauthenticated requests resolve as the 'dev' user");
+        eprintln!(
+            "WARNING: GEAR6_DISABLE_AUTH is set — unauthenticated requests resolve as the 'dev' user"
+        );
     }
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".into());
@@ -295,6 +369,7 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::{Request, header};
+    use serde_json::json;
     use sqlx::sqlite::SqlitePoolOptions;
     use tower::ServiceExt;
 
@@ -312,7 +387,14 @@ mod tests {
 
     /// Post form-encoded, the way the real SDKs do.
     async fn call(app: &Router, uri: &str, token: Option<&str>, body: &str) -> Value {
-        post(app, uri, token, "application/x-www-form-urlencoded; charset=utf-8", body).await
+        post(
+            app,
+            uri,
+            token,
+            "application/x-www-form-urlencoded; charset=utf-8",
+            body,
+        )
+        .await
     }
 
     /// Post JSON, the way the web client does. Structured args (`profile`) arrive as
@@ -328,8 +410,10 @@ mod tests {
         content_type: &str,
         body: &str,
     ) -> Value {
-        let mut req =
-            Request::builder().method("POST").uri(uri).header(header::CONTENT_TYPE, content_type);
+        let mut req = Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header(header::CONTENT_TYPE, content_type);
         if let Some(t) = token {
             req = req.header(header::AUTHORIZATION, format!("Bearer {t}"));
         }
@@ -343,7 +427,9 @@ mod tests {
             StatusCode::OK,
             "{uri} must answer 200; Slack reports errors in the body"
         );
-        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
         serde_json::from_slice(&bytes).unwrap()
     }
 
@@ -355,7 +441,10 @@ mod tests {
         let r = call(&app, "/register", None, creds).await;
         assert_eq!(r["ok"], true, "{r}");
         assert_eq!(r["user_id"], "U00000001");
-        assert_eq!(call(&app, "/register", None, creds).await["error"], "name_taken");
+        assert_eq!(
+            call(&app, "/register", None, creds).await["error"],
+            "name_taken"
+        );
 
         let token = call(&app, "/login", None, creds).await["token"]
             .as_str()
@@ -364,12 +453,18 @@ mod tests {
         assert!(token.starts_with("xoxb-"));
 
         // auth is enforced, and reports failure inside a 200 body
-        assert_eq!(call(&app, "/api/auth.test", None, "").await["error"], "not_authed");
+        assert_eq!(
+            call(&app, "/api/auth.test", None, "").await["error"],
+            "not_authed"
+        );
         assert_eq!(
             call(&app, "/api/auth.test", Some("xoxb-bogus"), "").await["error"],
             "invalid_auth"
         );
-        assert_eq!(call(&app, "/api/auth.test", Some(&token), "").await["user"], "astha");
+        assert_eq!(
+            call(&app, "/api/auth.test", Some(&token), "").await["user"],
+            "astha"
+        );
 
         let t = Some(token.as_str());
         let ch = call(&app, "/api/conversations.create", t, "name=general").await["channel"]["id"]
@@ -382,8 +477,13 @@ mod tests {
             "name_taken"
         );
 
-        let root = call(&app, "/api/chat.postMessage", t, &format!("channel={ch}&text=hello")).await
-            ["ts"]
+        let root = call(
+            &app,
+            "/api/chat.postMessage",
+            t,
+            &format!("channel={ch}&text=hello"),
+        )
+        .await["ts"]
             .as_str()
             .unwrap()
             .to_owned();
@@ -401,20 +501,38 @@ mod tests {
             &app,
             "/api/chat.postMessage",
             t,
-            &format!("channel={ch}&text=deeper&thread_ts={}", reply["ts"].as_str().unwrap()),
+            &format!(
+                "channel={ch}&text=deeper&thread_ts={}",
+                reply["ts"].as_str().unwrap()
+            ),
         )
         .await;
-        assert_eq!(deep["message"]["thread_ts"], root.as_str(), "threads stay one level deep");
+        assert_eq!(
+            deep["message"]["thread_ts"],
+            root.as_str(),
+            "threads stay one level deep"
+        );
 
         // history excludes replies and decorates the parent
-        let hist = call(&app, "/api/conversations.history", t, &format!("channel={ch}")).await;
+        let hist = call(
+            &app,
+            "/api/conversations.history",
+            t,
+            &format!("channel={ch}"),
+        )
+        .await;
         assert_eq!(hist["messages"].as_array().unwrap().len(), 1);
         assert_eq!(hist["messages"][0]["reply_count"], 2);
         assert_eq!(hist["has_more"], false);
 
         // replies returns parent + both replies, oldest first
-        let rep =
-            call(&app, "/api/conversations.replies", t, &format!("channel={ch}&ts={root}")).await;
+        let rep = call(
+            &app,
+            "/api/conversations.replies",
+            t,
+            &format!("channel={ch}&ts={root}"),
+        )
+        .await;
         let msgs = rep["messages"].as_array().unwrap().clone();
         assert_eq!(msgs.len(), 3);
         assert_eq!(msgs[0]["ts"], root.as_str());
@@ -443,7 +561,13 @@ mod tests {
         assert_eq!(m["message"]["mentions"]["U00000001"], "astha");
         assert_eq!(m["message"]["mentions"]["C00000001"], "general");
 
-        let hist = call(&app, "/api/conversations.history", t, &format!("channel={ch}&limit=1")).await;
+        let hist = call(
+            &app,
+            "/api/conversations.history",
+            t,
+            &format!("channel={ch}&limit=1"),
+        )
+        .await;
         assert_eq!(hist["messages"][0]["mentions"]["U00000001"], "astha");
 
         assert_eq!(
@@ -463,18 +587,31 @@ mod tests {
         assert_eq!(call(&app, "/register", None, creds).await["ok"], true);
         call(&app, "/register", None, "username=bo&password=password1").await;
         assert_eq!(
-            call(&app, "/register", None, "username=zed&password=password1&email=astha%40example.com")
-                .await["error"],
+            call(
+                &app,
+                "/register",
+                None,
+                "username=zed&password=password1&email=astha%40example.com"
+            )
+            .await["error"],
             "email_taken",
             "the email index must be distinguishable from the username one"
         );
         assert_eq!(
-            call(&app, "/register", None, "username=zed&password=password1&email=nonsense").await
-                ["error"],
+            call(
+                &app,
+                "/register",
+                None,
+                "username=zed&password=password1&email=nonsense"
+            )
+            .await["error"],
             "invalid_email"
         );
 
-        let token = call(&app, "/login", None, creds).await["token"].as_str().unwrap().to_owned();
+        let token = call(&app, "/login", None, creds).await["token"]
+            .as_str()
+            .unwrap()
+            .to_owned();
         let t = Some(token.as_str());
 
         // Registration seeds real_name from the username, leaves display_name empty
@@ -496,11 +633,23 @@ mod tests {
         assert_eq!(set["profile"]["title"], "SRE");
 
         // JSON: `profile` is an object. This is what the web client sends.
-        let set = call_json(&app, "/api/users.profile.set", t, r#"{"profile":{"status_text":"lunch"}}"#).await;
+        let set = call_json(
+            &app,
+            "/api/users.profile.set",
+            t,
+            r#"{"profile":{"status_text":"lunch"}}"#,
+        )
+        .await;
         assert_eq!(set["profile"]["status_text"], "lunch");
 
         // A single name/value pair leaves every other field alone.
-        call(&app, "/api/users.profile.set", t, "name=status_emoji&value=%3Acoffee%3A").await;
+        call(
+            &app,
+            "/api/users.profile.set",
+            t,
+            "name=status_emoji&value=%3Acoffee%3A",
+        )
+        .await;
         let got = call(&app, "/api/users.profile.get", t, "").await;
         assert_eq!(got["profile"]["status_emoji"], ":coffee:");
         assert_eq!(got["profile"]["display_name"], "Astha J");
@@ -510,18 +659,37 @@ mod tests {
             ("name=is_admin&value=true", "invalid_profile"),
             ("name=status_emoji&value=coffee", "invalid_profile"),
             ("name=email&value=nonsense", "invalid_email"),
-            ("user=U00000002&name=title&value=nope", "cannot_update_admin_user"),
+            (
+                "user=U00000002&name=title&value=nope",
+                "cannot_update_admin_user",
+            ),
         ] {
-            assert_eq!(call(&app, "/api/users.profile.set", t, body).await["error"], want, "{body}");
+            assert_eq!(
+                call(&app, "/api/users.profile.set", t, body).await["error"],
+                want,
+                "{body}"
+            );
         }
 
         assert_eq!(
-            call(&app, "/api/users.lookupByEmail", t, "email=ASTHA%40example.com").await["user"]["id"],
+            call(
+                &app,
+                "/api/users.lookupByEmail",
+                t,
+                "email=ASTHA%40example.com"
+            )
+            .await["user"]["id"],
             "U00000001",
             "lookup folds the needle the same way storage folded the hay"
         );
         assert_eq!(
-            call(&app, "/api/users.lookupByEmail", t, "email=nobody%40example.com").await["error"],
+            call(
+                &app,
+                "/api/users.lookupByEmail",
+                t,
+                "email=nobody%40example.com"
+            )
+            .await["error"],
             "users_not_found"
         );
 
@@ -531,9 +699,14 @@ mod tests {
         assert_eq!(pres["connection_count"], 0);
         assert_eq!(pres["manual_away"], false);
         call(&app, "/api/users.setPresence", t, "presence=away").await;
-        assert_eq!(call(&app, "/api/users.getPresence", t, "").await["manual_away"], true);
         assert_eq!(
-            call(&app, "/api/users.getPresence", t, "user=U00000002").await.get("manual_away"),
+            call(&app, "/api/users.getPresence", t, "").await["manual_away"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/users.getPresence", t, "user=U00000002")
+                .await
+                .get("manual_away"),
             None,
             "someone else's presence detail is not ours to read"
         );
@@ -543,10 +716,19 @@ mod tests {
         );
 
         let plain = call(&app, "/api/users.list", t, "").await;
-        assert!(plain["members"][0].get("presence").is_none(), "presence is opt-in");
-        assert_eq!(call(&app, "/api/users.list", t, "presence=true").await["members"][0]["presence"], "away");
+        assert!(
+            plain["members"][0].get("presence").is_none(),
+            "presence is opt-in"
+        );
+        assert_eq!(
+            call(&app, "/api/users.list", t, "presence=true").await["members"][0]["presence"],
+            "away"
+        );
 
-        assert_eq!(call(&app, "/api/users.identity", t, "").await["user"]["name"], "Astha J");
+        assert_eq!(
+            call(&app, "/api/users.identity", t, "").await["user"]["name"],
+            "Astha J"
+        );
         call(&app, "/api/conversations.create", t, "name=general").await;
         assert_eq!(
             call(&app, "/api/users.conversations", t, "").await["channels"][0]["id"],
@@ -558,7 +740,10 @@ mod tests {
     async fn account(app: &Router, username: &str) -> String {
         let creds = format!("username={username}&password=password1");
         call(app, "/register", None, &creds).await;
-        call(app, "/login", None, &creds).await["token"].as_str().unwrap().to_owned()
+        call(app, "/login", None, &creds).await["token"]
+            .as_str()
+            .unwrap()
+            .to_owned()
     }
 
     #[tokio::test]
@@ -579,7 +764,10 @@ mod tests {
         assert_eq!(info["channel"]["topic"]["value"], "");
         assert_eq!(info["channel"]["topic"]["creator"], "");
         assert_eq!(info["channel"]["topic"]["last_set"], 0);
-        assert_eq!(info["channel"]["previous_names"].as_array().unwrap().len(), 0);
+        assert_eq!(
+            info["channel"]["previous_names"].as_array().unwrap().len(),
+            0
+        );
 
         for (method, body) in [
             ("setTopic", "topic=ship+it"),
@@ -605,55 +793,119 @@ mod tests {
 
         let long = "x".repeat(251);
         assert_eq!(
-            call(&app, "/api/conversations.setTopic", a, &format!("channel={ch}&topic={long}"))
-                .await["error"],
+            call(
+                &app,
+                "/api/conversations.setTopic",
+                a,
+                &format!("channel={ch}&topic={long}")
+            )
+            .await["error"],
             "too_long"
         );
 
         // rename shares create's validation, including the unique index.
         call(&app, "/api/conversations.create", a, "name=taken").await;
         assert_eq!(
-            call(&app, "/api/conversations.rename", a, &format!("channel={ch}&name=taken")).await
-                ["error"],
+            call(
+                &app,
+                "/api/conversations.rename",
+                a,
+                &format!("channel={ch}&name=taken")
+            )
+            .await["error"],
             "name_taken"
         );
-        let renamed =
-            call(&app, "/api/conversations.rename", a, &format!("channel={ch}&name=Platform")).await;
-        assert_eq!(renamed["channel"]["name"], "platform", "names are folded on the way in");
+        let renamed = call(
+            &app,
+            "/api/conversations.rename",
+            a,
+            &format!("channel={ch}&name=Platform"),
+        )
+        .await;
+        assert_eq!(
+            renamed["channel"]["name"], "platform",
+            "names are folded on the way in"
+        );
         assert_eq!(renamed["channel"]["name_normalized"], "platform");
 
         // archive is a toggle, and says so when it is already where you want it.
         assert_eq!(
-            call(&app, "/api/conversations.archive", a, &format!("channel={ch}")).await["ok"],
+            call(
+                &app,
+                "/api/conversations.archive",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["ok"],
             true
         );
         assert_eq!(
-            call(&app, "/api/conversations.archive", a, &format!("channel={ch}")).await["error"],
+            call(
+                &app,
+                "/api/conversations.archive",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["error"],
             "already_archived"
         );
         let listed = call(&app, "/api/conversations.list", a, "exclude_archived=1").await;
-        let names: Vec<&str> =
-            listed["channels"].as_array().unwrap().iter().map(|c| c["name"].as_str().unwrap()).collect();
+        let names: Vec<&str> = listed["channels"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap())
+            .collect();
         assert_eq!(names, ["taken"], "the archived channel is filtered out");
         assert_eq!(
-            call(&app, "/api/conversations.unarchive", a, &format!("channel={ch}")).await["ok"],
+            call(
+                &app,
+                "/api/conversations.unarchive",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["ok"],
             true
         );
         assert_eq!(
-            call(&app, "/api/conversations.unarchive", a, &format!("channel={ch}")).await["error"],
+            call(
+                &app,
+                "/api/conversations.unarchive",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["error"],
             "not_archived"
         );
 
         // Deleting a channel takes its messages with it. `messages` references
         // `channels` with no ON DELETE clause, so a missed child is a hard
         // foreign key failure rather than an orphan row.
-        call(&app, "/api/chat.postMessage", a, &format!("channel={ch}&text=hello")).await;
+        call(
+            &app,
+            "/api/chat.postMessage",
+            a,
+            &format!("channel={ch}&text=hello"),
+        )
+        .await;
         assert_eq!(
-            call(&app, "/api/admin.conversations.delete", a, &format!("channel_id={ch}")).await["ok"],
+            call(
+                &app,
+                "/api/admin.conversations.delete",
+                a,
+                &format!("channel_id={ch}")
+            )
+            .await["ok"],
             true
         );
         assert_eq!(
-            call(&app, "/api/conversations.history", a, &format!("channel={ch}")).await["error"],
+            call(
+                &app,
+                "/api/conversations.history",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["error"],
             "channel_not_found"
         );
     }
@@ -686,13 +938,27 @@ mod tests {
         assert_eq!(inv["channel"]["num_members"], 2, "the good id still landed");
 
         assert_eq!(
-            call(&app, "/api/conversations.invite", a, &format!("channel={ch}&users=U00000002"))
-                .await["errors"][0]["error"],
+            call(
+                &app,
+                "/api/conversations.invite",
+                a,
+                &format!("channel={ch}&users=U00000002")
+            )
+            .await["errors"][0]["error"],
             "already_in_channel"
         );
 
-        let members = call(&app, "/api/conversations.members", a, &format!("channel={ch}")).await;
-        assert_eq!(members["members"].as_array().unwrap(), &["U00000001", "U00000002"]);
+        let members = call(
+            &app,
+            "/api/conversations.members",
+            a,
+            &format!("channel={ch}"),
+        )
+        .await;
+        assert_eq!(
+            members["members"].as_array().unwrap(),
+            &["U00000001", "U00000002"]
+        );
 
         // users.conversations is membership-scoped; conversations.list is not.
         call(&app, "/api/conversations.create", a, "name=random").await;
@@ -705,46 +971,74 @@ mod tests {
             .collect();
         assert_eq!(bos, ["eng"], "bo was invited to eng and nothing else");
         assert_eq!(
-            call(&app, "/api/conversations.list", b, "").await["channels"].as_array().unwrap().len(),
+            call(&app, "/api/conversations.list", b, "").await["channels"]
+                .as_array()
+                .unwrap()
+                .len(),
             2,
             "every channel is still listable"
         );
 
         assert_eq!(
-            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000001")).await
-                ["error"],
+            call(
+                &app,
+                "/api/conversations.kick",
+                a,
+                &format!("channel={ch}&user=U00000001")
+            )
+            .await["error"],
             "cant_kick_self"
         );
         assert_eq!(
-            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000002")).await
-                ["ok"],
+            call(
+                &app,
+                "/api/conversations.kick",
+                a,
+                &format!("channel={ch}&user=U00000002")
+            )
+            .await["ok"],
             true
         );
         assert_eq!(
-            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000002")).await
-                ["error"],
+            call(
+                &app,
+                "/api/conversations.kick",
+                a,
+                &format!("channel={ch}&user=U00000002")
+            )
+            .await["error"],
             "not_in_channel"
         );
 
         // join is idempotent, and open to anyone — membership is metadata here,
         // not an access control list.
         assert_eq!(
-            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]
-                ["is_member"],
+            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]["is_member"],
             true
         );
         assert_eq!(
-            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]
-                ["num_members"],
+            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]["num_members"],
             2
         );
 
-        call(&app, "/api/conversations.leave", b, &format!("channel={ch}")).await;
+        call(
+            &app,
+            "/api/conversations.leave",
+            b,
+            &format!("channel={ch}"),
+        )
+        .await;
         let info = call(&app, "/api/conversations.info", b, &format!("channel={ch}")).await;
         assert_eq!(info["channel"]["is_member"], false);
         assert_eq!(info["channel"]["num_members"], 1);
         assert_eq!(
-            call(&app, "/api/conversations.leave", b, &format!("channel={ch}")).await["ok"],
+            call(
+                &app,
+                "/api/conversations.leave",
+                b,
+                &format!("channel={ch}")
+            )
+            .await["ok"],
             true,
             "leaving twice is not an error"
         );
@@ -758,11 +1052,181 @@ mod tests {
         )
         .await;
         assert_eq!(priv_ch["channel"]["is_private"], true);
-        assert_eq!(priv_ch["channel"]["num_members"], 1, "conversion keeps the members");
         assert_eq!(
-            call(&app, "/api/admin.conversations.convertToPublic", a, &format!("channel_id={ch}"))
-                .await["channel"]["is_private"],
+            priv_ch["channel"]["num_members"], 1,
+            "conversion keeps the members"
+        );
+        assert_eq!(
+            call(
+                &app,
+                "/api/admin.conversations.convertToPublic",
+                a,
+                &format!("channel_id={ch}")
+            )
+            .await["channel"]["is_private"],
             false
+        );
+    }
+
+    #[tokio::test]
+    async fn reactions_add_remove_and_decorate() {
+        let app = test_app().await;
+        let astha = account(&app, "astha").await;
+        let bo = account(&app, "bo").await;
+        let (a, b) = (Some(astha.as_str()), Some(bo.as_str()));
+
+        let ch = call(&app, "/api/conversations.create", a, "name=eng").await["channel"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let ts = call(
+            &app,
+            "/api/chat.postMessage",
+            a,
+            &format!("channel={ch}&text=ship+it"),
+        )
+        .await["ts"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let react = |t: &str, name: &str| format!("channel={ch}&timestamp={t}&name={name}");
+
+        assert_eq!(
+            call(&app, "/api/reactions.add", a, &react(&ts, "thumbsup")).await["ok"],
+            true
+        );
+        // Every spelling of one emoji is that emoji: a bot's shortcode, its alias,
+        // and the web client's glyph all collide on the row already inserted.
+        for spelling in ["%3Athumbsup%3A", "%2B1", "%F0%9F%91%8D"] {
+            assert_eq!(
+                call(&app, "/api/reactions.add", a, &react(&ts, spelling)).await["error"],
+                "already_reacted",
+                "{spelling} names the same emoji as thumbsup"
+            );
+        }
+        assert_eq!(
+            call(&app, "/api/reactions.add", b, &react(&ts, "%F0%9F%91%8D")).await["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/reactions.add", b, &react(&ts, "tada")).await["ok"],
+            true
+        );
+
+        // Emoji in first-reacted order, users inside one in the order they joined.
+        let hist = call(
+            &app,
+            "/api/conversations.history",
+            a,
+            &format!("channel={ch}"),
+        )
+        .await;
+        let pills = hist["messages"][0]["reactions"].as_array().unwrap().clone();
+        assert_eq!(pills.len(), 2, "{hist}");
+        // Stored as the character, whatever name each caller used to reach it.
+        assert_eq!(pills[0]["name"], "\u{1f44d}");
+        assert_eq!(pills[0]["users"], json!(["U00000001", "U00000002"]));
+        assert_eq!(pills[0]["count"], 2);
+        assert_eq!(pills[1]["name"], "\u{1f389}");
+
+        // One placement token per reactor, so a client can tell a re-add apart
+        // from the add that a removal already took away.
+        let stamps = pills[0]["reaction_ts"].as_array().unwrap();
+        assert_eq!(stamps.len(), 2);
+        assert!(stamps[0].as_str().unwrap() < stamps[1].as_str().unwrap());
+
+        // A thread reply carries its own reactions through conversations.replies.
+        let reply = call(
+            &app,
+            "/api/chat.postMessage",
+            b,
+            &format!("channel={ch}&text=on+it&thread_ts={ts}"),
+        )
+        .await["ts"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        call(&app, "/api/reactions.add", a, &react(&reply, "eyes")).await;
+        let rep = call(
+            &app,
+            "/api/conversations.replies",
+            a,
+            &format!("channel={ch}&ts={ts}"),
+        )
+        .await;
+        assert!(
+            rep["messages"][0].get("reactions").is_some(),
+            "the root keeps its pills"
+        );
+        assert_eq!(rep["messages"][1]["reactions"][0]["name"], "\u{1f440}");
+
+        assert_eq!(
+            call(&app, "/api/reactions.remove", a, &react(&ts, "thumbsup")).await["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/reactions.remove", a, &react(&ts, "thumbsup")).await["error"],
+            "no_reaction",
+            "removing someone else's reaction is not removing yours"
+        );
+        assert_eq!(
+            call(
+                &app,
+                "/api/conversations.history",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["messages"][0]["reactions"][0]["count"],
+            1
+        );
+
+        // An unknown shortcode is a custom emoji, not an error — only a name that
+        // could be neither is refused.
+        assert_eq!(
+            call(&app, "/api/reactions.add", a, &react(&ts, "party_parrot")).await["ok"],
+            true
+        );
+        assert!(
+            call(
+                &app,
+                "/api/conversations.history",
+                a,
+                &format!("channel={ch}")
+            )
+            .await["messages"][0]["reactions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p["name"] == ":party_parrot:"),
+            "an unresolvable shortcode is kept as a custom emoji"
+        );
+
+        for (body, want) in [
+            (react(&ts, "thumbs+up"), "invalid_name"),
+            (react("9999999999.000000", "tada"), "message_not_found"),
+            (
+                format!("channel=C99999999&timestamp={ts}&name=tada"),
+                "channel_not_found",
+            ),
+        ] {
+            assert_eq!(
+                call(&app, "/api/reactions.add", a, &body).await["error"],
+                want,
+                "{body}"
+            );
+        }
+
+        // Deleting the channel takes the reactions with it — `reactions` references
+        // `messages`, so a missed row is a foreign key failure, not an orphan.
+        assert_eq!(
+            call(
+                &app,
+                "/api/admin.conversations.delete",
+                a,
+                &format!("channel_id={ch}")
+            )
+            .await["ok"],
+            true
         );
     }
 
@@ -780,9 +1244,13 @@ mod tests {
 
         let mut sent = vec![];
         for i in 0..3 {
-            let r =
-                call(&app, "/api/chat.postMessage", t, &format!("channel=C00000001&text=m{i}"))
-                    .await;
+            let r = call(
+                &app,
+                "/api/chat.postMessage",
+                t,
+                &format!("channel=C00000001&text=m{i}"),
+            )
+            .await;
             sent.push(r["ts"].as_str().unwrap().to_owned());
         }
         assert!(
@@ -790,11 +1258,20 @@ mod tests {
             "ts must increase even when three posts land in the same microsecond"
         );
 
-        let p1 = call(&app, "/api/conversations.history", t, "channel=C00000001&limit=1").await;
+        let p1 = call(
+            &app,
+            "/api/conversations.history",
+            t,
+            "channel=C00000001&limit=1",
+        )
+        .await;
         assert_eq!(p1["messages"][0]["text"], "m2", "history is newest first");
         assert_eq!(p1["has_more"], true);
 
-        let cursor = p1["response_metadata"]["next_cursor"].as_str().unwrap().to_owned();
+        let cursor = p1["response_metadata"]["next_cursor"]
+            .as_str()
+            .unwrap()
+            .to_owned();
         assert!(!cursor.is_empty());
         let p2 = call(
             &app,
@@ -803,7 +1280,10 @@ mod tests {
             &format!("channel=C00000001&limit=1&cursor={cursor}"),
         )
         .await;
-        assert_eq!(p2["messages"][0]["text"], "m1", "cursor walks backward in time");
+        assert_eq!(
+            p2["messages"][0]["text"], "m1",
+            "cursor walks backward in time"
+        );
 
         let p3 = call(
             &app,
@@ -820,8 +1300,13 @@ mod tests {
         assert_eq!(p3["response_metadata"]["next_cursor"], "");
 
         assert_eq!(
-            call(&app, "/api/conversations.history", t, "channel=C00000001&cursor=not-base64!")
-                .await["error"],
+            call(
+                &app,
+                "/api/conversations.history",
+                t,
+                "channel=C00000001&cursor=not-base64!"
+            )
+            .await["error"],
             "invalid_cursor"
         );
     }

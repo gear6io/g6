@@ -40,7 +40,9 @@ pub struct Auth {
 /// login UI, can still open `/rtm`. A present header is validated as normal.
 pub fn auth_disabled() -> bool {
     matches!(
-        std::env::var("GEAR6_DISABLE_AUTH").as_deref().map(str::trim),
+        std::env::var("GEAR6_DISABLE_AUTH")
+            .as_deref()
+            .map(str::trim),
         Ok("1") | Ok("true") | Ok("yes")
     )
 }
@@ -75,7 +77,11 @@ impl FromRequestParts<AppState> for Auth {
         .await?;
 
         let (id, username) = row.ok_or(ApiError("invalid_auth"))?;
-        Ok(Auth { id, username, token_sha256: hash })
+        Ok(Auth {
+            id,
+            username,
+            token_sha256: hash,
+        })
     }
 }
 
@@ -95,7 +101,11 @@ async fn dev_user(state: &AppState) -> Result<Auth, ApiError> {
     let (id,): (i64,) = sqlx::query_as("SELECT id FROM users WHERE username = 'dev'")
         .fetch_one(&state.db)
         .await?;
-    Ok(Auth { id, username: "dev".into(), token_sha256: String::new() })
+    Ok(Auth {
+        id,
+        username: "dev".into(),
+        token_sha256: String::new(),
+    })
 }
 
 #[derive(Deserialize)]
@@ -115,13 +125,18 @@ pub fn normalize_email(raw: &str) -> Result<String, ApiError> {
     let shaped = e.split_once('@').is_some_and(|(user, domain)| {
         !user.is_empty() && domain.len() > 2 && domain.contains('.') && !domain.starts_with('.')
     });
-    (shaped && e.len() <= 255).then_some(e).ok_or(ApiError("invalid_email"))
+    (shaped && e.len() <= 255)
+        .then_some(e)
+        .ok_or(ApiError("invalid_email"))
 }
 
 fn validate(c: &Credentials) -> Result<(&str, &str, Option<String>), ApiError> {
     if c.username.is_empty()
         || c.username.len() > 32
-        || !c.username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
+        || !c
+            .username
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
     {
         return Err(ApiError("invalid_username"));
     }
@@ -173,7 +188,9 @@ pub async fn register(State(state): State<AppState>, Args(c): Args<Credentials>)
     };
 
     let user = crate::api::load_user(&state, id).await?;
-    let _ = state.tx.send(json!({ "type": "team_join", "user": user.to_json() }));
+    let _ = state
+        .tx
+        .send(json!({ "type": "team_join", "user": user.to_json() }));
     Ok(Json(json!({ "ok": true, "user_id": user_id(id) })))
 }
 
@@ -190,9 +207,11 @@ pub async fn login(State(state): State<AppState>, Args(c): Args<Credentials>) ->
     // distinction is only useful to someone enumerating accounts.
     let (id, hash) = row.ok_or(ApiError("invalid_auth"))?;
     let password = password.to_owned();
-    let ok = tokio::task::spawn_blocking(move || password_auth::verify_password(&password, &hash).is_ok())
-        .await
-        .map_err(|_| ApiError("internal_error"))?;
+    let ok = tokio::task::spawn_blocking(move || {
+        password_auth::verify_password(&password, &hash).is_ok()
+    })
+    .await
+    .map_err(|_| ApiError("internal_error"))?;
     if !ok {
         return Err(ApiError("invalid_auth"));
     }

@@ -62,15 +62,22 @@ export function isTimelineContentEvent(event: RelayEvent) {
   );
 }
 
+/**
+ * Whether an `e` tag value names an event this timeline can hold. Two id shapes
+ * qualify: a 64-hex nostr event id, and a gear6 composite id (`channel:ts`, and
+ * `channel:ts:user:emoji:placed_at` for a reaction). Bare tag values that are not
+ * event ids — a thread root's raw Slack `ts`, a relay's `["e", "", relay]` hint —
+ * match neither, which is what this guard is for.
+ */
+function isEventTargetId(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  return (value.length === 64 && HEX_RE.test(value)) || value.includes(":");
+}
+
+/** The `e` tags naming what a deletion event deletes. */
 function getDeletionTargets(tags: string[][]) {
   return tags
-    .filter(
-      (tag) =>
-        tag[0] === "e" &&
-        typeof tag[1] === "string" &&
-        tag[1].length === 64 &&
-        HEX_RE.test(tag[1]),
-    )
+    .filter((tag) => tag[0] === "e" && isEventTargetId(tag[1]))
     .map((tag) => tag[1]);
 }
 
@@ -115,15 +122,11 @@ export function countTopLevelTimelineRows(events: RelayEvent[]): number {
   return count;
 }
 
+/** The message a reaction or an edit applies to: its last usable `e` tag. */
 function getReactionTargetId(tags: string[][]) {
   for (let index = tags.length - 1; index >= 0; index -= 1) {
     const tag = tags[index];
-    if (
-      tag?.[0] === "e" &&
-      typeof tag[1] === "string" &&
-      tag[1].length === 64 &&
-      HEX_RE.test(tag[1])
-    ) {
+    if (tag?.[0] === "e" && isEventTargetId(tag[1])) {
       return tag[1];
     }
   }

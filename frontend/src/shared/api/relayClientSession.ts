@@ -259,6 +259,11 @@ export class RelayClient {
       return [];
     }
 
+    // gear6 mode: reactions and edits ride with the message they belong to, and
+    // there is no nostr socket for a REQ to travel on — this path could only
+    // time out, delaying every caller that awaits it.
+    if (USE_HTTP_API) return [];
+
     await this.ensureConnected();
 
     const chunks: string[][] = [];

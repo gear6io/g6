@@ -43,15 +43,12 @@ pub async fn users_conversations(
     list_channels(&state, auth.id, a, true).await
 }
 
-async fn list_channels(
-    state: &AppState,
-    viewer: i64,
-    a: ListArgs,
-    mine_only: bool,
-) -> ApiResult {
+async fn list_channels(state: &AppState, viewer: i64, a: ListArgs, mine_only: bool) -> ApiResult {
     let limit = clamp_limit(a.limit);
     let after: i64 = match a.cursor.as_deref().filter(|c| !c.is_empty()) {
-        Some(c) => decode_cursor(c)?.parse().map_err(|_| ApiError("invalid_cursor"))?,
+        Some(c) => decode_cursor(c)?
+            .parse()
+            .map_err(|_| ApiError("invalid_cursor"))?,
         None => 0,
     };
 
@@ -118,7 +115,9 @@ pub async fn conversations_members(
     let limit = clamp_limit(a.limit);
 
     let after: i64 = match a.cursor.as_deref().filter(|c| !c.is_empty()) {
-        Some(c) => decode_cursor(c)?.parse().map_err(|_| ApiError("invalid_cursor"))?,
+        Some(c) => decode_cursor(c)?
+            .parse()
+            .map_err(|_| ApiError("invalid_cursor"))?,
         None => 0,
     };
 

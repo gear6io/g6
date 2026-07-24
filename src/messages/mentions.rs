@@ -137,7 +137,10 @@ fn token_ids(text: &str) -> Vec<&str> {
 }
 
 /// Rendered id -> display name, one query per kind for the whole batch.
-async fn names_by_id(db: &SqlitePool, ids: &HashSet<&str>) -> Result<HashMap<String, String>, ApiError> {
+async fn names_by_id(
+    db: &SqlitePool,
+    ids: &HashSet<&str>,
+) -> Result<HashMap<String, String>, ApiError> {
     let split = |prefix: char| -> Vec<i64> {
         ids.iter()
             .filter_map(|s| s.strip_prefix(prefix))
@@ -160,7 +163,12 @@ async fn names_by_id(db: &SqlitePool, ids: &HashSet<&str>) -> Result<HashMap<Str
         for id in &wanted {
             q = q.bind(id);
         }
-        out.extend(q.fetch_all(db).await?.into_iter().map(|(id, name)| (render(id), name)));
+        out.extend(
+            q.fetch_all(db)
+                .await?
+                .into_iter()
+                .map(|(id, name)| (render(id), name)),
+        );
     }
     Ok(out)
 }
@@ -180,7 +188,11 @@ pub async fn decorate(db: &SqlitePool, msgs: &mut [Value]) -> Result<(), ApiErro
     for (msg, text) in msgs.iter_mut().zip(&texts) {
         let found: Map<String, Value> = token_ids(text)
             .into_iter()
-            .filter_map(|id| names.get(id).map(|n| (id.to_owned(), Value::from(n.as_str()))))
+            .filter_map(|id| {
+                names
+                    .get(id)
+                    .map(|n| (id.to_owned(), Value::from(n.as_str())))
+            })
             .collect();
         if !found.is_empty()
             && let Some(o) = msg.as_object_mut()
@@ -206,14 +218,18 @@ mod tests {
             .await
             .unwrap();
         sqlx::migrate!().run(&db).await.unwrap();
-        sqlx::query("INSERT INTO users (id, username, password_hash, created) VALUES (1, 'astha', '', 0)")
-            .execute(&db)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO channels (id, name, creator_id, created) VALUES (1, 'dev_ops', 1, 0)")
-            .execute(&db)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO users (id, username, password_hash, created) VALUES (1, 'astha', '', 0)",
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO channels (id, name, creator_id, created) VALUES (1, 'dev_ops', 1, 0)",
+        )
+        .execute(&db)
+        .await
+        .unwrap();
         db
     }
 
@@ -228,7 +244,10 @@ mod tests {
         assert_eq!(enc("hi @astha").await, "hi <@U00000001>");
         assert_eq!(enc("@astha").await, "<@U00000001>");
         assert_eq!(enc("see #dev_ops now").await, "see <#C00000001> now");
-        assert_eq!(enc("@astha and #dev_ops").await, "<@U00000001> and <#C00000001>");
+        assert_eq!(
+            enc("@astha and #dev_ops").await,
+            "<@U00000001> and <#C00000001>"
+        );
         assert_eq!(enc("@here").await, "<!here>");
         assert_eq!(enc("@channel @everyone").await, "<!channel> <!everyone>");
         // Case folds, sentence punctuation is not part of the name.
@@ -257,14 +276,23 @@ mod tests {
         ];
         decorate(&db, &mut msgs).await.unwrap();
 
-        assert_eq!(msgs[0]["mentions"], json!({ "U00000001": "astha", "C00000001": "dev_ops" }));
+        assert_eq!(
+            msgs[0]["mentions"],
+            json!({ "U00000001": "astha", "C00000001": "dev_ops" })
+        );
         assert_eq!(
             msgs[1]["mentions"],
             json!({ "C00000001": "dev_ops" }),
             "the sidecar carries the current name, whatever label the text froze"
         );
-        assert!(msgs[2].get("mentions").is_none(), "no mentions means no key");
-        assert!(msgs[3].get("mentions").is_none(), "a deleted id resolves to nothing");
+        assert!(
+            msgs[2].get("mentions").is_none(),
+            "no mentions means no key"
+        );
+        assert!(
+            msgs[3].get("mentions").is_none(),
+            "a deleted id resolves to nothing"
+        );
         assert!(msgs[4].get("mentions").is_none(), "broadcasts name nobody");
     }
 }

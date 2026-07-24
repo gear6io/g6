@@ -18,6 +18,8 @@
 import {
   messageToRelayEvent,
   isRtmMessage,
+  isRtmReaction,
+  reactionToRelayEvent,
 } from "@/shared/api/eventAdapter";
 import { relayClient } from "@/shared/api/relayClient";
 import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
@@ -92,9 +94,12 @@ export class RtmClient {
       } catch {
         return; // non-JSON (shouldn't happen); ignore.
       }
-      // Only message frames drive the timeline; hello/pong are keepalive noise.
+      // Only message and reaction frames drive the timeline; hello/pong are
+      // keepalive noise.
       if (isRtmMessage(frame)) {
         relayClient.dispatchRtmEvent(messageToRelayEvent(frame));
+      } else if (isRtmReaction(frame)) {
+        relayClient.dispatchRtmEvent(reactionToRelayEvent(frame));
       }
     };
     ws.onerror = (ev) => {

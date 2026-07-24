@@ -6,6 +6,7 @@
 import { apiCall, apiGet, apiPost } from "@/shared/api/http";
 import {
   historyMessageToRelayEvent,
+  reactionEventsFor,
   windowBoundsEvent,
   type HistoryMessage,
 } from "@/shared/api/eventAdapter";
@@ -247,11 +248,15 @@ export async function apiInvoke<T>(
         "conversations.history",
         { channel: channelId, limit: 50 },
       );
-      const rows = (res.messages ?? []).map((m) =>
-        historyMessageToRelayEvent(m, channelId),
+      const messages = res.messages ?? [];
+      const rows = messages.map((m) => historyMessageToRelayEvent(m, channelId));
+      // Reactions ride with their message (there is no relay to backfill them
+      // from) and the window parser routes kind:7 into the page's aux bucket.
+      const reactions = messages.flatMap((m) =>
+        reactionEventsFor(m, channelId),
       );
       // The window parser requires exactly one bounds event alongside the rows.
-      return [...rows, windowBoundsEvent(channelId)] as T;
+      return [...rows, ...reactions, windowBoundsEvent(channelId)] as T;
     }
 
     // Reply/media send path (plain sends go via relayClient.sendMessage). gear6
@@ -293,10 +298,16 @@ export async function apiInvoke<T>(
         "conversations.replies",
         { channel: channelId, ts: rootTs },
       );
-      const events = (res.messages ?? [])
+      const messages = res.messages ?? [];
+      const events = messages
         .filter((m) => m.ts !== rootTs)
         .map((m) => historyMessageToRelayEvent(m, channelId));
-      return { events, next_cursor: null } as T;
+      // Reaction events are overlays, not rows, so the root's come along too —
+      // they are what puts pills on the thread head.
+      const reactions = messages.flatMap((m) =>
+        reactionEventsFor(m, channelId),
+      );
+      return { events: [...events, ...reactions], next_cursor: null } as T;
     }
 
     case "get_identity": {
@@ -326,6 +337,21 @@ export async function apiInvoke<T>(
     // install. Returning resolves useCommunityInit to isReady.
     case "apply_workspace":
       return undefined as T;
+
+    // gear6 keys a reaction by the emoji itself, which is what the picker hands
+    // us — a custom emoji arrives as `:name:` and travels unchanged too.
+    case "add_reaction":
+    case "remove_reaction": {
+      const eventId = String(_args?.eventId ?? "");
+      const name = String(_args?.emoji ?? "");
+      const ts = tsFromEventId(eventId);
+      if (!ts) throw new Error(`Malformed message id ${eventId}.`);
+      await apiCall(
+        command === "add_reaction" ? "reactions.add" : "reactions.remove",
+        { channel: eventId.split(":")[0], timestamp: ts, name },
+      );
+      return undefined as T;
+    }
 
     // ponytail: deliberately unmapped, not forgotten. `change_channel_member_role`
     // has no Slack counterpart (Slack has no per-channel roles); `open_dm`/`hide_dm`

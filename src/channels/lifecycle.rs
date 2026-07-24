@@ -220,7 +220,11 @@ pub async fn conversations_unarchive(
 async fn set_archived(state: &AppState, auth: &Auth, id: i64, archived: bool) -> ApiResult {
     let ch = load_channel(state, id, auth.id).await?;
     if ch.is_archived() == archived {
-        return Err(ApiError(if archived { "already_archived" } else { "not_archived" }));
+        return Err(ApiError(if archived {
+            "already_archived"
+        } else {
+            "not_archived"
+        }));
     }
 
     sqlx::query("UPDATE channels SET is_archived = ?, updated = ? WHERE id = ?")
@@ -253,6 +257,7 @@ pub async fn admin_conversations_delete(
     // foreign keys on, so the children have to go first, in one transaction.
     let mut tx = state.db.begin().await?;
     for sql in [
+        "DELETE FROM reactions WHERE channel_id = ?",
         "DELETE FROM messages WHERE channel_id = ?",
         "DELETE FROM channel_members WHERE channel_id = ?",
         "DELETE FROM channels WHERE id = ?",
@@ -261,7 +266,9 @@ pub async fn admin_conversations_delete(
     }
     tx.commit().await?;
 
-    let _ = state.tx.send(json!({ "type": "channel_deleted", "channel": channel_id(id) }));
+    let _ = state
+        .tx
+        .send(json!({ "type": "channel_deleted", "channel": channel_id(id) }));
     Ok(Json(json!({ "ok": true })))
 }
 
