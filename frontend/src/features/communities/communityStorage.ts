@@ -2,10 +2,10 @@ import type { Community } from "./types";
 import { homeDir } from "@tauri-apps/api/path";
 import { setLocalStorageItemWithRecovery } from "@/shared/lib/localStorageQuota";
 
-const COMMUNITIES_KEY = "buzz-communities";
-const ACTIVE_COMMUNITY_KEY = "buzz-active-community-id";
-const LEGACY_WORKSPACES_KEY = "buzz-workspaces";
-const LEGACY_ACTIVE_WORKSPACE_KEY = "buzz-active-workspace-id";
+const COMMUNITIES_KEY = "g6-communities";
+const ACTIVE_COMMUNITY_KEY = "g6-active-community-id";
+const LEGACY_WORKSPACES_KEY = "g6-workspaces";
+const LEGACY_ACTIVE_WORKSPACE_KEY = "g6-active-workspace-id";
 
 /**
  * Expand a leading `~` to the user's home directory. The backend rejects
@@ -118,9 +118,9 @@ export function deriveCommunityName(relayUrl: string): string {
       return "Local Dev";
     }
     const parts = host.split(".");
-    // Detect staging environments (e.g. buzz-oss.stage.blox.sqprod.co)
+    // Detect staging environments (e.g. g6-oss.stage.blox.sqprod.co)
     if (parts.some((p) => p === "stage" || p === "staging")) {
-      return "Buzz (staging)";
+      return "Gear6 (staging)";
     }
     // Use the first subdomain segment or the domain itself
     if (parts.length >= 2) {

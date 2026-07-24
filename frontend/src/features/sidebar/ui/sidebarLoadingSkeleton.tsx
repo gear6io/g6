@@ -11,7 +11,7 @@ import {
 } from "@/shared/ui/sidebar";
 import { Skeleton } from "@/shared/ui/skeleton";
 
-const SIDEBAR_SKELETON_CACHE_PREFIX = "buzz-sidebar-skeleton-shape.v1";
+const SIDEBAR_SKELETON_CACHE_PREFIX = "g6-sidebar-skeleton-shape.v1";
 const sidebarLoadingWidthClasses = [
   "w-14",
   "w-16",

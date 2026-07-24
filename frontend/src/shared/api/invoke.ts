@@ -1,9 +1,9 @@
 // gear6 replacement for Tauri IPC. `invokeTauri` routes here when USE_HTTP_API.
 //
 // Phase B: only the boot-critical commands are mapped for real; everything else
-// returns a benign `[]` (most buzz commands are list-shaped) and warns once, so
+// returns a benign `[]` (most g6 commands are list-shaped) and warns once, so
 // the app reaches an empty homepage without hanging. Phase D fills in the rest.
-import { apiGet } from "@/shared/api/http";
+import { apiCall, apiGet, apiPost } from "@/shared/api/http";
 import {
   historyMessageToRelayEvent,
   windowBoundsEvent,
@@ -13,11 +13,17 @@ import {
   postChatMessage,
   tsFromEventId,
 } from "@/shared/api/postMessage";
-import type { RawChannel } from "@/shared/api/tauriChannels";
+import {
+  toRawChannel,
+  toRawChannelDetail,
+  toRawChannelMembers,
+  type ApiChannel,
+} from "@/shared/api/channelAdapter";
 import type {
   RawUserProfileSummary,
   RawUsersBatchResponse,
 } from "@/shared/api/tauriProfiles";
+import type { ChannelVisibility } from "@/shared/api/types";
 
 type ApiIdentity = {
   ok: boolean;
@@ -31,41 +37,6 @@ type ApiMember = {
   is_bot?: boolean;
   profile?: { display_name?: string };
 };
-
-type ApiChannel = {
-  id: string;
-  name: string;
-  creator: string;
-  created: number;
-  is_archived: boolean;
-  is_member: boolean;
-  is_private: boolean;
-  is_im: boolean;
-};
-
-// gear6 (Slack) channel → buzz RawChannel. Slack has no forum type, so a normal
-// channel is a "stream"; DMs map to "dm". Fields buzz has no gear6 source for
-// (topic, members, ttl) get empty/neutral values.
-function toRawChannel(c: ApiChannel): RawChannel {
-  return {
-    id: c.id,
-    name: c.name,
-    channel_type: c.is_im ? "dm" : "stream",
-    visibility: c.is_private ? "private" : "open",
-    description: "",
-    topic: null,
-    purpose: null,
-    member_count: 0,
-    member_pubkeys: [],
-    last_message_at: null,
-    archived_at: c.is_archived ? new Date(c.created * 1000).toISOString() : null,
-    participants: [],
-    participant_pubkeys: [],
-    is_member: c.is_member,
-    ttl_seconds: null,
-    ttl_deadline: null,
-  };
-}
 
 let identityPromise: Promise<{ pubkey: string; display_name: string }> | null =
   null;
@@ -90,6 +61,42 @@ function relayUrl(): string {
 
 const warned = new Set<string>();
 
+/**
+ * Every profile in the workspace, keyed by lowercase id — the shape
+ * `get_users_batch` returns and `get_channel_members` reuses for display names.
+ *
+ * gear6 has no per-id batch endpoint; users.list returns everyone. ponytail: one
+ * page (limit 1000) — a user beyond it falls back to a truncated id. Paginate if
+ * teams grow.
+ */
+async function loadUserProfiles(): Promise<
+  Record<string, RawUserProfileSummary>
+> {
+  const res = await apiGet<{ members: ApiMember[] }>("users.list", {
+    limit: 1000,
+  });
+  const profiles: Record<string, RawUserProfileSummary> = {};
+  for (const m of res.members ?? []) {
+    profiles[m.id.toLowerCase()] = {
+      display_name: m.profile?.display_name || m.real_name || m.name || null,
+      name: m.name ?? null,
+      avatar_url: null,
+      nip05_handle: null,
+      owner_pubkey: null,
+      is_agent: m.is_bot ?? false,
+    };
+  }
+  return profiles;
+}
+
+/** conversations.info, which every channel mutation answers with. */
+async function channelInfo(channelId: string): Promise<ApiChannel> {
+  const res = await apiCall<{ channel: ApiChannel }>("conversations.info", {
+    channel: channelId,
+  });
+  return res.channel;
+}
+
 export async function apiInvoke<T>(
   command: string,
   _args?: Record<string, unknown>,
@@ -113,6 +120,122 @@ export async function apiInvoke<T>(
       );
       return (res.channels ?? []).map(toRawChannel) as T;
     }
+
+    case "get_channel_details":
+      return toRawChannelDetail(
+        await channelInfo(String(_args?.channelId ?? "")),
+      ) as T;
+
+    // Two round trips: Slack's members response is bare ids, so the channel is
+    // fetched alongside it for the `creator` the owner role is derived from.
+    case "get_channel_members": {
+      const channelId = String(_args?.channelId ?? "");
+      const [res, channel, profiles] = await Promise.all([
+        apiCall<{ members: string[] }>("conversations.members", {
+          channel: channelId,
+          limit: 1000,
+        }),
+        channelInfo(channelId),
+        loadUserProfiles(),
+      ]);
+      return toRawChannelMembers(res.members ?? [], channel, profiles) as T;
+    }
+
+    // One FE edit dialog spans three gear6 methods. `ttlSeconds` is accepted and
+    // dropped — gear6 has no ephemeral-channel concept.
+    case "update_channel": {
+      const input = (_args?.input ?? _args ?? {}) as {
+        channelId?: string;
+        name?: string;
+        description?: string;
+        visibility?: ChannelVisibility;
+      };
+      const channel = String(input.channelId ?? "");
+      if (input.name !== undefined) {
+        await apiCall("conversations.rename", { channel, name: input.name });
+      }
+      if (input.description !== undefined) {
+        await apiCall("conversations.setDescription", {
+          channel,
+          description: input.description,
+        });
+      }
+      if (input.visibility !== undefined) {
+        await apiCall(
+          input.visibility === "private"
+            ? "admin.conversations.convertToPrivate"
+            : "admin.conversations.convertToPublic",
+          { channel_id: channel },
+        );
+      }
+      return toRawChannelDetail(await channelInfo(channel)) as T;
+    }
+
+    case "set_channel_topic":
+      await apiCall("conversations.setTopic", {
+        channel: String(_args?.channelId ?? ""),
+        topic: String(_args?.topic ?? ""),
+      });
+      return undefined as T;
+
+    case "set_channel_purpose":
+      await apiCall("conversations.setPurpose", {
+        channel: String(_args?.channelId ?? ""),
+        purpose: String(_args?.purpose ?? ""),
+      });
+      return undefined as T;
+
+    case "archive_channel":
+    case "unarchive_channel":
+    case "join_channel":
+    case "leave_channel": {
+      const method = command.replace(/_channel$/, "");
+      await apiCall(`conversations.${method}`, {
+        channel: String(_args?.channelId ?? ""),
+      });
+      return undefined as T;
+    }
+
+    // The public Slack API has no conversations.delete; deletion is admin-only.
+    case "delete_channel":
+      await apiCall("admin.conversations.delete", {
+        channel_id: String(_args?.channelId ?? ""),
+      });
+      return undefined as T;
+
+    // conversations.invite is all-in-one-call and reports per-user failures in
+    // an `errors` array, so it cannot go through apiCall — a partial success
+    // answers ok:false and the caller still needs the ids that landed.
+    case "add_channel_members": {
+      const pubkeys = (_args?.pubkeys as string[] | undefined) ?? [];
+      const res = await apiPost<{
+        ok: boolean;
+        error?: string;
+        errors?: Array<{ user: string; error: string }>;
+      }>("conversations.invite", {
+        channel: String(_args?.channelId ?? ""),
+        users: pubkeys.join(","),
+      });
+      if (!res.ok && !res.errors) {
+        throw new Error(res.error ?? "conversations.invite failed");
+      }
+      const errors = (res.errors ?? []).map((e) => ({
+        pubkey: e.user,
+        error: e.error,
+      }));
+      const failed = new Set(errors.map((e) => e.pubkey));
+      return {
+        added: pubkeys.filter((p) => !failed.has(p)),
+        errors,
+      } as T;
+    }
+
+    case "remove_channel_member":
+      await apiCall("conversations.kick", {
+        channel: String(_args?.channelId ?? ""),
+        user: String(_args?.pubkey ?? ""),
+      });
+      return undefined as T;
 
     // Initial timeline load. conversations.history is newest-first top-level
     // messages; return a flat RelayEvent[] (the parser re-sorts). Thread replies
@@ -150,24 +273,9 @@ export async function apiInvoke<T>(
     }
 
     // Author name resolution. The FE batch lowercases pubkeys and looks them up
-    // by lowercase id, so key the map that way. gear6 has no per-id batch
-    // endpoint; users.list returns everyone. ponytail: one page (limit 1000) —
-    // an author beyond it falls back to a truncated id. Paginate if teams grow.
+    // by lowercase id, so key the map that way.
     case "get_users_batch": {
-      const res = await apiGet<{ members: ApiMember[] }>("users.list", {
-        limit: 1000,
-      });
-      const profiles: Record<string, RawUserProfileSummary> = {};
-      for (const m of res.members ?? []) {
-        profiles[m.id.toLowerCase()] = {
-          display_name: m.profile?.display_name || m.real_name || m.name || null,
-          name: m.name ?? null,
-          avatar_url: null,
-          nip05_handle: null,
-          owner_pubkey: null,
-          is_agent: m.is_bot ?? false,
-        };
-      }
+      const profiles = await loadUserProfiles();
       return { profiles, missing: [] } satisfies RawUsersBatchResponse as T;
     }
 
@@ -219,6 +327,9 @@ export async function apiInvoke<T>(
     case "apply_workspace":
       return undefined as T;
 
+    // ponytail: deliberately unmapped, not forgotten. `change_channel_member_role`
+    // has no Slack counterpart (Slack has no per-channel roles); `open_dm`/`hide_dm`
+    // wait on conversations.open; `get_canvas`/`set_canvas` have no backend at all.
     default:
       if (!warned.has(command)) {
         warned.add(command);

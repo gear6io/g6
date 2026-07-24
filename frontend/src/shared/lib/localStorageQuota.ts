@@ -8,9 +8,9 @@
  */
 
 const PURE_CACHE_KEY_PREFIXES = [
-  "buzz-channel-messages.v1",
-  "buzz-channels.v1",
-  "buzz-timeline-skeleton-shape.v1",
+  "g6-channel-messages.v1",
+  "g6-channels.v1",
+  "g6-timeline-skeleton-shape.v1",
 ];
 
 function evictPureCacheEntries(): number {
@@ -40,7 +40,7 @@ function notifyStorageFull(): void {
     .then(({ toast }) => {
       toast.error("Local storage is full", {
         description:
-          "Buzz could not save some local data — read positions may not persist across restarts.",
+          "Gear6 could not save some local data — read positions may not persist across restarts.",
       });
     })
     .catch(() => {});

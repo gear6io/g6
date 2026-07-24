@@ -22,12 +22,12 @@ pub(crate) fn read_config_surface(
             "goose" => super::goose::read_config_file().map(|c| (c, true)),
             "claude" => super::claude::read_config_file().map(|c| (c, true)),
             "codex" => super::codex::read_config_file().map(|c| (c, true)),
-            "buzz-agent" => super::buzz_agent::read_config_file().map(|c| (c, true)),
+            "g6-agent" => super::g6_agent::read_config_file().map(|c| (c, true)),
             _ => None,
         })
         .unwrap_or_else(|| (RuntimeFileConfig::default(), false));
 
-    // Tier 2a: record-level values (Buzz-explicit).
+    // Tier 2a: record-level values (Gear6-explicit).
     let record_model = record.model.clone();
     let record_provider = record
         .env_vars
@@ -111,7 +111,7 @@ pub(crate) fn read_config_surface(
             &record
                 .system_prompt
                 .clone()
-                .or_else(|| record.env_vars.get("BUZZ_ACP_SYSTEM_PROMPT").cloned()),
+                .or_else(|| record.env_vars.get("GEAR6_ACP_SYSTEM_PROMPT").cloned()),
             &file_config.system_prompt,
         ),
     };
@@ -137,7 +137,7 @@ pub(crate) fn read_config_surface(
         thinking_env_var,
         max_tokens_env_var,
         context_limit_env_var,
-        Some("BUZZ_ACP_SYSTEM_PROMPT"),
+        Some("GEAR6_ACP_SYSTEM_PROMPT"),
     ]
     .into_iter()
     .flatten()
@@ -158,7 +158,7 @@ pub(crate) fn read_config_surface(
             key: k.clone(),
             label: k.clone(),
             value: Some(v.clone()),
-            origin: ConfigOrigin::BuzzExplicit,
+            origin: ConfigOrigin::Gear6Explicit,
             schema_type: ConfigFieldType::String,
             write_via: ConfigWriteMechanism::RespawnWithEnvVar { env_key: k.clone() },
         });
@@ -237,9 +237,9 @@ fn build_model_field(
     session_cache: Option<&SessionConfigCache>,
     is_required: bool,
 ) -> NormalizedField {
-    // Precedence: Buzz-explicit > ACP current > config file
+    // Precedence: Gear6-explicit > ACP current > config file
     let (value, origin) = if let Some(ref m) = record_model {
-        (Some(m.clone()), ConfigOrigin::BuzzExplicit)
+        (Some(m.clone()), ConfigOrigin::Gear6Explicit)
     } else if let Some(ref m) = acp_model {
         (Some(m.clone()), ConfigOrigin::AcpConfigOption)
     } else if let Some(ref m) = file_model {
@@ -252,7 +252,7 @@ fn build_model_field(
     };
 
     // The secondary expresses ONLY the static record-vs-file precedence: a
-    // Buzz-explicit model shadowing a config-file model. The live-session
+    // Gear6-explicit model shadowing a config-file model. The live-session
     // override (acp vs record/persona) is exclusively `apply_runtime_override`'s
     // job, gated on `model_overridden`. Surfacing `acp_model` here would leak an
     // override row even when no live switch has been applied.
@@ -311,7 +311,7 @@ fn model_write_mechanism(
 ///
 /// `baseline` is the value the live model overrides, paired with its true
 /// origin — `(persona_model, PersonaDefault)` for a persona-linked agent, or
-/// `(record_model, BuzzExplicit)` for a genuine-explicit agent that live-
+/// `(record_model, Gear6Explicit)` for a genuine-explicit agent that live-
 /// switched. It is `Some` only when there is such a baseline to override
 /// against; otherwise the field passes through unchanged. Carrying the origin
 /// in the pair (rather than hardcoding it) lets the secondary be tagged by its
@@ -375,7 +375,7 @@ fn build_provider_field(
     }
 
     let tiers: &[(Option<&str>, ConfigOrigin)] = &[
-        (record_provider.as_deref(), ConfigOrigin::BuzzExplicit),
+        (record_provider.as_deref(), ConfigOrigin::Gear6Explicit),
         (file_provider.as_deref(), ConfigOrigin::ConfigFile),
     ];
     let (value, origin, overridden_value, overridden_origin) = match resolve_with_override(tiers) {
@@ -441,7 +441,7 @@ fn build_thinking_field(
     session_cache: Option<&SessionConfigCache>,
 ) -> Option<NormalizedField> {
     let tiers: &[(Option<&str>, ConfigOrigin)] = &[
-        (record_effort.as_deref(), ConfigOrigin::BuzzExplicit),
+        (record_effort.as_deref(), ConfigOrigin::Gear6Explicit),
         (acp_effort.as_deref(), ConfigOrigin::AcpConfigOption),
         (file_effort.as_deref(), ConfigOrigin::ConfigFile),
     ];
@@ -471,7 +471,7 @@ fn build_thinking_field(
 
 /// Numeric fields (max_output_tokens, context_limit) — env-var tier wins over
 /// config-file tier. When an env var key is given and present in the record's
-/// env_vars map the field is BuzzExplicit + RespawnWithEnvVar; otherwise if the
+/// env_vars map the field is Gear6Explicit + RespawnWithEnvVar; otherwise if the
 /// config file supplied a value it is ConfigFile + ReadOnly; otherwise None.
 fn build_numeric_env_field(
     env_var: Option<&'static str>,
@@ -482,7 +482,7 @@ fn build_numeric_env_field(
         if let Some(v) = record_env.get(key) {
             return Some(NormalizedField {
                 value: Some(v.clone()),
-                origin: ConfigOrigin::BuzzExplicit,
+                origin: ConfigOrigin::Gear6Explicit,
                 write_via: ConfigWriteMechanism::RespawnWithEnvVar {
                     env_key: key.to_string(),
                 },
@@ -502,7 +502,7 @@ fn build_numeric_env_field(
     })
 }
 
-/// Record/env prompt wins (BuzzExplicit, respawnable); a config-file prompt it
+/// Record/env prompt wins (Gear6Explicit, respawnable); a config-file prompt it
 /// shadows is reported as the overridden secondary. A config-file-only prompt
 /// — no record/env value to shadow it — is surfaced directly (read-only)
 /// instead of being dropped: a prompt that drives the agent should always be
@@ -514,9 +514,9 @@ fn build_system_prompt_field(
     if let Some(v) = record_prompt {
         return Some(NormalizedField {
             value: Some(v.clone()),
-            origin: ConfigOrigin::BuzzExplicit,
+            origin: ConfigOrigin::Gear6Explicit,
             write_via: ConfigWriteMechanism::RespawnWithEnvVar {
-                env_key: "BUZZ_ACP_SYSTEM_PROMPT".to_string(),
+                env_key: "GEAR6_ACP_SYSTEM_PROMPT".to_string(),
             },
             overridden_value: file_prompt.clone(),
             overridden_origin: file_prompt.as_ref().map(|_| ConfigOrigin::ConfigFile),

@@ -57,20 +57,20 @@ async function selectDropdownOption(
     .click({ timeout: 5_000 });
 }
 
-// A runtime catalog with both a provider-selection runtime (buzz-agent) and a
+// A runtime catalog with both a provider-selection runtime (g6-agent) and a
 // CLI-login runtime (Claude Code) marked available, so Claude Code appears and
 // is selectable in the harness dropdown. Same shape the readiness spec uses.
 const CATALOG_WITH_CLAUDE = [
   {
-    id: "buzz-agent",
-    label: "Buzz Agent",
+    id: "g6-agent",
+    label: "Gear6 Agent",
     avatar_url: "",
     availability: "available",
-    command: "buzz-agent",
-    binary_path: "/usr/local/bin/buzz-agent",
+    command: "g6-agent",
+    binary_path: "/usr/local/bin/g6-agent",
     default_args: [],
-    mcp_command: "buzz-dev-mcp",
-    install_hint: "Ships with the Buzz desktop app.",
+    mcp_command: "g6-dev-mcp",
+    install_hint: "Ships with the Gear6 desktop app.",
     install_instructions_url: "https://github.com/block/buzz",
     can_auto_install: false,
     underlying_cli_path: null,
@@ -98,15 +98,15 @@ const CATALOG_WITH_CLAUDE = [
 // the Edit/Save-mode test to seed an editable Codex agent.
 const CATALOG_WITH_CODEX = [
   {
-    id: "buzz-agent",
-    label: "Buzz Agent",
+    id: "g6-agent",
+    label: "Gear6 Agent",
     avatar_url: "",
     availability: "available",
-    command: "buzz-agent",
-    binary_path: "/usr/local/bin/buzz-agent",
+    command: "g6-agent",
+    binary_path: "/usr/local/bin/g6-agent",
     default_args: [],
-    mcp_command: "buzz-dev-mcp",
-    install_hint: "Ships with the Buzz desktop app.",
+    mcp_command: "g6-dev-mcp",
+    install_hint: "Ships with the Gear6 desktop app.",
     install_instructions_url: "https://github.com/block/buzz",
     can_auto_install: false,
     underlying_cli_path: null,
@@ -133,15 +133,15 @@ const CATALOG_WITH_CODEX = [
 // empty runtime — the precondition for blankRuntimeModelProviderEditable.
 const CATALOG_NONE_AVAILABLE = [
   {
-    id: "buzz-agent",
-    label: "Buzz Agent",
+    id: "g6-agent",
+    label: "Gear6 Agent",
     avatar_url: "",
     availability: "not_installed",
-    command: "buzz-agent",
+    command: "g6-agent",
     binary_path: null,
     default_args: [],
-    mcp_command: "buzz-dev-mcp",
-    install_hint: "Ships with the Buzz desktop app.",
+    mcp_command: "g6-dev-mcp",
+    install_hint: "Ships with the Gear6 desktop app.",
     install_instructions_url: "https://github.com/block/buzz",
     can_auto_install: false,
     underlying_cli_path: null,
@@ -243,12 +243,12 @@ test.describe("global agent config screenshots", () => {
     const saved = await page.evaluate(async () =>
       (
         window as typeof window & {
-          __BUZZ_E2E_INVOKE_MOCK_COMMAND__?: (
+          __GEAR6_E2E_INVOKE_MOCK_COMMAND__?: (
             command: string,
             payload: unknown,
           ) => Promise<unknown>;
         }
-      ).__BUZZ_E2E_INVOKE_MOCK_COMMAND__?.("get_global_agent_config", null),
+      ).__GEAR6_E2E_INVOKE_MOCK_COMMAND__?.("get_global_agent_config", null),
     );
     expect(saved).toMatchObject({ preferred_runtime: "codex" });
   });
@@ -304,17 +304,17 @@ test.describe("global agent config screenshots", () => {
     await installMockBridge(page, {
       bakedBuildEnv: [
         {
-          key: "BUZZ_AGENT_PROVIDER",
+          key: "GEAR6_AGENT_PROVIDER",
           value: "anthropic",
           masked: false,
         },
         {
-          key: "BUZZ_AGENT_MODEL",
+          key: "GEAR6_AGENT_MODEL",
           value: "claude-opus-4-8",
           masked: false,
         },
         {
-          key: "BUZZ_AGENT_THINKING_EFFORT",
+          key: "GEAR6_AGENT_THINKING_EFFORT",
           value: "high",
           masked: false,
         },
@@ -346,17 +346,17 @@ test.describe("global agent config screenshots", () => {
       globalAgentConfig: {
         provider: "anthropic",
         model: "claude-opus-4-5",
-        env_vars: { BUZZ_AGENT_THINKING_EFFORT: "low" },
+        env_vars: { GEAR6_AGENT_THINKING_EFFORT: "low" },
       },
       bakedBuildEnv: [
         {
-          key: "BUZZ_AGENT_PROVIDER",
+          key: "GEAR6_AGENT_PROVIDER",
           value: "databricks_v2",
           masked: false,
         },
-        { key: "BUZZ_AGENT_MODEL", value: "build-model", masked: false },
+        { key: "GEAR6_AGENT_MODEL", value: "build-model", masked: false },
         {
-          key: "BUZZ_AGENT_THINKING_EFFORT",
+          key: "GEAR6_AGENT_THINKING_EFFORT",
           value: "high",
           masked: false,
         },
@@ -449,7 +449,7 @@ test.describe("global agent config screenshots", () => {
 
     await openCreateDialog(page);
 
-    // Switch the auto-selected buzz-agent runtime to the CLI-login runtime.
+    // Switch the auto-selected g6-agent runtime to the CLI-login runtime.
     await selectDropdownOption(
       page,
       page.locator("#persona-runtime"),

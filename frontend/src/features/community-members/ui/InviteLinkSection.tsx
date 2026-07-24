@@ -101,7 +101,7 @@ export function InviteLinkSection() {
     try {
       await invokeTauri("save_png_data_url", {
         dataUrl,
-        filename: "buzz-community-invite.png",
+        filename: "g6-community-invite.png",
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Download failed");

@@ -1,23 +1,23 @@
-/// Parsing for `buzz://` deep links.
+/// Parsing for `g6://` deep links.
 ///
 /// Mirrors the desktop handler in `desktop/src-tauri/src/deep_link.rs`:
-/// `buzz://message?channel=<uuid>&id=<hex>[&thread=<hex>]` references a
+/// `g6://message?channel=<uuid>&id=<hex>[&thread=<hex>]` references a
 /// message (optionally inside a thread) in a channel. Required params that
 /// are missing or empty make the link invalid — the caller never sees a
 /// half-formed target.
 library;
 
 /// A parsed deep link supported by the app.
-sealed class BuzzDeepLink {
-  const BuzzDeepLink();
+sealed class Gear6DeepLink {
+  const Gear6DeepLink();
 }
 
 /// A parsed relay invite link.
 ///
 /// Canonical share links are `https://<relay>/invite/<code>`. The custom
-/// `buzz://join?relay=<ws(s)://relay>&code=<code>` form is only an installed-app
+/// `g6://join?relay=<ws(s)://relay>&code=<code>` form is only an installed-app
 /// handoff from the web landing page.
-class InviteDeepLink extends BuzzDeepLink {
+class InviteDeepLink extends Gear6DeepLink {
   /// Relay URL normalized to the websocket scheme used by the app.
   final String relayUrl;
 
@@ -48,8 +48,8 @@ class InviteDeepLink extends BuzzDeepLink {
       'InviteDeepLink(relay: $relayUrl, code: $code, policyReceipt: $policyReceipt)';
 }
 
-/// A parsed `buzz://message` deep link.
-class MessageDeepLink extends BuzzDeepLink {
+/// A parsed `g6://message` deep link.
+class MessageDeepLink extends Gear6DeepLink {
   /// Channel UUID from the `channel` query param.
   final String channelId;
 
@@ -81,13 +81,13 @@ class MessageDeepLink extends BuzzDeepLink {
       'thread: $threadRootId)';
 }
 
-/// Parse a `buzz://message?…` URI into a [MessageDeepLink].
+/// Parse a `g6://message?…` URI into a [MessageDeepLink].
 ///
-/// Returns `null` for non-`buzz` schemes, non-`message` hosts (e.g.
-/// `buzz://connect` which is desktop-only), or links missing a non-empty
+/// Returns `null` for non-`g6` schemes, non-`message` hosts (e.g.
+/// `g6://connect` which is desktop-only), or links missing a non-empty
 /// `channel` or `id` param.
 MessageDeepLink? parseMessageDeepLink(Uri uri) {
-  if (uri.scheme != 'buzz' || uri.host != 'message') return null;
+  if (uri.scheme != 'g6' || uri.host != 'message') return null;
 
   final channel = uri.queryParameters['channel'];
   final id = uri.queryParameters['id'];
@@ -103,12 +103,12 @@ MessageDeepLink? parseMessageDeepLink(Uri uri) {
   );
 }
 
-/// Parse canonical HTTPS invite links and `buzz://join` app handoffs.
+/// Parse canonical HTTPS invite links and `g6://join` app handoffs.
 ///
 /// Accepted forms:
 /// - `https://<relay>/invite/<code>` -> `wss://<relay>` + code
 /// - `http://<relay>/invite/<code>` -> `ws://<relay>` + code
-/// - `buzz://join?relay=<ws(s)://relay>&code=<code>` -> relay + code
+/// - `g6://join?relay=<ws(s)://relay>&code=<code>` -> relay + code
 ///
 /// Rejects credentials, fragments, missing params, nested relay credentials, and
 /// non-invite paths so scanners do not accidentally treat arbitrary URLs as
@@ -116,7 +116,7 @@ MessageDeepLink? parseMessageDeepLink(Uri uri) {
 InviteDeepLink? parseInviteDeepLink(Uri uri) {
   if (uri.hasFragment || uri.userInfo.isNotEmpty) return null;
 
-  if (uri.scheme == 'buzz') {
+  if (uri.scheme == 'g6') {
     if (uri.host != 'join') return null;
     final relay = uri.queryParameters['relay'];
     final code = uri.queryParameters['code'];
@@ -166,6 +166,6 @@ InviteDeepLink? parseInviteDeepLink(Uri uri) {
   return null;
 }
 
-/// Parse any supported Buzz deep link.
-BuzzDeepLink? parseBuzzDeepLink(Uri uri) =>
+/// Parse any supported Gear6 deep link.
+Gear6DeepLink? parseGear6DeepLink(Uri uri) =>
     parseInviteDeepLink(uri) ?? parseMessageDeepLink(uri);

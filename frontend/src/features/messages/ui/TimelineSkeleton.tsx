@@ -4,7 +4,7 @@ import type { TimelineMessage } from "@/features/messages/types";
 import { cn } from "@/shared/lib/cn";
 import { Skeleton } from "@/shared/ui/skeleton";
 
-const TIMELINE_SKELETON_CACHE_PREFIX = "buzz-timeline-skeleton-shape.v1";
+const TIMELINE_SKELETON_CACHE_PREFIX = "g6-timeline-skeleton-shape.v1";
 const timelineSkeletonWidthClasses = [
   "w-10",
   "w-12",

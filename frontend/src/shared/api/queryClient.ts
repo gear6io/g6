@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-export function createBuzzQueryClient() {
+export function createGear6QueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {

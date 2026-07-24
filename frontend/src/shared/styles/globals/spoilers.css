@@ -1,5 +1,5 @@
-.buzz-spoiler {
-  --buzz-spoiler-accent: #333;
+.g6-spoiler {
+  --g6-spoiler-accent: #333;
 
   -webkit-box-decoration-break: clone;
   background: transparent;
@@ -16,11 +16,11 @@
   vertical-align: baseline;
 }
 
-.dark .buzz-spoiler {
-  --buzz-spoiler-accent: #fff;
+.dark .g6-spoiler {
+  --g6-spoiler-accent: #fff;
 }
 
-.buzz-spoiler__content {
+.g6-spoiler__content {
   position: relative;
   transition:
     opacity 500ms ease-out,
@@ -28,8 +28,8 @@
   z-index: 0;
 }
 
-.buzz-spoiler:not([data-revealed="true"]) .buzz-spoiler__content,
-.buzz-spoiler:not([data-revealed="true"]) .buzz-spoiler__content * {
+.g6-spoiler:not([data-revealed="true"]) .g6-spoiler__content,
+.g6-spoiler:not([data-revealed="true"]) .g6-spoiler__content * {
   color: transparent;
   filter: blur(0.5px);
   opacity: 0;
@@ -40,10 +40,10 @@
     filter 200ms ease-out;
 }
 
-.buzz-spoiler__particles {
+.g6-spoiler__particles {
   background: transparent;
   border-radius: inherit;
-  color: var(--buzz-spoiler-accent, #333);
+  color: var(--g6-spoiler-accent, #333);
   height: calc(100% + 0.2em);
   inset: -0.1em -0.1em;
   opacity: 1;
@@ -54,62 +54,62 @@
   z-index: 1;
 }
 
-.dark .buzz-spoiler__particles {
-  --buzz-spoiler-accent: #fff;
+.dark .g6-spoiler__particles {
+  --g6-spoiler-accent: #fff;
 }
 
-.buzz-spoiler--block {
+.g6-spoiler--block {
   display: inline-block;
   max-width: 100%;
 }
 
-.buzz-spoiler--block .buzz-spoiler__content,
-.buzz-spoiler--block [data-block-media] {
+.g6-spoiler--block .g6-spoiler__content,
+.g6-spoiler--block [data-block-media] {
   display: inline-block;
   max-width: 100%;
 }
 
-.buzz-spoiler--block img[data-spoiler-media-size] {
-  aspect-ratio: var(--buzz-spoiler-media-aspect-ratio);
+.g6-spoiler--block img[data-spoiler-media-size] {
+  aspect-ratio: var(--g6-spoiler-media-aspect-ratio);
   height: auto;
-  width: var(--buzz-spoiler-media-width);
+  width: var(--g6-spoiler-media-width);
 }
 
-.buzz-spoiler--inert,
+.g6-spoiler--inert,
 /* biome-ignore lint/style/noDescendingSpecificity: selector order preserved from monolithic globals.css split */
-.buzz-spoiler--inert * {
+.g6-spoiler--inert * {
   cursor: inherit;
   pointer-events: none;
 }
 
-.buzz-spoiler[data-revealed="true"],
-.buzz-spoiler:hover,
-.buzz-spoiler:focus-visible {
+.g6-spoiler[data-revealed="true"],
+.g6-spoiler:hover,
+.g6-spoiler:focus-visible {
   animation: none;
   background: hsl(var(--muted) / 0.5);
   color: inherit;
   text-decoration-color: currentColor;
 }
 
-.buzz-spoiler[data-revealed="true"] .buzz-spoiler__particles {
+.g6-spoiler[data-revealed="true"] .g6-spoiler__particles {
   opacity: 0;
 }
 
-.ProseMirror .buzz-spoiler {
+.ProseMirror .g6-spoiler {
   background: transparent;
   color: transparent;
   cursor: text;
   text-decoration-color: transparent;
 }
 
-.buzz-spoiler-composer-particles {
+.g6-spoiler-composer-particles {
   inset: 0;
   pointer-events: none;
   position: absolute;
   z-index: 1;
 }
 
-.buzz-spoiler__particles--composer {
+.g6-spoiler__particles--composer {
   border-radius: 0.3rem;
   height: auto;
   inset: auto;
@@ -119,12 +119,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .buzz-spoiler__particles {
+  .g6-spoiler__particles {
     transition: none;
   }
 }
 
-@keyframes buzz-side-panel-enter {
+@keyframes g6-side-panel-enter {
   from {
     opacity: 0;
     transform: translate3d(24px, 0, 0);

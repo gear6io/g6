@@ -1,6 +1,6 @@
 // gear6 /rtm (Slack) message → nostr-shaped RelayEvent, plus the client-side
 // filter match the relay would normally do server-side. This is the single
-// translation layer between the gear6 backend's message shape and the buzz
+// translation layer between the gear6 backend's message shape and the g6
 // timeline pipeline (RelayEvent[] keyed by #h + kind). Reused by both the live
 // /rtm dispatch and (Phase D) history/replies fetches.
 import type { RelaySubscriptionFilter } from "@/shared/api/relayClientShared";

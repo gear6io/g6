@@ -5,42 +5,42 @@ use crate::managed_agents::known_acp_runtime;
 #[test]
 fn identifier_prefix_does_not_match_longer_id() {
     // DMG identifier should NOT match inside a dev desktop's config JSON.
-    let buf = br#""identifier":"xyz.block.buzz.app.dev""#;
-    let id = b"xyz.block.buzz.app";
+    let buf = br#""identifier":"xyz.block.g6.app.dev""#;
+    let id = b"xyz.block.g6.app";
     assert!(!super::buffer_contains_identifier(buf, id));
 }
 
 #[test]
 fn identifier_prefix_does_not_match_worktree_slug() {
     // Main dev identifier should NOT match inside a worktree desktop's buffer.
-    let buf = br#""identifier":"xyz.block.buzz.app.dev.my-branch""#;
-    let id = b"xyz.block.buzz.app.dev";
+    let buf = br#""identifier":"xyz.block.g6.app.dev.my-branch""#;
+    let id = b"xyz.block.g6.app.dev";
     assert!(!super::buffer_contains_identifier(buf, id));
 }
 
 #[test]
 fn identifier_exact_match_with_quote_boundary() {
     // Exact match followed by closing quote — should match.
-    let buf = br#""identifier":"xyz.block.buzz.app.dev""#;
-    let id = b"xyz.block.buzz.app.dev";
+    let buf = br#""identifier":"xyz.block.g6.app.dev""#;
+    let id = b"xyz.block.g6.app.dev";
     assert!(super::buffer_contains_identifier(buf, id));
 }
 
 #[test]
 fn identifier_match_with_null_boundary() {
     // In KERN_PROCARGS2, entries are null-delimited.
-    let mut buf = b"BUZZ_MANAGED_AGENT=xyz.block.buzz.app.dev".to_vec();
+    let mut buf = b"GEAR6_MANAGED_AGENT=xyz.block.g6.app.dev".to_vec();
     buf.push(0);
     buf.extend_from_slice(b"OTHER_VAR=value");
-    let id = b"xyz.block.buzz.app.dev";
+    let id = b"xyz.block.g6.app.dev";
     assert!(super::buffer_contains_identifier(&buf, id));
 }
 
 #[test]
 fn identifier_exact_match_at_end_of_buffer() {
     // Exact match with end-of-buffer as the boundary — Thufir's case 1.
-    let buf = b"xyz.block.buzz.app.dev";
-    let id = b"xyz.block.buzz.app.dev";
+    let buf = b"xyz.block.g6.app.dev";
+    let id = b"xyz.block.g6.app.dev";
     assert!(super::buffer_contains_identifier(buf, id));
 }
 
@@ -48,10 +48,10 @@ fn identifier_exact_match_at_end_of_buffer() {
 fn longer_id_matches_when_short_prefix_also_present() {
     // Searching for the longer ID finds it even when a shorter prefix token
     // appears earlier — Thufir's "longer-of-prefix must match" case.
-    let mut buf = b"xyz.block.buzz.app".to_vec();
+    let mut buf = b"xyz.block.g6.app".to_vec();
     buf.push(0);
-    buf.extend_from_slice(br#""identifier":"xyz.block.buzz.app.dev""#);
-    let id = b"xyz.block.buzz.app.dev";
+    buf.extend_from_slice(br#""identifier":"xyz.block.g6.app.dev""#);
+    let id = b"xyz.block.g6.app.dev";
     assert!(super::buffer_contains_identifier(&buf, id));
 }
 
@@ -66,36 +66,36 @@ fn identifier_empty_returns_false() {
 #[test]
 fn marker_entry_is_namespaced_by_instance_id() {
     // The spawn stamp and the sweep matcher must produce identical bytes;
-    // both go through buzz_marker_entry, so this pins the on-the-wire
+    // both go through g6_marker_entry, so this pins the on-the-wire
     // format and guards against a dev build (`...app.dev`) matching a
     // release build's (`...app`) agents.
     assert_eq!(
-        super::buzz_marker_entry("xyz.block.buzz.app"),
-        b"BUZZ_MANAGED_AGENT=xyz.block.buzz.app".to_vec()
+        super::g6_marker_entry("xyz.block.g6.app"),
+        b"GEAR6_MANAGED_AGENT=xyz.block.g6.app".to_vec()
     );
     assert_ne!(
-        super::buzz_marker_entry("xyz.block.buzz.app"),
-        super::buzz_marker_entry("xyz.block.buzz.app.dev")
+        super::g6_marker_entry("xyz.block.g6.app"),
+        super::g6_marker_entry("xyz.block.g6.app.dev")
     );
 }
 
 #[test]
-fn buzz_agent_has_mcp_hooks() {
-    let p = known_acp_runtime("buzz-agent").expect("should resolve");
+fn g6_agent_has_mcp_hooks() {
+    let p = known_acp_runtime("g6-agent").expect("should resolve");
     assert!(p.mcp_hooks);
-    assert_eq!(p.mcp_command, Some("buzz-dev-mcp"));
+    assert_eq!(p.mcp_command, Some("g6-dev-mcp"));
 }
 
 #[test]
-fn buzz_agent_resolved_via_path() {
-    assert!(known_acp_runtime("/usr/local/bin/buzz-agent").is_some_and(|p| p.mcp_hooks));
+fn g6_agent_resolved_via_path() {
+    assert!(known_acp_runtime("/usr/local/bin/g6-agent").is_some_and(|p| p.mcp_hooks));
 }
 
 #[test]
 fn codex_has_mcp_command() {
     let p = known_acp_runtime("codex-acp").expect("should resolve");
     assert!(!p.mcp_hooks, "codex-acp does not handle MCP_HOOK_SERVERS");
-    assert_eq!(p.mcp_command, Some("buzz-dev-mcp"));
+    assert_eq!(p.mcp_command, Some("g6-dev-mcp"));
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn fixture(
         auth_tag,
         relay_url: "ws://localhost:3000".into(),
         avatar_url: None,
-        acp_command: "buzz-acp".into(),
+        acp_command: "g6-acp".into(),
         agent_command: "goose".into(),
         agent_command_override: None,
         agent_args: vec![],
@@ -183,13 +183,13 @@ fn build_env_owner_only_sets_mode_and_removes_others() {
     let (set, remove) = build_respond_to_env(&rec, Some("owner")).unwrap();
     let set_map: std::collections::HashMap<_, _> = set.into_iter().collect();
     assert_eq!(
-        set_map.get("BUZZ_ACP_RESPOND_TO").map(String::as_str),
+        set_map.get("GEAR6_ACP_RESPOND_TO").map(String::as_str),
         Some("owner-only")
     );
-    assert!(!set_map.contains_key("BUZZ_ACP_RESPOND_TO_ALLOWLIST"));
-    assert!(remove.contains(&"BUZZ_ACP_RESPOND_TO_ALLOWLIST"));
+    assert!(!set_map.contains_key("GEAR6_ACP_RESPOND_TO_ALLOWLIST"));
+    assert!(remove.contains(&"GEAR6_ACP_RESPOND_TO_ALLOWLIST"));
     // auth_tag is present → no AGENT_OWNER fallback fires.
-    assert!(remove.contains(&"BUZZ_ACP_AGENT_OWNER"));
+    assert!(remove.contains(&"GEAR6_ACP_AGENT_OWNER"));
 }
 
 // select_untracked_bundle_harnesses tests live in runtime/sweep.rs (mod tests).
@@ -206,12 +206,12 @@ fn build_env_allowlist_sets_both_envs_and_joins() {
     let (set, _remove) = build_respond_to_env(&rec, Some("owner")).unwrap();
     let set_map: std::collections::HashMap<_, _> = set.into_iter().collect();
     assert_eq!(
-        set_map.get("BUZZ_ACP_RESPOND_TO").map(String::as_str),
+        set_map.get("GEAR6_ACP_RESPOND_TO").map(String::as_str),
         Some("allowlist")
     );
     assert_eq!(
         set_map
-            .get("BUZZ_ACP_RESPOND_TO_ALLOWLIST")
+            .get("GEAR6_ACP_RESPOND_TO_ALLOWLIST")
             .map(String::as_str),
         Some(format!("{a},{b}").as_str()),
     );
@@ -223,11 +223,11 @@ fn build_env_anyone_omits_allowlist_var() {
     let (set, remove) = build_respond_to_env(&rec, Some("owner")).unwrap();
     let set_map: std::collections::HashMap<_, _> = set.into_iter().collect();
     assert_eq!(
-        set_map.get("BUZZ_ACP_RESPOND_TO").map(String::as_str),
+        set_map.get("GEAR6_ACP_RESPOND_TO").map(String::as_str),
         Some("anyone")
     );
-    assert!(!set_map.contains_key("BUZZ_ACP_RESPOND_TO_ALLOWLIST"));
-    assert!(remove.contains(&"BUZZ_ACP_RESPOND_TO_ALLOWLIST"));
+    assert!(!set_map.contains_key("GEAR6_ACP_RESPOND_TO_ALLOWLIST"));
+    assert!(remove.contains(&"GEAR6_ACP_RESPOND_TO_ALLOWLIST"));
 }
 
 #[test]
@@ -236,10 +236,10 @@ fn build_env_legacy_record_without_auth_tag_emits_agent_owner() {
     let (set, remove) = build_respond_to_env(&rec, Some("ownerhex")).unwrap();
     let set_map: std::collections::HashMap<_, _> = set.into_iter().collect();
     assert_eq!(
-        set_map.get("BUZZ_ACP_AGENT_OWNER").map(String::as_str),
+        set_map.get("GEAR6_ACP_AGENT_OWNER").map(String::as_str),
         Some("ownerhex")
     );
-    assert!(!remove.contains(&"BUZZ_ACP_AGENT_OWNER"));
+    assert!(!remove.contains(&"GEAR6_ACP_AGENT_OWNER"));
 }
 
 #[test]
@@ -248,7 +248,7 @@ fn build_env_legacy_record_without_owner_hex_removes_agent_owner() {
     // env var from the parent.
     let rec = fixture(RespondTo::OwnerOnly, vec![], None);
     let (_set, remove) = build_respond_to_env(&rec, None).unwrap();
-    assert!(remove.contains(&"BUZZ_ACP_AGENT_OWNER"));
+    assert!(remove.contains(&"GEAR6_ACP_AGENT_OWNER"));
 }
 
 #[test]
@@ -529,11 +529,11 @@ fn runtime_metadata_env_vars_skips_provider_when_locked() {
 
 #[test]
 fn runtime_metadata_env_vars_injects_model_even_with_acp_model_switching() {
-    // buzz-agent has supports_acp_model_switching=true but we still inject
+    // g6-agent has supports_acp_model_switching=true but we still inject
     // the model env var because ACP model switching is post-bootstrap
     let vars = runtime_metadata_env_vars(
-        Some("BUZZ_AGENT_MODEL"),
-        Some("BUZZ_AGENT_PROVIDER"),
+        Some("GEAR6_AGENT_MODEL"),
+        Some("GEAR6_AGENT_PROVIDER"),
         false,
         Some("goose-claude-4-6-opus"),
         Some("databricks"),
@@ -541,8 +541,8 @@ fn runtime_metadata_env_vars_injects_model_even_with_acp_model_switching() {
     assert_eq!(
         vars,
         vec![
-            ("BUZZ_AGENT_MODEL", "goose-claude-4-6-opus"),
-            ("BUZZ_AGENT_PROVIDER", "databricks"),
+            ("GEAR6_AGENT_MODEL", "goose-claude-4-6-opus"),
+            ("GEAR6_AGENT_PROVIDER", "databricks"),
         ]
     );
 }
@@ -596,7 +596,7 @@ fn claude_spawn_uses_the_probed_cli_executable() {
     let original_path = std::env::var_os("PATH");
     std::env::set_var("PATH", temp.path());
 
-    let mut command = std::process::Command::new("buzz-acp");
+    let mut command = std::process::Command::new("g6-acp");
     super::configure_runtime_cli(&mut command, super::known_acp_runtime("claude-agent-acp"));
 
     if let Some(path) = original_path {
@@ -611,7 +611,7 @@ fn claude_spawn_uses_the_probed_cli_executable() {
 
 #[test]
 fn codex_spawn_does_not_set_a_claude_executable() {
-    let mut command = std::process::Command::new("buzz-acp");
+    let mut command = std::process::Command::new("g6-acp");
     super::configure_runtime_cli(&mut command, super::known_acp_runtime("codex-acp"));
     assert!(!command
         .get_envs()
@@ -634,7 +634,7 @@ fn grandchild_inherits_pgid_of_process_group_leader() {
     // Spawn a "harness" process in its own process group (mirrors
     // `command.process_group(0)` in the real spawn path). The harness
     // spawns an intermediate child which in turn spawns a grandchild.
-    // This mirrors the real tree: buzz-acp → goose → buzz-dev-mcp.
+    // This mirrors the real tree: g6-acp → goose → g6-dev-mcp.
     //
     // The intermediate `sh` uses exec to replace itself with another sh
     // that backgrounds the grandchild, so the grandchild's ppid is the

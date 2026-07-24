@@ -34,7 +34,7 @@ export type PersonaSubmitBlockInput = {
   localModeMissingEnvKeys: readonly string[];
   /** `agentAiConfigurationModeSatisfied(...)` for the Customize pair. */
   customAiPairSatisfied: boolean;
-  /** Runtime exposes a provider picker (Buzz Agent / Goose), not Codex/Claude. */
+  /** Runtime exposes a provider picker (Gear6 Agent / Goose), not Codex/Claude. */
   runtimeNeedsProviderSelection: boolean;
   /** Customize provider field is empty. */
   customProviderEmpty: boolean;

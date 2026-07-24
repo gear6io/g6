@@ -7,7 +7,7 @@ import {
   historyMessageToRelayEvent,
   type HistoryMessage,
 } from "@/shared/api/eventAdapter";
-import { apiPost } from "@/shared/api/http";
+import { apiCall } from "@/shared/api/http";
 import type { RelayEvent } from "@/shared/api/types";
 
 /** A gear6 message event id is `${channel}:${ts}`; recover the Slack ts. */
@@ -17,11 +17,9 @@ export function tsFromEventId(eventId: string): string | undefined {
 }
 
 type PostResponse = {
-  ok: boolean;
   channel: string;
   ts: string;
   message: HistoryMessage;
-  error?: string;
 };
 
 /**
@@ -36,11 +34,10 @@ export async function postChatMessage(
   parentEventId?: string | null,
 ): Promise<RelayEvent> {
   const threadTs = parentEventId ? tsFromEventId(parentEventId) : undefined;
-  const res = await apiPost<PostResponse>("chat.postMessage", {
+  const res = await apiCall<PostResponse>("chat.postMessage", {
     channel: channelId,
     text: content.trim(),
     ...(threadTs ? { thread_ts: threadTs } : {}),
   });
-  if (!res.ok) throw new Error(res.error ?? "chat.postMessage failed");
   return historyMessageToRelayEvent(res.message, channelId);
 }

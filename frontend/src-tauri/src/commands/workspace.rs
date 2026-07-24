@@ -171,10 +171,10 @@ pub async fn apply_workspace(
         // `repos-dir-error`.
         if let Some(nest) = nest.as_deref() {
             if let Err(error) = write_persisted_repos_dir(nest, effective_repos_dir.as_deref()) {
-                eprintln!("buzz-desktop: persist repos dir failed: {error}");
+                eprintln!("g6-desktop: persist repos dir failed: {error}");
             }
             if let Err(error) = ensure_repos_symlink(nest, effective_repos_dir.as_deref()) {
-                eprintln!("buzz-desktop: repos dir setup failed: {error}");
+                eprintln!("g6-desktop: repos dir setup failed: {error}");
                 let _ = app.emit("repos-dir-error", error);
             }
         }
@@ -207,7 +207,7 @@ pub async fn apply_workspace(
                 if let Err(error) =
                     crate::commands::mesh_llm::restore_mesh_sharing(&app, &state).await
                 {
-                    eprintln!("buzz-desktop: failed to restore Share Compute: {error}");
+                    eprintln!("g6-desktop: failed to restore Share Compute: {error}");
                 }
             }
             crate::mesh_llm::publish_current_status_once(&app, "workspace apply").await;
@@ -215,7 +215,7 @@ pub async fn apply_workspace(
                 if let Err(error) =
                     restore_managed_agents_on_launch(&app, &state.shutdown_started).await
                 {
-                    eprintln!("buzz-desktop: failed to restore managed agents: {error}");
+                    eprintln!("g6-desktop: failed to restore managed agents: {error}");
                 }
             }
         });
@@ -229,7 +229,7 @@ pub async fn apply_workspace(
             if let Err(error) =
                 restore_managed_agents_on_launch(&app, &state.shutdown_started).await
             {
-                eprintln!("buzz-desktop: failed to restore managed agents: {error}");
+                eprintln!("g6-desktop: failed to restore managed agents: {error}");
             }
         });
     }

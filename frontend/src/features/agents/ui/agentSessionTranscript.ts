@@ -7,7 +7,7 @@ import type {
   TranscriptItem,
 } from "./agentSessionTypes";
 import {
-  findBuzzToolName,
+  findGear6ToolName,
   isGenericToolTitle,
   normalizeToolStatus,
 } from "./agentSessionToolCatalog";
@@ -609,7 +609,7 @@ function upsertTool(
   id: string,
   title: string,
   toolName: string,
-  buzzToolName: string | null,
+  g6ToolName: string | null,
   status: ToolStatus,
   args: Record<string, unknown>,
   result: string,
@@ -619,16 +619,16 @@ function upsertTool(
   acpSource?: string,
 ) {
   const existing = d.itemsById.get(id);
-  const canonicalBuzzToolName =
-    buzzToolName ?? findBuzzToolName(toolName, true);
+  const canonicalGear6ToolName =
+    g6ToolName ?? findGear6ToolName(toolName, true);
   if (existing?.type === "tool") {
     const updatedTitle = !isGenericToolTitle(title) ? title : existing.title;
     let updatedToolName = existing.toolName;
-    let updatedBuzzToolName = existing.buzzToolName;
-    if (canonicalBuzzToolName) {
-      updatedBuzzToolName = canonicalBuzzToolName;
-      updatedToolName = canonicalBuzzToolName;
-    } else if (!existing.buzzToolName && !isGenericToolTitle(toolName)) {
+    let updatedGear6ToolName = existing.g6ToolName;
+    if (canonicalGear6ToolName) {
+      updatedGear6ToolName = canonicalGear6ToolName;
+      updatedToolName = canonicalGear6ToolName;
+    } else if (!existing.g6ToolName && !isGenericToolTitle(toolName)) {
       updatedToolName = toolName;
     }
     const mergedStatus = mergeToolStatus(existing.status, status);
@@ -638,7 +638,7 @@ function upsertTool(
     const descriptor = classifyTool({
       title: updatedTitle,
       toolName: updatedToolName,
-      buzzToolName: updatedBuzzToolName,
+      g6ToolName: updatedGear6ToolName,
       args: updatedArgs,
       result: updatedResult,
       isError: updatedIsError || mergedStatus === "failed",
@@ -649,7 +649,7 @@ function upsertTool(
       descriptor,
       title: updatedTitle,
       toolName: updatedToolName,
-      buzzToolName: updatedBuzzToolName,
+      g6ToolName: updatedGear6ToolName,
       status: mergedStatus,
       args: updatedArgs,
       result: updatedResult,
@@ -665,11 +665,11 @@ function upsertTool(
     });
     return;
   }
-  const resolvedToolName = canonicalBuzzToolName ?? toolName;
+  const resolvedToolName = canonicalGear6ToolName ?? toolName;
   const descriptor = classifyTool({
     title,
     toolName: resolvedToolName,
-    buzzToolName: canonicalBuzzToolName,
+    g6ToolName: canonicalGear6ToolName,
     args,
     result,
     isError: isError || status === "failed",
@@ -682,7 +682,7 @@ function upsertTool(
     descriptor,
     title,
     toolName: resolvedToolName,
-    buzzToolName: canonicalBuzzToolName,
+    g6ToolName: canonicalGear6ToolName,
     status,
     args,
     result,
@@ -985,7 +985,7 @@ export function processTranscriptEvent(
           `tool:${ch}:${toolId}`,
           identity.title,
           identity.toolName,
-          identity.buzzToolName,
+          identity.g6ToolName,
           normalizeToolStatus(asString(update.status) ?? "executing"),
           extractToolArgs(update),
           extractToolResult(update),
@@ -1005,7 +1005,7 @@ export function processTranscriptEvent(
           `tool:${ch}:${toolId}`,
           identity.title,
           identity.toolName,
-          identity.buzzToolName,
+          identity.g6ToolName,
           status,
           extractToolArgs(update),
           extractToolResult(update),

@@ -27,8 +27,8 @@ pub(crate) struct KnownAcpRuntime {
     /// Human-readable hint about installing the ACP adapter.
     pub adapter_install_hint: &'static str,
     /// Harness-specific skill discovery directory (e.g. `.goose/skills`).
-    /// `Some(dir)` → Buzz creates a symlink at `<nest>/<dir>/buzz-cli`
-    /// pointing to the canonical `.agents/skills/buzz-cli`. `None` → this
+    /// `Some(dir)` → Gear6 creates a symlink at `<nest>/<dir>/g6-cli`
+    /// pointing to the canonical `.agents/skills/g6-cli`. `None` → this
     /// runtime reads the canonical path directly or has no skill support.
     pub skill_dir: Option<&'static str>,
     /// Whether this runtime handles model switching via ACP protocol natively.
@@ -55,7 +55,7 @@ pub(crate) struct KnownAcpRuntime {
     /// Keys match the camelCase names used in `NormalizedConfig` (e.g. "model", "provider").
     pub required_normalized_fields: &'static [&'static str],
     /// Human-readable hint shown in Doctor when the runtime is available but not
-    /// authenticated. `None` for runtimes that have no login step (goose, buzz-agent).
+    /// authenticated. `None` for runtimes that have no login step (goose, g6-agent).
     pub login_hint: Option<&'static str>,
     /// CLI args for probing authentication status. `args[0]` is the binary name;
     /// the remainder are the subcommand. `None` for runtimes with no login step.

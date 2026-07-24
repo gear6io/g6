@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Read the workspace owner's pubkey hex from app state without holding the
-/// lock for longer than necessary. Used to populate `BUZZ_ACP_AGENT_OWNER`
+/// lock for longer than necessary. Used to populate `GEAR6_ACP_AGENT_OWNER`
 /// as a fallback for legacy agent records that have no NIP-OA `auth_tag`.
 pub(super) fn workspace_owner_hex(state: &AppState) -> Result<String, String> {
     let keys = state.keys.lock().map_err(|e| e.to_string())?;
@@ -50,7 +50,7 @@ pub(super) fn retain_managed_agent_pending(
         persona_events::monotonic_created_at,
         retention::{get_retained_event, open_retention_db, retain_event, RetainedEvent},
     };
-    use buzz_core_pkg::kind::KIND_MANAGED_AGENT;
+    use g6_core_pkg::kind::KIND_MANAGED_AGENT;
     use nostr::JsonUtil;
 
     let result = (|| -> Result<(), String> {
@@ -93,7 +93,7 @@ pub(super) fn retain_managed_agent_pending(
         )
     })();
     if let Err(e) = result {
-        eprintln!("buzz-desktop: agent-retain: {e}");
+        eprintln!("g6-desktop: agent-retain: {e}");
     }
 }
 
@@ -120,7 +120,7 @@ pub(super) fn tombstone_managed_agent_pending(
             RetainedEvent,
         },
     };
-    use buzz_core_pkg::kind::KIND_MANAGED_AGENT;
+    use g6_core_pkg::kind::KIND_MANAGED_AGENT;
     use nostr::JsonUtil;
 
     const KIND_DELETE: u32 = 5;
@@ -152,7 +152,7 @@ pub(super) fn tombstone_managed_agent_pending(
         )
     })();
     if let Err(e) = result {
-        eprintln!("buzz-desktop: agent-tombstone: {e}");
+        eprintln!("g6-desktop: agent-tombstone: {e}");
     }
 }
 
@@ -179,7 +179,7 @@ pub(super) fn build_agent_archive_request(
     } else {
         let agent = nostr::PublicKey::from_hex(agent_pubkey)
             .map_err(|e| format!("invalid agent pubkey: {e}"))?;
-        let tag_json = buzz_sdk_pkg::nip_oa::compute_auth_tag(keys, &agent, "")
+        let tag_json = g6_sdk_pkg::nip_oa::compute_auth_tag(keys, &agent, "")
             .map_err(|e| format!("failed to build owner auth tag: {e}"))?;
         let parts: Vec<String> = serde_json::from_str(&tag_json)
             .map_err(|e| format!("failed to parse owner auth tag: {e}"))?;
@@ -216,7 +216,7 @@ pub(super) fn build_agent_archive_request(
 /// disk-authoritative delete.
 pub(super) fn archive_managed_agent_pending(app: &AppHandle, state: &AppState, agent_pubkey: &str) {
     use crate::managed_agents::retention::{open_retention_db, retain_event, RetainedEvent};
-    use buzz_core_pkg::kind::KIND_IA_ARCHIVE_REQUEST;
+    use g6_core_pkg::kind::KIND_IA_ARCHIVE_REQUEST;
     use nostr::JsonUtil;
 
     let result = (|| -> Result<(), String> {
@@ -241,7 +241,7 @@ pub(super) fn archive_managed_agent_pending(app: &AppHandle, state: &AppState, a
         )
     })();
     if let Err(e) = result {
-        eprintln!("buzz-desktop: agent-archive: {e}");
+        eprintln!("g6-desktop: agent-archive: {e}");
     }
 }
 
@@ -255,10 +255,10 @@ fn normalize_relay_mesh(
 
     let model_ref = config.model_ref.trim();
     if model_ref.is_empty() {
-        return Err("Buzz shared compute model is required".to_string());
+        return Err("Gear6 shared compute model is required".to_string());
     }
     if backend != &BackendKind::Local {
-        return Err("Buzz shared compute agents must use the local backend".to_string());
+        return Err("Gear6 shared compute agents must use the local backend".to_string());
     }
 
     Ok(Some(RelayMeshConfig {
@@ -579,7 +579,7 @@ pub async fn create_managed_agent(
     crate::managed_agents::validate_user_env_keys(&input.env_vars)?;
 
     // Validate & normalize the respond-to allowlist BEFORE any side effects.
-    // The harness has its own validator (buzz-acp/src/config.rs) but we want
+    // The harness has its own validator (g6-acp/src/config.rs) but we want
     // to catch malformed input at the boundary so the agent never tries to
     // start with a list that will crash it on launch. The mode/allowlist
     // pairing (and the definition-default fallback) is resolved later at the
@@ -660,12 +660,12 @@ pub async fn create_managed_agent(
     // No tokens are minted. Fail closed: bad auth tag → don't create agent.
     let auth_tag = {
         let owner_keys = state.signing_keys()?;
-        // Bridge nostr 0.37 → 0.36 (buzz-sdk) via hex round-trip.
+        // Bridge nostr 0.37 → 0.36 (g6-sdk) via hex round-trip.
         let compat_owner = nostr::Keys::parse(&owner_keys.secret_key().to_secret_hex())
             .map_err(|e| format!("failed to bridge owner keys: {e}"))?;
         let compat_agent = nostr::PublicKey::from_hex(&agent_keys.public_key().to_hex())
             .map_err(|e| format!("failed to bridge agent pubkey: {e}"))?;
-        let tag = buzz_sdk_pkg::nip_oa::compute_auth_tag(&compat_owner, &compat_agent, "")
+        let tag = g6_sdk_pkg::nip_oa::compute_auth_tag(&compat_owner, &compat_agent, "")
             .map_err(|e| format!("failed to compute NIP-OA auth tag: {e}"))?;
         Some(tag)
     };
@@ -843,7 +843,7 @@ pub async fn create_managed_agent(
             agent_command_override,
             agent_args,
             mcp_command,
-            // BUZZ_ACP_TURN_TIMEOUT is deprecated and ignored by the harness;
+            // GEAR6_ACP_TURN_TIMEOUT is deprecated and ignored by the harness;
             // store the schema default only. Use idle_timeout_seconds or
             // max_turn_duration_seconds for actual turn-length control.
             turn_timeout_seconds: DEFAULT_AGENT_TURN_TIMEOUT_SECONDS,
@@ -1171,7 +1171,7 @@ pub async fn start_managed_agent(
                     .await
             {
                 eprintln!(
-                    "buzz-desktop: profile reconciliation failed for agent {reconcile_pubkey}: {e}"
+                    "g6-desktop: profile reconciliation failed for agent {reconcile_pubkey}: {e}"
                 );
             }
         });

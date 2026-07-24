@@ -40,9 +40,9 @@ test("normal first launch uses the already-persisted identity", async ({
     () =>
       (
         window as Window & {
-          __BUZZ_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
+          __GEAR6_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
         }
-      ).__BUZZ_E2E_COMMAND_PAYLOADS__ ?? [],
+      ).__GEAR6_E2E_COMMAND_PAYLOADS__ ?? [],
   );
   expect(commands.some((entry) => entry.command === "get_identity")).toBe(true);
   expect(
@@ -112,9 +112,9 @@ test("start-new-identity from lost mode persists the ephemeral key after confirm
         () =>
           (
             window as Window & {
-              __BUZZ_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
+              __GEAR6_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
             }
-          ).__BUZZ_E2E_COMMAND_PAYLOADS__?.some(
+          ).__GEAR6_E2E_COMMAND_PAYLOADS__?.some(
             (e) => e.command === "persist_current_identity",
           ) ?? false,
       ),
@@ -207,9 +207,9 @@ test("locked screen relaunch button records the process-restart invoke", async (
         () =>
           (
             window as Window & {
-              __BUZZ_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
+              __GEAR6_E2E_COMMAND_PAYLOADS__?: Array<{ command: string }>;
             }
-          ).__BUZZ_E2E_COMMAND_PAYLOADS__?.some(
+          ).__GEAR6_E2E_COMMAND_PAYLOADS__?.some(
             (e) => e.command === "plugin:process|restart",
           ) ?? false,
       ),

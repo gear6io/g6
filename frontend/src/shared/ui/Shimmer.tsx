@@ -8,7 +8,7 @@ type ShimmerProps = {
 export function Shimmer({ children, className }: ShimmerProps) {
   return (
     <span
-      className={cn("buzz-shimmer", className)}
+      className={cn("g6-shimmer", className)}
       data-shimmer-text={children}
     >
       {children}

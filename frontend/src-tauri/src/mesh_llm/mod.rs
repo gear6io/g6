@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 mod coordinator;
 pub(crate) use coordinator::{publish_current_status_once, publish_stopped_status_once};
-pub use coordinator::{start_coordinator, MeshCoordinator, KIND_BUZZ_MESH_MEMBER_STATUS};
+pub use coordinator::{start_coordinator, MeshCoordinator, KIND_GEAR6_MESH_MEMBER_STATUS};
 
 mod discovery;
 pub use discovery::{
@@ -33,9 +33,9 @@ use std::time::Duration;
 
 const DEFAULT_MESH_API_PORT: u16 = 9337;
 const DEFAULT_MESH_CONSOLE_PORT: u16 = 3131;
-const MESH_STATUS_KIND: u64 = KIND_BUZZ_MESH_MEMBER_STATUS as u64;
-const MESH_API_PORT_ENV: &str = "BUZZ_MESH_API_PORT";
-const MESH_CONSOLE_PORT_ENV: &str = "BUZZ_MESH_CONSOLE_PORT";
+const MESH_STATUS_KIND: u64 = KIND_GEAR6_MESH_MEMBER_STATUS as u64;
+const MESH_API_PORT_ENV: &str = "GEAR6_MESH_API_PORT";
+const MESH_CONSOLE_PORT_ENV: &str = "GEAR6_MESH_CONSOLE_PORT";
 /// Iroh relay tunneling for symmetric-NAT peers. Unset/empty/"1"/"default" =
 /// enabled with the SDK's default iroh relays (the default — members connect
 /// regardless of NAT). "0" = disabled (direct QUIC only, for
@@ -44,7 +44,7 @@ const MESH_CONSOLE_PORT_ENV: &str = "BUZZ_MESH_CONSOLE_PORT";
 /// only) and are transport-only; mesh presence is NEVER published to public
 /// Nostr relays regardless of this setting (`publish` is hardcoded false and
 /// the Nostr relay list stays empty).
-const MESH_IROH_RELAYS_ENV: &str = "BUZZ_MESH_IROH_RELAYS";
+const MESH_IROH_RELAYS_ENV: &str = "GEAR6_MESH_IROH_RELAYS";
 /// First model load can include a multi-GB download plus Metal warmup; the
 /// SDK default (30s) times out long before that. Matches mesh-console.
 const MESH_STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
@@ -321,7 +321,7 @@ impl DesktopMeshRuntime {
                 }
                 // Admission: present our owner attestation, and when a member
                 // roster was resolved, admit only those owners. Membership in
-                // the Buzz relay is the source of the roster; possession of a
+                // the Gear6 relay is the source of the roster; possession of a
                 // dial pointer or relay reachability admits nobody.
                 let identity = ensure_owner_identity()?;
                 builder = builder.owner_key(identity.keystore_path.clone());
@@ -561,7 +561,7 @@ pub fn models_from_status_payload(payload: Option<&serde_json::Value>) -> Vec<Me
     let mut out = Vec::new();
     if let Some(payload) = payload {
         // The SDK's raw status uses `hosted_models` plus ready entries under
-        // `runtime.models`. Buzz-authored status reports use `models`. Do not
+        // `runtime.models`. Gear6-authored status reports use `models`. Do not
         // use `serving_models`: MeshLLM fills it with the requested model while
         // the runtime is still in standby, before inference is available.
         for key in ["models", "hosted_models"] {

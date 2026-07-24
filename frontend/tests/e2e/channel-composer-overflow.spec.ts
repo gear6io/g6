@@ -19,7 +19,7 @@ async function waitForMockLiveSubscription(
     .poll(() =>
       page.evaluate(
         (ch) =>
-          window.__BUZZ_E2E_HAS_MOCK_LIVE_SUBSCRIPTION__?.({
+          window.__GEAR6_E2E_HAS_MOCK_LIVE_SUBSCRIPTION__?.({
             channelName: ch,
           }) ?? false,
         channelName,
@@ -35,7 +35,7 @@ async function emit(
 ) {
   const event = await page.evaluate(
     (payload) =>
-      window.__BUZZ_E2E_EMIT_MOCK_MESSAGE__?.({
+      window.__GEAR6_E2E_EMIT_MOCK_MESSAGE__?.({
         channelName: payload.channel,
         content: payload.content,
         parentEventId: payload.parentEventId,
@@ -111,7 +111,7 @@ test.describe("composer overlays mask scrolled content", () => {
     // Scroll the conversation up so trailing rows sit behind the overlay.
     await page.evaluate(() => {
       const scroller = document.querySelector<HTMLElement>(
-        '[data-buzz-conversation-scroll="true"]',
+        '[data-g6-conversation-scroll="true"]',
       );
       if (!scroller) throw new Error("Missing conversation scroll container");
       scroller.scrollTop = Math.max(

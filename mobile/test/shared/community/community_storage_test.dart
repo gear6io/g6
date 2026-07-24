@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:buzz/shared/community/community.dart';
-import 'package:buzz/shared/community/community_storage.dart';
+import 'package:g6/shared/community/community.dart';
+import 'package:g6/shared/community/community_storage.dart';
 
 /// In-memory fake that extends Fake to satisfy all FlutterSecureStorage
 /// interface methods, but implements the core read/write/delete with real
@@ -171,23 +171,23 @@ void main() {
           name: 'Legacy',
           relayUrl: 'https://legacy.example.com',
         );
-        fakeSecure['buzz_workspaces'] = jsonEncode([legacy.toJson()]);
-        fakeSecure['buzz_active_workspace_id'] = legacy.id;
+        fakeSecure['g6_workspaces'] = jsonEncode([legacy.toJson()]);
+        fakeSecure['g6_active_workspace_id'] = legacy.id;
 
         final loaded = await storage.loadAll();
 
         expect(loaded.single.id, legacy.id);
         expect(await storage.loadActiveId(), legacy.id);
-        expect(fakeSecure['buzz_communities'], isNotNull);
-        expect(fakeSecure['buzz_workspaces'], isNull);
-        expect(fakeSecure['buzz_active_workspace_id'], isNull);
+        expect(fakeSecure['g6_communities'], isNotNull);
+        expect(fakeSecure['g6_workspaces'], isNull);
+        expect(fakeSecure['g6_active_workspace_id'], isNull);
       });
 
       test('migrates legacy keys to community on first load', () async {
-        fakeSecure['buzz_relay_url'] = 'https://legacy.example.com';
-        fakeSecure['buzz_token'] = 'legacy_token';
-        fakeSecure['buzz_pubkey'] = 'legacy_pub';
-        fakeSecure['buzz_nsec'] = 'legacy_nsec';
+        fakeSecure['g6_relay_url'] = 'https://legacy.example.com';
+        fakeSecure['g6_token'] = 'legacy_token';
+        fakeSecure['g6_pubkey'] = 'legacy_pub';
+        fakeSecure['g6_nsec'] = 'legacy_nsec';
 
         final loaded = await storage.loadAll();
 
@@ -198,10 +198,10 @@ void main() {
         expect(loaded.first.name, isNotEmpty);
 
         // Legacy keys should be deleted.
-        expect(fakeSecure['buzz_relay_url'], isNull);
-        expect(fakeSecure['buzz_token'], isNull);
-        expect(fakeSecure['buzz_pubkey'], isNull);
-        expect(fakeSecure['buzz_nsec'], isNull);
+        expect(fakeSecure['g6_relay_url'], isNull);
+        expect(fakeSecure['g6_token'], isNull);
+        expect(fakeSecure['g6_pubkey'], isNull);
+        expect(fakeSecure['g6_nsec'], isNull);
 
         // Active ID should be set.
         final activeId = await storage.loadActiveId();
@@ -214,8 +214,8 @@ void main() {
       });
 
       test('does not re-migrate after first load', () async {
-        fakeSecure['buzz_relay_url'] = 'https://legacy.example.com';
-        fakeSecure['buzz_token'] = 'legacy_token';
+        fakeSecure['g6_relay_url'] = 'https://legacy.example.com';
+        fakeSecure['g6_token'] = 'legacy_token';
 
         final first = await storage.loadAll();
         expect(first, hasLength(1));
@@ -226,8 +226,8 @@ void main() {
       });
 
       test('migration generates name from localhost URL', () async {
-        fakeSecure['buzz_relay_url'] = 'http://localhost:3000';
-        fakeSecure['buzz_token'] = 'tok';
+        fakeSecure['g6_relay_url'] = 'http://localhost:3000';
+        fakeSecure['g6_token'] = 'tok';
 
         final loaded = await storage.loadAll();
         expect(loaded.first.name, 'Local Dev');

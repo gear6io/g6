@@ -1,6 +1,6 @@
 import type { ObserverEvent, PromptSection } from "./agentSessionTypes";
 import {
-  findBuzzToolName,
+  findGear6ToolName,
   isGenericToolTitle,
   normalizeToolName,
 } from "./agentSessionToolCatalog";
@@ -35,7 +35,7 @@ export function parsePromptText(text: string): {
 
   const eventSection = sections.find((section) => {
     const title = section.title.toLowerCase();
-    return title.startsWith("buzz event");
+    return title.startsWith("gear6 event");
   });
   const eventContent = eventSection
     ? extractEventContent(eventSection.body)
@@ -49,7 +49,7 @@ export function parsePromptText(text: string): {
   return {
     sections,
     userText: eventContent,
-    userTitle: eventKind ? titleCase(eventKind) : "Buzz event",
+    userTitle: eventKind ? titleCase(eventKind) : "Gear6 event",
     userPubkey: eventAuthorPubkey,
     userEventId: eventId,
   };
@@ -64,7 +64,7 @@ export function parsePromptText(text: string): {
  *   `[Base]\n{base}\n\n[System]\n{persona}\n\n[Agent Memory — core]\n{core}\n\n[Channel Canvas]\n{canvas}`
  * with any section omitted when absent. For team-pack agents the persona body
  * already contains the pack-level instructions appended by `compose_prompt()`
- * in `buzz-persona/src/resolve.rs`:
+ * in `g6-persona/src/resolve.rs`:
  *   `{persona_body}\n\n---\n# Team Instructions\n{pack_instructions}`
  * Extraction runs in reverse producer order so that each `lastIndexOf` search
  * operates on the full input and each extraction boundary is unambiguous.
@@ -135,7 +135,7 @@ export function parseSystemPromptSections(
 
   // ── 3. Parse Base/System from the remaining prefix ────────────────────────
   // The canonical team-instructions delimiter produced by compose_prompt() in
-  // buzz-persona/src/resolve.rs:
+  // g6-persona/src/resolve.rs:
   //   format!("{persona_prompt}\n\n---\n# Team Instructions\n{instructions}")
   const TEAM_DELIMITER = "\n\n---\n# Team Instructions\n";
 
@@ -349,11 +349,11 @@ export function extractToolArgs(
 export function extractToolIdentity(update: Record<string, unknown>): {
   title: string;
   toolName: string;
-  buzzToolName: string | null;
+  g6ToolName: string | null;
 } {
   const candidates = collectToolNameCandidates(update);
   const knownName = candidates
-    .map((candidate) => findBuzzToolName(candidate, true))
+    .map((candidate) => findGear6ToolName(candidate, true))
     .find((candidate): candidate is string => Boolean(candidate));
   const firstSpecific = candidates.find(
     (candidate) => !isGenericToolTitle(candidate),
@@ -363,7 +363,7 @@ export function extractToolIdentity(update: Record<string, unknown>): {
   return {
     title,
     toolName: knownName ?? normalizeToolName(firstSpecific ?? title),
-    buzzToolName: knownName ?? null,
+    g6ToolName: knownName ?? null,
   };
 }
 

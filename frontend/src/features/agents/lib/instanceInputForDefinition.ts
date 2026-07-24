@@ -47,8 +47,8 @@ export function resolveStartRuntimeForDefinition(
   runtimes: readonly AcpRuntime[],
   preferredRuntimeId?: string | null,
 ): { runtime: AcpRuntime; warnings: string[] } {
-  // Use the buzz-agent-first preference (buzz-agent → goose → first available)
-  // so a freshly installed goose never beats the bundled buzz-agent sidecar
+  // Use the g6-agent-first preference (g6-agent → goose → first available)
+  // so a freshly installed goose never beats the bundled g6-agent sidecar
   // for runtime-less personas (item 13 regression guard).
   const defaultRuntime = getDefaultPersonaRuntime(runtimes, preferredRuntimeId);
   const { runtime, warnings, isOverridden }: ResolvePersonaRuntimeResult =
@@ -141,7 +141,7 @@ export async function buildInstanceInputForDefinition(
 
   return {
     ...base,
-    acpCommand: "buzz-acp",
+    acpCommand: "g6-acp",
     agentCommand: runtime.command,
     agentArgs: runtime.defaultArgs,
     mcpCommand: runtime.mcpCommand ?? "",

@@ -8,7 +8,7 @@ import {
 import { normalizePubkey } from "@/shared/lib/pubkey";
 import type { ObserverEvent } from "./ui/agentSessionTypes";
 
-/** Harness emits turn_liveness every ~10s (BUZZ_ACP_TURN_LIVENESS_SECS). */
+/** Harness emits turn_liveness every ~10s (GEAR6_ACP_TURN_LIVENESS_SECS). */
 const LIVENESS_INTERVAL_MS = 10_000;
 /** Remove a turn after this long with no activity. Tolerates one fully dropped
  * liveness ping plus slack before pruning a turn whose host died without

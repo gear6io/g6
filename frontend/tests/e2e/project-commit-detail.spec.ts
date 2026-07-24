@@ -11,7 +11,7 @@ const ALIGNMENT_TOLERANCE_PX = 2;
 async function enableProjectsFeature(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      "buzz-feature-overrides-v1",
+      "g6-feature-overrides-v1",
       JSON.stringify({ projects: true }),
     );
   });
@@ -22,7 +22,7 @@ test("top-level project lists align dates and overflow actions", async ({
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.localStorage.setItem("buzz.projects.viewMode", "list");
+    window.localStorage.setItem("g6.projects.viewMode", "list");
   });
   await installMockBridge(page);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -150,10 +150,10 @@ test("commit detail opens from the commits feed with a diff", async ({
   // Repositories filter to reveal the project cards/rows.
   await page.getByRole("button", { name: "Repositories", exact: true }).click();
 
-  // Open the first mock project (dtag "buzz" from the e2e bridge fixture).
+  // Open the first mock project (dtag "g6" from the e2e bridge fixture).
   const projectEntry = page
     .locator(
-      '[data-testid="project-card-buzz"], [data-testid="project-row-buzz"]',
+      '[data-testid="project-card-g6"], [data-testid="project-row-g6"]',
     )
     .first();
   await expect(projectEntry).toBeVisible({ timeout: 10_000 });
@@ -222,7 +222,7 @@ test("commit detail opens from the commits feed with a diff", async ({
   await expect(page.getByText("Commit from")).toBeVisible();
   await page
     .getByRole("navigation", { name: "Project breadcrumb" })
-    .getByRole("button", { name: "buzz", exact: true })
+    .getByRole("button", { name: "g6", exact: true })
     .click();
   await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute(
     "aria-selected",
@@ -251,7 +251,7 @@ test("pull request and issue feeds share the commit row structure", async ({
 
   const projectEntry = page
     .locator(
-      '[data-testid="project-card-buzz"], [data-testid="project-row-buzz"]',
+      '[data-testid="project-card-g6"], [data-testid="project-row-g6"]',
     )
     .first();
   await expect(projectEntry).toBeVisible({ timeout: 10_000 });

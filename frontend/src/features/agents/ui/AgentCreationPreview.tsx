@@ -521,7 +521,7 @@ export function AgentCreationPreview({
         {activeTab === "emoji" ? (
           <div className="relative grid content-start gap-3">
             <div
-              className="buzz-emoji-mart relative z-0 h-[280px] overflow-hidden rounded-lg bg-muted"
+              className="g6-emoji-mart relative z-0 h-[280px] overflow-hidden rounded-lg bg-muted"
               ref={emojiPickerContainerRef}
               style={emojiMartThemeVars}
             >
@@ -745,13 +745,13 @@ export function AgentCreationPreview({
                       <span
                         className={cn(
                           "flex h-full w-full items-center justify-center text-[4rem] leading-none",
-                          squishKey > 0 && "buzz-avatar-squish",
+                          squishKey > 0 && "g6-avatar-squish",
                         )}
                         key={squishKey}
                         style={
                           {
-                            "--buzz-avatar-emoji-offset-x": "0px",
-                            "--buzz-avatar-emoji-offset-y": "0px",
+                            "--g6-avatar-emoji-offset-x": "0px",
+                            "--g6-avatar-emoji-offset-y": "0px",
                           } as React.CSSProperties
                         }
                       >

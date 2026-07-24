@@ -30,8 +30,8 @@ import {
 } from "../hooks/useMeshDownloadProgress";
 import { useMeshNodeStatus } from "../hooks/useMeshNodeStatus";
 
-const MODEL_DRAFT_STORAGE_KEY = "buzz.mesh-compute.share.model.v1";
-const MAX_VRAM_DRAFT_STORAGE_KEY = "buzz.mesh-compute.share.max-vram-gb.v1";
+const MODEL_DRAFT_STORAGE_KEY = "g6.mesh-compute.share.model.v1";
+const MAX_VRAM_DRAFT_STORAGE_KEY = "g6.mesh-compute.share.max-vram-gb.v1";
 
 function readDraft(key: string): string {
   try {
@@ -236,7 +236,7 @@ export function MeshComputeSettingsCard() {
             />
             <p className="text-sm font-normal text-muted-foreground">
               Choose a suggested model below, or enter a model reference or
-              local file. Buzz downloads remote models when sharing starts.
+              local file. Gear6 downloads remote models when sharing starts.
             </p>
             {catalog && catalog.entries.length > 0 ? (
               <CatalogPicker
@@ -415,7 +415,7 @@ function CatalogPicker({
   selected: string;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  // Above the fold: the Buzz-curated picks (models known to work well with
+  // Above the fold: the Gear6-curated picks (models known to work well with
   // agents on shared compute). Below: everything else, as advanced options.
   const curated = catalog.entries.filter((e) => e.curated);
   const advanced = catalog.entries.filter((e) => !e.curated);

@@ -25,8 +25,8 @@ async function seedCommunities(
 ) {
   await page.addInitScript(
     ({ list, active }) => {
-      window.localStorage.setItem("buzz-communities", JSON.stringify(list));
-      window.localStorage.setItem("buzz-active-community-id", active);
+      window.localStorage.setItem("g6-communities", JSON.stringify(list));
+      window.localStorage.setItem("g6-active-community-id", active);
     },
     { list: communities, active: activeId },
   );
@@ -91,7 +91,7 @@ test.describe("community rail", () => {
     await expect
       .poll(() =>
         page.evaluate(() =>
-          window.localStorage.getItem("buzz-active-community-id"),
+          window.localStorage.getItem("g6-active-community-id"),
         ),
       )
       .toBe(COMMUNITY_B.id);
@@ -110,7 +110,7 @@ test.describe("community rail", () => {
     await expect
       .poll(() =>
         page.evaluate(() =>
-          window.localStorage.getItem("buzz-active-community-id"),
+          window.localStorage.getItem("g6-active-community-id"),
         ),
       )
       .toBe(COMMUNITY_B.id);

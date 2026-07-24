@@ -1,8 +1,8 @@
 import React, { type CSSProperties, useEffect, useRef, useState } from "react";
 
-export const POOF_TRIGGER_CLASS = "buzz-poof-trigger";
-export const POOF_ORIGIN_CLASS = "buzz-poof-origin";
-export const POOF_POINTER_ORIGIN_CLASS = "buzz-poof-pointer-origin";
+export const POOF_TRIGGER_CLASS = "g6-poof-trigger";
+export const POOF_ORIGIN_CLASS = "g6-poof-origin";
+export const POOF_POINTER_ORIGIN_CLASS = "g6-poof-pointer-origin";
 
 export const POOF_DURATION_MS = 430;
 
@@ -30,9 +30,9 @@ type PoofBurst = {
 };
 
 type PoofStyle = CSSProperties & {
-  "--buzz-poof-size": string;
-  "--buzz-poof-x": string;
-  "--buzz-poof-y": string;
+  "--g6-poof-size": string;
+  "--g6-poof-x": string;
+  "--g6-poof-y": string;
 };
 
 type PoofPointer = {
@@ -237,23 +237,23 @@ export function PoofBurstProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <div aria-hidden="true" className="buzz-poof-layer">
+      <div aria-hidden="true" className="g6-poof-layer">
         {bursts.map((burst) => (
           <div
-            className="buzz-poof-burst"
+            className="g6-poof-burst"
             key={burst.id}
             style={
               {
-                "--buzz-poof-size": `${burst.size}px`,
-                "--buzz-poof-x": `${burst.x}px`,
-                "--buzz-poof-y": `${burst.y}px`,
+                "--g6-poof-size": `${burst.size}px`,
+                "--g6-poof-x": `${burst.x}px`,
+                "--g6-poof-y": `${burst.y}px`,
               } as PoofStyle
             }
           >
             {POOF_FRAMES.map((frame, index) => (
               <img
                 alt=""
-                className={`buzz-poof-frame buzz-poof-frame-${index + 1}`}
+                className={`g6-poof-frame g6-poof-frame-${index + 1}`}
                 decoding="async"
                 draggable={false}
                 key={`${burst.id}-${frame.id}`}

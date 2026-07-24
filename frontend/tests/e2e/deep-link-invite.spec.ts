@@ -9,7 +9,7 @@ import { seedActiveIdentity } from "../helpers/onboarding";
 
 const DEFAULT_MOCK_PUBKEY = "deadbeef".repeat(8);
 const WELCOME_FAILURE_PUBKEY = TEST_IDENTITIES.tyler.pubkey;
-const TRANSACTION_STORAGE_KEY = "buzz-community-onboarding-transaction.v1";
+const TRANSACTION_STORAGE_KEY = "g6-community-onboarding-transaction.v1";
 const COMMUNITY_RELAY_URL = "wss://hive.example.com";
 
 const PENDING_JOIN_LINK = {
@@ -201,7 +201,7 @@ test("add-community deep link opens one editable prefill and acknowledges the qu
   await expect(nameInput).toHaveValue("");
 
   const acknowledgements = await page.evaluate(() =>
-    (window.__BUZZ_E2E_COMMAND_LOG__ ?? []).filter(
+    (window.__GEAR6_E2E_COMMAND_LOG__ ?? []).filter(
       (entry) => entry.command === "acknowledge_pending_community_deep_link",
     ),
   );
@@ -236,7 +236,7 @@ test("queued add-community links open and acknowledge one at a time", async ({
   await expect
     .poll(() =>
       page.evaluate(() =>
-        (window.__BUZZ_E2E_COMMAND_LOG__ ?? [])
+        (window.__GEAR6_E2E_COMMAND_LOG__ ?? [])
           .filter(
             (entry) =>
               entry.command === "acknowledge_pending_community_deep_link",
@@ -255,7 +255,7 @@ test("queued add-community links open and acknowledge one at a time", async ({
   await expect
     .poll(() =>
       page.evaluate(() =>
-        (window.__BUZZ_E2E_COMMAND_LOG__ ?? [])
+        (window.__GEAR6_E2E_COMMAND_LOG__ ?? [])
           .filter(
             (entry) =>
               entry.command === "acknowledge_pending_community_deep_link",
@@ -277,7 +277,7 @@ test("Welcome failure retries once before allowing starter channel setup to be s
   await page.addInitScript(
     ({ pubkey, relayUrl, storageKey }) => {
       window.localStorage.setItem(
-        `buzz-machine-onboarding-complete.v2:${pubkey}`,
+        `g6-machine-onboarding-complete.v2:${pubkey}`,
         "true",
       );
       const timestamp = new Date().toISOString();
@@ -317,7 +317,7 @@ test("Welcome failure retries once before allowing starter channel setup to be s
     );
   }
 
-  const enterButton = page.getByRole("button", { name: "Take me to Buzz" });
+  const enterButton = page.getByRole("button", { name: "Take me to Gear6" });
   await enterButton.click();
 
   await expect(page.getByText(`${welcomeError} Try again.`)).toBeVisible();
@@ -345,7 +345,7 @@ test("Welcome failure retries once before allowing starter channel setup to be s
 
   const starterChannelAttempts = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_COMMANDS__?.filter(
+      window.__GEAR6_E2E_COMMANDS__?.filter(
         (command) => command === "ensure_starter_channels",
       ).length ?? 0,
   );
@@ -357,7 +357,7 @@ test("Welcome failure retries once before allowing starter channel setup to be s
   expect(
     await page.evaluate(
       () =>
-        window.__BUZZ_E2E_COMMANDS__?.filter(
+        window.__GEAR6_E2E_COMMANDS__?.filter(
           (command) => command === "ensure_starter_channels",
         ).length ?? 0,
     ),
@@ -382,7 +382,7 @@ test("persisted deep-link invite hands off to Joining after machine onboarding",
   await page.addInitScript(
     ({ pubkey, storageKey }) => {
       window.localStorage.setItem(
-        `buzz-machine-onboarding-complete.v2:${pubkey}`,
+        `g6-machine-onboarding-complete.v2:${pubkey}`,
         "true",
       );
       const timestamp = new Date().toISOString();

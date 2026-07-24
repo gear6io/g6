@@ -20,38 +20,38 @@ function createMemoryStorage(initial = {}) {
   };
 }
 
-test("migrateLegacyCommunityStorage promotes current Buzz workspace state", () => {
+test("migrateLegacyCommunityStorage promotes current Gear6 workspace state", () => {
   const storage = createMemoryStorage({
-    "buzz-workspaces": '[{"id":"current"}]',
-    "buzz-active-workspace-id": "current",
+    "g6-workspaces": '[{"id":"current"}]',
+    "g6-active-workspace-id": "current",
   });
 
   migrateLegacyCommunityStorage(storage);
 
-  assert.equal(storage.getItem("buzz-communities"), '[{"id":"current"}]');
-  assert.equal(storage.getItem("buzz-active-community-id"), "current");
+  assert.equal(storage.getItem("g6-communities"), '[{"id":"current"}]');
+  assert.equal(storage.getItem("g6-active-community-id"), "current");
 });
 
 test("migrateLegacyCommunityStorage does not overwrite new community state", () => {
   const storage = createMemoryStorage({
-    "buzz-communities": '[{"id":"new"}]',
-    "buzz-active-community-id": "new",
-    "buzz-workspaces": '[{"id":"old"}]',
-    "buzz-active-workspace-id": "old",
+    "g6-communities": '[{"id":"new"}]',
+    "g6-active-community-id": "new",
+    "g6-workspaces": '[{"id":"old"}]',
+    "g6-active-workspace-id": "old",
   });
 
   migrateLegacyCommunityStorage(storage);
 
-  assert.equal(storage.getItem("buzz-communities"), '[{"id":"new"}]');
-  assert.equal(storage.getItem("buzz-active-community-id"), "new");
+  assert.equal(storage.getItem("g6-communities"), '[{"id":"new"}]');
+  assert.equal(storage.getItem("g6-active-community-id"), "new");
 });
 
 test("clearCommunityStorage removes new and legacy state", () => {
   const storage = createMemoryStorage({
-    "buzz-communities": "new",
-    "buzz-active-community-id": "new",
-    "buzz-workspaces": "old",
-    "buzz-active-workspace-id": "old",
+    "g6-communities": "new",
+    "g6-active-community-id": "new",
+    "g6-workspaces": "old",
+    "g6-active-workspace-id": "old",
   });
 
   clearCommunityStorage(storage);

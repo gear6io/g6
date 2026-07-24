@@ -4,7 +4,7 @@ import { installMockBridge } from "../helpers/bridge";
 import { openSettings } from "../helpers/settings";
 
 type E2eWindow = Window & {
-  __BUZZ_E2E_COMMANDS__?: string[];
+  __GEAR6_E2E_COMMANDS__?: string[];
 };
 
 test.beforeEach(async ({ page }) => {
@@ -29,7 +29,7 @@ test("Share compute has a clear empty state and starts and stops sharing", async
 
   await model.fill("hf://demo/SmolLM2-135M-Instruct-GGUF:Q4_K_M");
   await expect(card).toContainText(
-    "Buzz downloads remote models when sharing starts",
+    "Gear6 downloads remote models when sharing starts",
   );
   await expect(toggle).toBeEnabled();
 
@@ -38,7 +38,7 @@ test("Share compute has a clear empty state and starts and stops sharing", async
   await expect(card).toContainText("Sharing SmolLM2 135M with relay members");
   await expect
     .poll(() =>
-      page.evaluate(() => (window as E2eWindow).__BUZZ_E2E_COMMANDS__ ?? []),
+      page.evaluate(() => (window as E2eWindow).__GEAR6_E2E_COMMANDS__ ?? []),
     )
     .toContain("mesh_start_node");
 
@@ -47,7 +47,7 @@ test("Share compute has a clear empty state and starts and stops sharing", async
   await expect(card).toContainText("Not sharing right now");
   await expect
     .poll(() =>
-      page.evaluate(() => (window as E2eWindow).__BUZZ_E2E_COMMANDS__ ?? []),
+      page.evaluate(() => (window as E2eWindow).__GEAR6_E2E_COMMANDS__ ?? []),
     )
     .toContain("mesh_stop_node");
 });

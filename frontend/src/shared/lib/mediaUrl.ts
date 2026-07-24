@@ -8,11 +8,11 @@
  * For video, the proxy streams via axum — no buffering the entire file.
  * Images and other media also benefit from this path.
  *
- * Only URLs hosted on the Buzz relay are rewritten. External Blossom URLs
+ * Only URLs hosted on the Gear6 relay are rewritten. External Blossom URLs
  * (e.g. nostr.build, void.cat) are returned unchanged — they aren't behind
  * Cloudflare Access and can be loaded directly by WKWebView. Without this
  * origin check, external Blossom URLs would be proxied to the wrong server
- * (the Buzz relay), resulting in 404s.
+ * (the Gear6 relay), resulting in 404s.
  */
 
 import { invoke } from "@tauri-apps/api/core";
@@ -27,7 +27,7 @@ let cachedPort: number | null = null;
 let portPromise: Promise<number | null> | null = null;
 
 /**
- * Cached relay origin (e.g. "https://buzz-oss.stage.blox.sqprod.co"),
+ * Cached relay origin (e.g. "https://g6-oss.stage.blox.sqprod.co"),
  * canonicalized via {@link canonicalOrigin} so comparisons are stable.
  */
 let cachedRelayOrigin: string | null = null;
@@ -36,7 +36,7 @@ let cachedRelayOrigin: string | null = null;
  * Canonicalize a URL to its origin with a lowercased scheme/host.
  *
  * The relay always emits media URLs with a lowercased tenant host
- * (`normalize_host` in buzz-core), but the saved community relay URL keeps
+ * (`normalize_host` in g6-core), but the saved community relay URL keeps
  * whatever casing the user typed (DNS is case-insensitive, so an uppercase
  * host connects fine). A raw string comparison between the two misclassifies
  * the relay's own media URLs as external and skips the authenticated proxy.
@@ -236,7 +236,7 @@ export function resetMediaCaches(): void {
 }
 
 /**
- * The relay origin (e.g. `https://buzz-oss.stage.blox.sqprod.co`) if it has
+ * The relay origin (e.g. `https://g6-oss.stage.blox.sqprod.co`) if it has
  * been resolved, else `null`. Synchronous best-effort read of the same cache
  * `rewriteRelayUrl` uses. Callers that need a hard SSRF guarantee must still
  * rely on the Rust `validate_download_url` gate; this only drives UX (e.g.
@@ -256,11 +256,11 @@ export function mediaProxyUrl(port: number, mediaPath: string): string {
 }
 
 /**
- * If `url` is a Blossom media URL hosted on the Buzz relay, rewrite it
+ * If `url` is a Blossom media URL hosted on the Gear6 relay, rewrite it
  * to go through the local streaming proxy. External Blossom URLs and
  * non-Blossom URLs are returned unchanged.
  *
- * Falls back to buzz-media:// if the proxy port isn't available yet.
+ * Falls back to g6-media:// if the proxy port isn't available yet.
  */
 export function rewriteRelayUrl(url: string): string {
   const m = RELAY_MEDIA_RE.exec(url);
@@ -288,5 +288,5 @@ export function rewriteRelayUrl(url: string): string {
     portPromise = fetchProxyPort();
   }
 
-  return `buzz-media://localhost/media/${m[1]}`;
+  return `g6-media://localhost/media/${m[1]}`;
 }

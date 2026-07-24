@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:buzz/features/channels/channel_window.dart';
-import 'package:buzz/shared/relay/relay.dart';
+import 'package:g6/features/channels/channel_window.dart';
+import 'package:g6/shared/relay/relay.dart';
 
 void main() {
   group('parseChannelWindowResponse', () {

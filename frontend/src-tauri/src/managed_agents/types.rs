@@ -19,12 +19,12 @@ pub struct AgentDefinition {
     pub avatar_url: Option<String>,
     pub system_prompt: String,
     /// Preferred ACP runtime ID (e.g., 'goose', 'claude', 'codex'). Determines which agent binary
-    /// Buzz spawns. When deploying from this persona, this runtime is pre-selected in the UI.
+    /// Gear6 spawns. When deploying from this persona, this runtime is pre-selected in the UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime: Option<String>,
     /// Opaque, harness-specific model identifier string. Format depends on the runtime and its LLM
     /// provider (e.g., 'goose-claude-4-6-opus' for Databricks, 'claude-opus-4-7' for Anthropic
-    /// direct). Buzz stores and passes through without interpretation.
+    /// direct). Gear6 stores and passes through without interpretation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// LLM inference provider (e.g., 'databricks', 'anthropic', 'openai'). Optional — when set,
@@ -58,7 +58,7 @@ pub struct AgentDefinition {
     )]
     pub source_team_persona_slug: Option<String>,
     /// Harness-level configuration passed to the agent subprocess as environment variables.
-    /// Opaque to Buzz — keys and values are runtime-specific.
+    /// Opaque to Gear6 — keys and values are runtime-specific.
     ///
     /// Stored as a BTreeMap for deterministic on-disk ordering.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -240,12 +240,12 @@ pub struct ManagedAgentRecord {
     /// (`known_acp_runtime`) — and no longer written by updates. Kept for
     /// serde compatibility with existing stores.
     pub mcp_command: String,
-    /// Deprecated: `BUZZ_ACP_TURN_TIMEOUT` is ignored by the harness and the
+    /// Deprecated: `GEAR6_ACP_TURN_TIMEOUT` is ignored by the harness and the
     /// desktop no longer emits or edits it. Kept for serde compatibility with
     /// existing stores; use `idle_timeout_seconds` or
     /// `max_turn_duration_seconds` for turn-length control.
     pub turn_timeout_seconds: u64,
-    /// Idle timeout in seconds (`BUZZ_ACP_IDLE_TIMEOUT`): how long the agent
+    /// Idle timeout in seconds (`GEAR6_ACP_IDLE_TIMEOUT`): how long the agent
     /// may stay silent on its ACP channel mid-turn before the harness times
     /// the turn out.
     #[serde(default)]
@@ -318,7 +318,7 @@ pub struct ManagedAgentRecord {
     pub last_error: Option<String>,
     #[serde(default)]
     pub last_error_code: Option<i64>,
-    /// Inbound author gate mode. Translates to `BUZZ_ACP_RESPOND_TO`.
+    /// Inbound author gate mode. Translates to `GEAR6_ACP_RESPOND_TO`.
     #[serde(default)]
     pub respond_to: RespondTo,
     /// Allowlist used when `respond_to == Allowlist`. Stored normalized
@@ -387,7 +387,7 @@ pub struct ManagedAgentRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub definition_parallelism: Option<u32>,
     /// Typed marker for relay-mesh agents. `Some(_)` means this agent runs its
-    /// inference through Buzz's relay-mesh local endpoint; the `model_ref` is
+    /// inference through Gear6's relay-mesh local endpoint; the `model_ref` is
     /// the served model id to route to. `None` is a normal agent.
     ///
     /// This is the source of truth for "is this a mesh agent + which model" —
@@ -430,7 +430,7 @@ pub struct ManagedAgentProcess {
     /// config is unknown and the badge stays off.
     pub spawn_config_hash: u64,
     /// Whether this process was spawned in setup-listener mode (i.e.
-    /// `BUZZ_ACP_SETUP_PAYLOAD` was set at launch because the agent was
+    /// `GEAR6_ACP_SETUP_PAYLOAD` was set at launch because the agent was
     /// `NotReady`). Runtime-only — never persisted. Used by
     /// `install_acp_runtime` to target only stuck agents for auto-restart,
     /// excluding healthy in-pool agents.
@@ -559,7 +559,7 @@ pub enum AuthStatus {
         /// Trimmed excerpt of the stderr message.
         diagnostic: String,
     },
-    /// This runtime does not have a login step (e.g. goose, buzz-agent).
+    /// This runtime does not have a login step (e.g. goose, g6-agent).
     NotApplicable,
     /// Probe was not attempted (runtime unavailable or probe timed out).
     Unknown,
@@ -606,7 +606,7 @@ pub struct InstallStepResult {
     pub stderr: String,
     pub exit_code: Option<i32>,
     /// Actionable guidance shown in the UI when this step failed due to a
-    /// recognized condition (e.g. EACCES writing Buzz's private npm prefix).
+    /// recognized condition (e.g. EACCES writing Gear6's private npm prefix).
     /// `None` when the step succeeded or no pattern matched.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
@@ -725,8 +725,8 @@ pub struct UpdateTeamRequest {
     pub persona_ids: Vec<String>,
 }
 
-pub const DEFAULT_ACP_COMMAND: &str = "buzz-acp";
-/// ~5 min (320s) — matches the CLI harness default (BUZZ_ACP_IDLE_TIMEOUT).
+pub const DEFAULT_ACP_COMMAND: &str = "g6-acp";
+/// ~5 min (320s) — matches the CLI harness default (GEAR6_ACP_IDLE_TIMEOUT).
 pub const DEFAULT_AGENT_TURN_TIMEOUT_SECONDS: u64 = 320;
 pub const DEFAULT_AGENT_PARALLELISM: u32 = 24;
 
@@ -748,10 +748,10 @@ fn default_record_active() -> bool {
 
 // ── Inbound author gate ──────────────────────────────────────────────────────
 //
-// Mirrors `buzz-acp`'s `--respond-to` CLI flag and the related
+// Mirrors `g6-acp`'s `--respond-to` CLI flag and the related
 // `--respond-to-allowlist` option. Persisted per agent so the desktop can
-// translate the user's choice into `BUZZ_ACP_RESPOND_TO` /
-// `BUZZ_ACP_RESPOND_TO_ALLOWLIST` env vars at spawn time.
+// translate the user's choice into `GEAR6_ACP_RESPOND_TO` /
+// `GEAR6_ACP_RESPOND_TO_ALLOWLIST` env vars at spawn time.
 //
 // Wire format is kebab-case (`owner-only`, `allowlist`, `anyone`) to match
 // the harness CLI vocabulary and the strings the GUI emits.
@@ -771,7 +771,7 @@ pub enum RespondTo {
 }
 
 impl RespondTo {
-    /// CLI/env wire string (matches `buzz-acp`'s `--respond-to`).
+    /// CLI/env wire string (matches `g6-acp`'s `--respond-to`).
     pub fn as_str(self) -> &'static str {
         match self {
             Self::OwnerOnly => "owner-only",
@@ -799,7 +799,7 @@ impl RespondTo {
 
 /// Validate and normalize a respond-to allowlist.
 ///
-/// Rules mirror `buzz-acp/src/config.rs::validate_allowlist`:
+/// Rules mirror `g6-acp/src/config.rs::validate_allowlist`:
 /// - Each entry is exactly 64 hex chars (any case in, lowercase out).
 /// - Duplicates removed, insertion order preserved.
 ///

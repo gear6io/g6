@@ -1,16 +1,16 @@
 [workspace]
 
 [package]
-name = "buzz-desktop"
+name = "g6-desktop"
 version = "0.4.23"
-description = "Buzz desktop app"
+description = "Gear6 desktop app"
 authors = ["you"]
 edition = "2021"
 
 [lib]
 # `_lib` suffix keeps the lib name distinct from the bin (a Windows issue,
 # rust-lang/cargo#8519).
-name = "buzz_lib"
+name = "g6_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -18,7 +18,7 @@ import { mergeTimelineHistoryMessages } from "@/features/messages/lib/messageQue
 import { normalizeRelayUrl } from "@/features/profile/lib/selfProfileStorage";
 import type { RelayEvent } from "@/shared/api/types";
 
-const STORAGE_KEY_PREFIX = "buzz-channel-messages.v1";
+const STORAGE_KEY_PREFIX = "g6-channel-messages.v1";
 
 // Newest events kept per channel. The trailing slice of the sorted timeline
 // cache, so recent auxiliary events (reactions/edits) ride along with the

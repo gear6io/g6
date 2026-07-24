@@ -32,7 +32,7 @@ export type RawChannel = {
   ttl_deadline: string | null;
 };
 
-type RawChannelDetail = RawChannel & {
+export type RawChannelDetail = RawChannel & {
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -45,7 +45,7 @@ type RawChannelDetail = RawChannel & {
   nip29_group_id: string | null;
 };
 
-type RawChannelMember = {
+export type RawChannelMember = {
   pubkey: string;
   role: ChannelMember["role"];
   is_agent?: boolean;
@@ -53,7 +53,7 @@ type RawChannelMember = {
   display_name: string | null;
 };
 
-type RawChannelMembersResponse = {
+export type RawChannelMembersResponse = {
   members: RawChannelMember[];
   next_cursor: string | null;
 };

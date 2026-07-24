@@ -69,8 +69,8 @@ export function AddTeamToChannelDialog({
   );
 
   const runtimes = providersQuery.data ?? [];
-  // Use the buzz-agent-first preference so the team-deploy fallback mirrors the
-  // single-agent start path (buzz-agent → goose → first available).
+  // Use the g6-agent-first preference so the team-deploy fallback mirrors the
+  // single-agent start path (g6-agent → goose → first available).
   const defaultProvider = getDefaultPersonaRuntime(
     runtimes,
     globalConfig.preferred_runtime,

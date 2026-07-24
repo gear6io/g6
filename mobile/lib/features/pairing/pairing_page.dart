@@ -65,10 +65,10 @@ class PairingPage extends HookConsumerWidget {
                     children: [
                       const Spacer(flex: 2),
 
-                      Image.asset('assets/images/buzz-icon.png', height: 64),
+                      Image.asset('assets/images/g6-icon.png', height: 64),
                       const SizedBox(height: Grid.xs),
                       Text(
-                        'Welcome to Buzz',
+                        'Welcome to Gear6',
                         style: context.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: Grid.xxs),
@@ -117,7 +117,7 @@ class PairingPage extends HookConsumerWidget {
                       TextField(
                         controller: codeController,
                         decoration: const InputDecoration(
-                          hintText: 'nostrpair://... or buzz://...',
+                          hintText: 'nostrpair://... or g6://...',
                           prefixIcon: Icon(LucideIcons.link),
                           isDense: true,
                         ),
@@ -278,7 +278,7 @@ class _SasVerificationView extends StatelessWidget {
         const SizedBox(height: Grid.lg),
 
         Text(
-          'You are about to transfer your Buzz identity\nto this device. Only confirm if you initiated\nthis pairing from your desktop.',
+          'You are about to transfer your Gear6 identity\nto this device. Only confirm if you initiated\nthis pairing from your desktop.',
           textAlign: TextAlign.center,
           style: context.textTheme.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,

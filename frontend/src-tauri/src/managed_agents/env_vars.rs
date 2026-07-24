@@ -5,9 +5,9 @@
 //! Precedence: desktop parent env < persona env < agent env (last wins on
 //! key collision). See `runtime::spawn_agent_child`.
 //!
-//! A small set of *reserved* keys — Buzz's identity and secrets — are
+//! A small set of *reserved* keys — Gear6's identity and secrets — are
 //! rejected at save time and stripped at runtime so a typo or malicious
-//! value can't swap the agent's nsec. Behavior knobs (GOOSE_MODE, BUZZ_ACP_MODEL, BUZZ_ACP_SYSTEM_PROMPT, …) remain
+//! value can't swap the agent's nsec. Behavior knobs (GOOSE_MODE, GEAR6_ACP_MODEL, GEAR6_ACP_SYSTEM_PROMPT, …) remain
 //! freely overridable — those have dedicated UI fields, but power users
 //! may want to bypass them.
 
@@ -27,8 +27,8 @@ use std::collections::BTreeMap;
 pub(crate) const DERIVED_PROVIDER_MODEL_ENV_KEYS: &[&str] = &[
     "GOOSE_MODEL",
     "GOOSE_PROVIDER",
-    "BUZZ_AGENT_MODEL",
-    "BUZZ_AGENT_PROVIDER",
+    "GEAR6_AGENT_MODEL",
+    "GEAR6_AGENT_PROVIDER",
 ];
 
 /// Returns `true` if `key` is a derived provider/model env key that should be
@@ -39,7 +39,7 @@ pub(crate) fn is_derived_provider_model_key(key: &str) -> bool {
         .any(|k| k.eq_ignore_ascii_case(key))
 }
 
-/// Env var keys that Buzz sets itself and users must not override from
+/// Env var keys that Gear6 sets itself and users must not override from
 /// the persona/agent env_vars UI. Three categories:
 ///
 /// 1. **Identity / secrets** — overriding would swap the agent's nsec or
@@ -52,35 +52,35 @@ pub(crate) fn is_derived_provider_model_key(key: &str) -> bool {
 ///    example), or redirect the agent to an attacker-controlled relay.
 ///
 /// This list is deliberately narrow — it only covers keys with security
-/// implications. Behavior knobs (GOOSE_MODE, BUZZ_ACP_MODEL, BUZZ_ACP_SYSTEM_PROMPT, …) remain freely
+/// implications. Behavior knobs (GOOSE_MODE, GEAR6_ACP_MODEL, GEAR6_ACP_SYSTEM_PROMPT, …) remain freely
 /// overridable; those have dedicated UI fields but power users may want
 /// to bypass them.
 pub(crate) const RESERVED_ENV_KEYS: &[&str] = &[
     // Identity / secrets.
-    "BUZZ_PRIVATE_KEY",
+    "GEAR6_PRIVATE_KEY",
     "NOSTR_PRIVATE_KEY",
-    "BUZZ_AUTH_TAG",
-    "BUZZ_API_TOKEN",
-    "BUZZ_ACP_PRIVATE_KEY",
-    "BUZZ_ACP_API_TOKEN",
+    "GEAR6_AUTH_TAG",
+    "GEAR6_API_TOKEN",
+    "GEAR6_ACP_PRIVATE_KEY",
+    "GEAR6_ACP_API_TOKEN",
     // Relay URL: overriding would let a malicious config redirect the
     // agent to an attacker-controlled relay.
-    "BUZZ_RELAY_URL",
+    "GEAR6_RELAY_URL",
     // Code-execution surface: overriding would let the user run arbitrary
     // binaries/args as the agent process.
-    "BUZZ_ACP_AGENT_COMMAND",
-    "BUZZ_ACP_AGENT_ARGS",
-    "BUZZ_ACP_MCP_COMMAND",
+    "GEAR6_ACP_AGENT_COMMAND",
+    "GEAR6_ACP_AGENT_ARGS",
+    "GEAR6_ACP_MCP_COMMAND",
     // Security gates: respond-to mode + allowlist + legacy owner-only
     // fallback. Overriding would make the running agent's gate diverge
     // from the saved/UI-visible settings.
-    "BUZZ_ACP_RESPOND_TO",
-    "BUZZ_ACP_RESPOND_TO_ALLOWLIST",
-    "BUZZ_ACP_AGENT_OWNER",
+    "GEAR6_ACP_RESPOND_TO",
+    "GEAR6_ACP_RESPOND_TO_ALLOWLIST",
+    "GEAR6_ACP_AGENT_OWNER",
     // Readiness handoff: desktop is the ONLY readiness source. A saved or
     // ambient env var must not be able to forge setup mode (NotReady) on a
     // Ready agent or suppress it (empty/stale payload) on a NotReady one.
-    "BUZZ_ACP_SETUP_PAYLOAD",
+    "GEAR6_ACP_SETUP_PAYLOAD",
 ];
 
 pub(crate) fn is_reserved_env_key(key: &str) -> bool {
@@ -94,9 +94,9 @@ pub(crate) fn is_reserved_env_key(key: &str) -> bool {
 /// nit: Rust's `Command::env` will happily accept a key containing `=`
 /// or whitespace and pass it straight into the child's environ block,
 /// where `getenv("FOO")` then matches whatever comes after the first
-/// `=`. That means a key like `BUZZ_AUTH_TAG=x` with value `forged`
-/// lands as `BUZZ_AUTH_TAG=x=forged` in the child env and
-/// `getenv("BUZZ_AUTH_TAG")` returns `"x=forged"` — a full reserved-
+/// `=`. That means a key like `GEAR6_AUTH_TAG=x` with value `forged`
+/// lands as `GEAR6_AUTH_TAG=x=forged` in the child env and
+/// `getenv("GEAR6_AUTH_TAG")` returns `"x=forged"` — a full reserved-
 /// key bypass. Rejecting non-POSIX keys closes this hole at the
 /// boundary where the input enters the system.
 pub(crate) fn is_well_formed_env_key(key: &str) -> bool {
@@ -187,7 +187,7 @@ pub fn validate_user_env_keys(env_vars: &BTreeMap<String, String>) -> Result<(),
     reserved.dedup();
     if !reserved.is_empty() {
         return Err(format!(
-            "the following env vars are reserved by Buzz and cannot be overridden: {}",
+            "the following env vars are reserved by Gear6 and cannot be overridden: {}",
             reserved.join(", ")
         ));
     }
@@ -247,7 +247,7 @@ pub(crate) fn merged_user_env(
     merged.retain(|k, v| {
         if is_reserved_env_key(k) {
             eprintln!(
-                "buzz-desktop: ignoring reserved env var `{k}` from persona/agent overrides"
+                "g6-desktop: ignoring reserved env var `{k}` from persona/agent overrides"
             );
             return false;
         }
@@ -257,7 +257,7 @@ pub(crate) fn merged_user_env(
             // smuggle a reserved key past us via `=`-in-key tricks. See
             // `is_well_formed_env_key` for the exploit.
             eprintln!(
-                "buzz-desktop: ignoring malformed env var key `{}` from persona/agent overrides",
+                "g6-desktop: ignoring malformed env var key `{}` from persona/agent overrides",
                 display_invalid_key(k)
             );
             return false;
@@ -267,13 +267,13 @@ pub(crate) fn merged_user_env(
             // have escaped the value validator; drop them here rather
             // than crash the spawn. We deliberately do NOT log the value.
             eprintln!(
-                "buzz-desktop: ignoring env var `{k}` with NUL byte in value"
+                "g6-desktop: ignoring env var `{k}` with NUL byte in value"
             );
             return false;
         }
         if v.len() > MAX_ENV_VALUE_BYTES {
             eprintln!(
-                "buzz-desktop: ignoring env var `{k}` with oversize value ({} bytes > {MAX_ENV_VALUE_BYTES})",
+                "g6-desktop: ignoring env var `{k}` with oversize value ({} bytes > {MAX_ENV_VALUE_BYTES})",
                 v.len()
             );
             return false;

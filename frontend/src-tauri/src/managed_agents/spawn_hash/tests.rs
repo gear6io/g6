@@ -11,7 +11,7 @@ fn record() -> ManagedAgentRecord {
         auth_tag: None,
         relay_url: "ws://localhost:3000".into(),
         avatar_url: None,
-        acp_command: "buzz-acp".into(),
+        acp_command: "g6-acp".into(),
         agent_command: "goose".into(),
         agent_command_override: None,
         agent_args: vec![],
@@ -221,7 +221,7 @@ fn respond_to_allowlist_edit_changes_hash() {
 
 #[test]
 fn allowlist_ignored_when_mode_is_not_allowlist() {
-    // Spawn only sets BUZZ_ACP_RESPOND_TO_ALLOWLIST in allowlist mode, so
+    // Spawn only sets GEAR6_ACP_RESPOND_TO_ALLOWLIST in allowlist mode, so
     // editing the (dormant) list under owner-only must not badge.
     let rec = record();
     let mut edited = record();

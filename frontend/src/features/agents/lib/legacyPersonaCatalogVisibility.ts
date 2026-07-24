@@ -1,5 +1,5 @@
 const LEGACY_PERSONA_CATALOG_VISIBILITY_STORAGE_KEY =
-  "buzz-persona-catalog-visibility-v1";
+  "g6-persona-catalog-visibility-v1";
 
 /**
  * Removes the retired custom-persona catalog preference so it cannot resurface

@@ -3,7 +3,7 @@ import { installMockBridge } from "../helpers/bridge";
 import { passThroughBackupStep } from "../helpers/onboarding";
 
 function runtime(
-  id: "buzz-agent" | "claude" | "codex" | "goose",
+  id: "g6-agent" | "claude" | "codex" | "goose",
   availability: string,
   authStatus: Record<string, unknown>,
   overrides: Record<string, unknown> = {},
@@ -11,8 +11,8 @@ function runtime(
   return {
     id,
     label:
-      id === "buzz-agent"
-        ? "Buzz Agent"
+      id === "g6-agent"
+        ? "Gear6 Agent"
         : id === "claude"
           ? "Claude Code"
           : id === "codex"
@@ -47,12 +47,12 @@ async function readSavedRuntime(page: Parameters<typeof installMockBridge>[0]) {
   return await page.evaluate(async () => {
     const result = await (
       window as Window & {
-        __BUZZ_E2E_INVOKE_MOCK_COMMAND__?: (
+        __GEAR6_E2E_INVOKE_MOCK_COMMAND__?: (
           command: string,
           payload: unknown,
         ) => Promise<{ preferred_runtime?: string | null }>;
       }
-    ).__BUZZ_E2E_INVOKE_MOCK_COMMAND__?.("get_global_agent_config", null);
+    ).__GEAR6_E2E_INVOKE_MOCK_COMMAND__?.("get_global_agent_config", null);
     return result?.preferred_runtime ?? null;
   });
 }
@@ -64,7 +64,7 @@ test("setup shows only Claude Code and Codex as detected harnesses", async ({
     page,
     {
       acpRuntimesCatalog: [
-        runtime("buzz-agent", "available", { status: "not_applicable" }),
+        runtime("g6-agent", "available", { status: "not_applicable" }),
         runtime("goose", "available", { status: "not_applicable" }),
         runtime("codex", "available", { status: "logged_in" }),
         runtime("claude", "available", { status: "logged_in" }),
@@ -78,7 +78,7 @@ test("setup shows only Claude Code and Codex as detected harnesses", async ({
   await expect(page.getByTestId("onboarding-runtime-claude")).toBeVisible();
   await expect(page.getByTestId("onboarding-runtime-codex")).toBeVisible();
   await expect(page.getByTestId("onboarding-runtime-goose")).toHaveCount(0);
-  await expect(page.getByTestId("onboarding-runtime-buzz-agent")).toHaveCount(
+  await expect(page.getByTestId("onboarding-runtime-g6-agent")).toHaveCount(
     0,
   );
   await expect(page.getByRole("checkbox")).toHaveCount(0);
@@ -407,7 +407,7 @@ test("defaults renders only fields supported by the selected harness", async ({
         runtime("claude", "available", { status: "logged_in" }),
       ],
       globalAgentConfig: {
-        env_vars: { BUZZ_AGENT_THINKING_EFFORT: "high" },
+        env_vars: { GEAR6_AGENT_THINKING_EFFORT: "high" },
         provider: null,
         model: "stale-model",
         preferred_runtime: null,
@@ -455,7 +455,7 @@ test("defaults auto-selects the only ready visible harness", async ({
     page,
     {
       acpRuntimesCatalog: [
-        runtime("buzz-agent", "available", { status: "not_applicable" }),
+        runtime("g6-agent", "available", { status: "not_applicable" }),
         runtime("goose", "available", { status: "not_applicable" }),
         runtime("claude", "available", { status: "logged_in" }),
         runtime("codex", "available", { status: "logged_out" }),
@@ -525,7 +525,7 @@ test("defaults requires a choice when multiple visible harnesses are ready", asy
     page,
     {
       acpRuntimesCatalog: [
-        runtime("buzz-agent", "available", { status: "not_applicable" }),
+        runtime("g6-agent", "available", { status: "not_applicable" }),
         runtime("goose", "available", { status: "not_applicable" }),
         runtime("claude", "available", { status: "logged_in" }),
         runtime("codex", "available", { status: "logged_in" }),
@@ -558,7 +558,7 @@ test("defaults requires a choice when multiple visible harnesses are ready", asy
     page.getByTestId("global-agent-default-harness-option-goose"),
   ).toHaveCount(0);
   await expect(
-    page.getByTestId("global-agent-default-harness-option-buzz-agent"),
+    page.getByTestId("global-agent-default-harness-option-g6-agent"),
   ).toHaveCount(0);
   await page.getByTestId("global-agent-default-harness-option-codex").click();
   await expect(harness).toHaveText("Codex");

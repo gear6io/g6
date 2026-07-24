@@ -36,3 +36,19 @@ export async function apiPost<T>(
   if (!res.ok) throw new Error(`gear6 POST ${endpoint} → HTTP ${res.status}`);
   return (await res.json()) as T;
 }
+
+/**
+ * A POST that fails loudly. Slack reports every method failure inside a 200 body
+ * (`{ok: false, error}`), so a bare `apiPost` makes a rejected mutation look
+ * like a success — the caller has to check `ok` or silently swallow it. Use this
+ * for anything that writes; use `apiGet`/`apiPost` only when the caller inspects
+ * `ok` itself.
+ */
+export async function apiCall<T>(
+  endpoint: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const res = await apiPost<T & { ok: boolean; error?: string }>(endpoint, body);
+  if (!res.ok) throw new Error(res.error ?? `gear6 ${endpoint} failed`);
+  return res;
+}

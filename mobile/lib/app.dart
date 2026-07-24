@@ -41,7 +41,7 @@ class App extends HookConsumerWidget {
       ref.watch(userStatusCacheProvider);
     }
 
-    // Start listening for buzz:// links immediately (even pre-auth) so a
+    // Start listening for g6:// links immediately (even pre-auth) so a
     // cold-start link survives until the authenticated UI can dispatch it.
     ref.watch(pendingDeepLinkProvider);
 
@@ -64,7 +64,7 @@ class App extends HookConsumerWidget {
     });
 
     return MaterialApp(
-      title: 'Buzz',
+      title: 'Gear6',
       theme: AppTheme.light(colorScheme: lightScheme),
       darkTheme: AppTheme.dark(colorScheme: darkScheme),
       themeMode: effectiveMode,

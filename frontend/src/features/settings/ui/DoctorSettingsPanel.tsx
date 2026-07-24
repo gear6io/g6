@@ -35,21 +35,21 @@ import { Spinner } from "@/shared/ui/spinner";
 import { Switch } from "@/shared/ui/switch";
 
 const RUNTIME_LOGO_URLS: Record<string, string> = {
-  "buzz-agent": "/app-icon@2x.png",
+  "g6-agent": "/app-icon@2x.png",
   claude: "/runtime-icons/claude.png",
   codex: "/runtime-icons/codex.png",
   goose: "/runtime-icons/goose.svg",
 };
 
 const RUNTIME_LOGO_SCALE: Record<string, string> = {
-  "buzz-agent": "scale-110",
+  "g6-agent": "scale-110",
   claude: "scale-110",
   codex: "scale-110",
   goose: "scale-125",
 };
 
 const RUNTIME_SORT_PRIORITY: Record<string, number> = {
-  "buzz-agent": 0,
+  "g6-agent": 0,
   goose: 1,
 };
 
@@ -402,7 +402,7 @@ function RuntimeRow({
           <AlertDialogHeader>
             <AlertDialogTitle>Update {runtime.label} adapter?</AlertDialogTitle>
             <AlertDialogDescription>
-              This replaces the machine-wide codex-acp adapter. Older Buzz
+              This replaces the machine-wide codex-acp adapter. Older Gear6
               releases using the legacy adapter may lose community access until
               @zed-industries/codex-acp@0.16.0 is restored.
             </AlertDialogDescription>
@@ -469,7 +469,7 @@ function GitBashCard({
         </div>
         {!prerequisite.available ? (
           <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-            <p>Required for buzz-agent shell tools on Windows.</p>
+            <p>Required for g6-agent shell tools on Windows.</p>
             <p>{prerequisite.installHint}</p>
           </div>
         ) : null}
@@ -553,7 +553,7 @@ export function DoctorSettingsPanel() {
       <SectionHeader
         className="items-center"
         title="Agent runtimes"
-        description="Choose which agent tools Buzz can use on this device."
+        description="Choose which agent tools Gear6 can use on this device."
         action={
           <Button
             disabled={isRefreshing}

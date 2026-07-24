@@ -1,0 +1,68 @@
+.g6-logo {
+  display: grid;
+  place-items: center;
+  inline-size: fit-content;
+}
+
+.g6-logo--screen {
+  min-block-size: 100vh;
+  inline-size: 100%;
+  overflow: hidden;
+}
+
+.g6-logo--background {
+  background-color: #d7d72e;
+  background-image: radial-gradient(
+    circle,
+    rgba(35, 30, 30, 0.16) 1.2px,
+    transparent 1.3px
+  );
+  background-position: 0 0;
+  background-size: 37px 37px;
+}
+
+.g6-logo__mark {
+  display: block;
+  inline-size: min(466px, calc(100vw - 32px));
+  block-size: auto;
+  overflow: visible;
+}
+
+.g6-logo--compact {
+  inline-size: 1.5rem;
+}
+
+.g6-logo--compact .g6-logo__mark {
+  inline-size: 100%;
+  block-size: auto;
+  max-inline-size: 100%;
+}
+
+.g6-logo__ink {
+  fill: currentColor;
+}
+
+@keyframes g6-logo-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.g6-logo--pulse .g6-logo__mark {
+  animation: g6-logo-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g6-logo animate {
+    display: none;
+  }
+
+  .g6-logo--pulse .g6-logo__mark {
+    animation: none;
+    opacity: 0.8;
+  }
+}

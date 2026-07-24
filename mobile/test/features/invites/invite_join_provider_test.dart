@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 import 'package:nostr/nostr.dart' as nostr;
 
-import 'package:buzz/features/invites/invite_join_provider.dart';
-import 'package:buzz/shared/auth/auth.dart';
-import 'package:buzz/shared/deeplink/deep_link.dart';
+import 'package:g6/features/invites/invite_join_provider.dart';
+import 'package:g6/shared/auth/auth.dart';
+import 'package:g6/shared/deeplink/deep_link.dart';
 
 import '../../shared/community/community_storage_test.dart';
 

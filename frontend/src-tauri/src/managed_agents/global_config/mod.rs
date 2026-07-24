@@ -7,7 +7,7 @@
 //! # Precedence (low → high)
 //!
 //! ```text
-//! baked build env  <  GLOBAL  <  persona  <  per-agent  <  Buzz-identity
+//! baked build env  <  GLOBAL  <  persona  <  per-agent  <  Gear6-identity
 //! ```
 //!
 //! # Semantics

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/misc.dart';
-import 'package:buzz/features/channels/channel.dart';
-import 'package:buzz/features/channels/channels_page.dart';
-import 'package:buzz/features/channels/channels_provider.dart';
-import 'package:buzz/features/channels/read_state/read_state_provider.dart';
-import 'package:buzz/features/channels/unread_badge/observed_unread_event.dart';
-import 'package:buzz/features/profile/profile_provider.dart';
-import 'package:buzz/features/profile/user_profile.dart';
-import 'package:buzz/shared/theme/theme.dart';
+import 'package:g6/features/channels/channel.dart';
+import 'package:g6/features/channels/channels_page.dart';
+import 'package:g6/features/channels/channels_provider.dart';
+import 'package:g6/features/channels/read_state/read_state_provider.dart';
+import 'package:g6/features/channels/unread_badge/observed_unread_event.dart';
+import 'package:g6/features/profile/profile_provider.dart';
+import 'package:g6/features/profile/user_profile.dart';
+import 'package:g6/shared/theme/theme.dart';
 
 void main() {
   Widget buildTestable({required List<Override> overrides}) {

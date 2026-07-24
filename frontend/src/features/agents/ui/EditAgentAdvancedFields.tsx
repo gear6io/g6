@@ -8,8 +8,8 @@ import {
   PERSONA_LABEL_OPTIONAL_CLASS,
 } from "./agentConfigOptions";
 import type { AgentPersona } from "@/shared/api/types";
-import { BuzzAgentModelTuningFields } from "./buzzAgentModelTuningFields";
-import { isBuzzAgentRuntime } from "./buzzAgentConfig";
+import { Gear6AgentModelTuningFields } from "./g6AgentModelTuningFields";
+import { isGear6AgentRuntime } from "./g6AgentConfig";
 
 export function EditAgentAdvancedFields({
   acpCommand,
@@ -53,16 +53,16 @@ export function EditAgentAdvancedFields({
   inheritedEnvVars: Record<string, string>;
   inheritHarness: boolean;
   linkedPersona: AgentPersona | null;
-  /** Active LLM model — forwarded to BuzzAgentModelTuningFields for effort filtering. */
+  /** Active LLM model — forwarded to Gear6AgentModelTuningFields for effort filtering. */
   model?: string;
   /**
    * The actual/prospective runtime id used to decide whether to show the
-   * buzz-agent model-tuning fields. Uses `prospectiveRuntimeId` from
+   * g6-agent model-tuning fields. Uses `prospectiveRuntimeId` from
    * EditAgentDialog — the resolved runtime, not the "inherit"/"custom" sentinel.
    */
   modelTuningRuntimeId: string;
   parallelism: string;
-  /** Active LLM provider id — forwarded to BuzzAgentModelTuningFields for effort filtering. */
+  /** Active LLM provider id — forwarded to Gear6AgentModelTuningFields for effort filtering. */
   provider?: string;
   requiredEnvKeys: readonly string[];
   selectedRuntimeId: string;
@@ -286,9 +286,9 @@ export function EditAgentAdvancedFields({
         value={envVars}
       />
 
-      {/* Tier-1 buzz-agent model-tuning knobs — only shown for buzz-agent. */}
-      {isBuzzAgentRuntime(modelTuningRuntimeId) ? (
-        <BuzzAgentModelTuningFields
+      {/* Tier-1 g6-agent model-tuning knobs — only shown for g6-agent. */}
+      {isGear6AgentRuntime(modelTuningRuntimeId) ? (
+        <Gear6AgentModelTuningFields
           envVars={envVars}
           inheritedEnvVars={inheritedEnvVars}
           model={model}

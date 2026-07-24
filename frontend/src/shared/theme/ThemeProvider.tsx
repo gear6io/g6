@@ -21,16 +21,16 @@ import {
   resolveSystemTheme,
 } from "./theme-loader";
 
-export const THEME_STORAGE_KEY = "buzz-theme";
-const CACHE_KEY = "buzz-theme-cache";
-export const ACCENT_STORAGE_KEY = "buzz-accent-color";
+export const THEME_STORAGE_KEY = "g6-theme";
+const CACHE_KEY = "g6-theme-cache";
+export const ACCENT_STORAGE_KEY = "g6-accent-color";
 export const NEUTRAL_ACCENT = "neutral";
-const FOLLOW_SYSTEM_KEY = "buzz-follow-system";
+const FOLLOW_SYSTEM_KEY = "g6-follow-system";
 const VIDEO_REVIEW_NEUTRAL_ACCENT = "0 0% 98%";
 const VIDEO_REVIEW_CHIP_SURFACE = "#161616";
 const VIDEO_REVIEW_TEXT_CONTRAST = 4.5;
 const VIDEO_REVIEW_CHIP_BACKGROUND_ALPHAS = [0.15, 0.3] as const;
-const BUZZ_VIBRANCY_MATERIAL = "sidebar";
+const GEAR6_VIBRANCY_MATERIAL = "sidebar";
 
 export const ACCENT_COLORS = [
   { name: "Neutral", value: NEUTRAL_ACCENT },
@@ -176,13 +176,13 @@ function applyAccentColor(value: string) {
     const styles = window.getComputedStyle(root);
     const foreground = styles.getPropertyValue("--foreground").trim();
     const background = styles.getPropertyValue("--background").trim();
-    root.style.setProperty("--buzz-selected-accent", foreground);
+    root.style.setProperty("--g6-selected-accent", foreground);
     root.style.setProperty(
-      "--buzz-video-review-accent",
+      "--g6-video-review-accent",
       VIDEO_REVIEW_NEUTRAL_ACCENT,
     );
     root.style.setProperty(
-      "--buzz-video-review-accent-foreground",
+      "--g6-video-review-accent-foreground",
       VIDEO_REVIEW_NEUTRAL_ACCENT,
     );
     root.style.setProperty("--primary", foreground);
@@ -197,10 +197,10 @@ function applyAccentColor(value: string) {
   const hex = value;
   const accentHsl = hexToHsl(hex);
   const fgHsl = hexToHsl(getContrastColor(hex));
-  root.style.setProperty("--buzz-selected-accent", accentHsl);
-  root.style.setProperty("--buzz-video-review-accent", accentHsl);
+  root.style.setProperty("--g6-selected-accent", accentHsl);
+  root.style.setProperty("--g6-video-review-accent", accentHsl);
   root.style.setProperty(
-    "--buzz-video-review-accent-foreground",
+    "--g6-video-review-accent-foreground",
     getReviewAccentForeground(hex),
   );
   root.style.setProperty("--primary", accentHsl);
@@ -212,119 +212,119 @@ function applyAccentColor(value: string) {
 }
 
 /**
- * The Buzz themes ship with a fixed neutral accent (the GitHub black/white
- * foreground) rather than a user-selectable accent color. When a Buzz theme is
+ * The Gear6 themes ship with a fixed neutral accent (the GitHub black/white
+ * foreground) rather than a user-selectable accent color. When a Gear6 theme is
  * active we force `NEUTRAL_ACCENT` regardless of the stored preference, and the
  * appearance panel hides the accent picker. The user's chosen accent is left
  * untouched in storage so it returns when they switch back to another theme.
  */
-export function isBuzzTheme(themeName: string): boolean {
-  return themeName === "buzz" || themeName === "buzz-dark";
+export function isGear6Theme(themeName: string): boolean {
+  return themeName === "g6" || themeName === "g6-dark";
 }
 
 /**
- * Resolve the accent to actually apply for a theme: Buzz themes are pinned to
+ * Resolve the accent to actually apply for a theme: Gear6 themes are pinned to
  * the neutral accent; every other theme uses the stored/selected accent.
  */
 function resolveEffectiveAccent(
   themeName: string,
   accentColor: string,
 ): string {
-  return isBuzzTheme(themeName) ? NEUTRAL_ACCENT : accentColor;
+  return isGear6Theme(themeName) ? NEUTRAL_ACCENT : accentColor;
 }
 
 /**
- * Toggle the opaque Buzz sidebar-gradient marker. This is always safe to apply
- * synchronously: `data-buzz-sidebar` paints solid gradient colors, so it never
+ * Toggle the opaque Gear6 sidebar-gradient marker. This is always safe to apply
+ * synchronously: `data-g6-sidebar` paints solid gradient colors, so it never
  * makes the window see-through. The *translucent* treatment (transparent
- * root/body) is handled separately via {@link setBuzzTranslucent} because it
+ * root/body) is handled separately via {@link setGear6Translucent} because it
  * must be sequenced against the native vibrancy layer — see
- * {@link applyBuzzVibrancy}.
+ * {@link applyGear6Vibrancy}.
  */
-function applyBuzzSidebar(themeName: string) {
+function applyGear6Sidebar(themeName: string) {
   const root = document.documentElement;
-  if (isBuzzTheme(themeName)) {
-    root.setAttribute("data-buzz-sidebar", "");
-    // Keep the concrete Buzz variant on the root as well as the generic
+  if (isGear6Theme(themeName)) {
+    root.setAttribute("data-g6-sidebar", "");
+    // Keep the concrete Gear6 variant on the root as well as the generic
     // marker. The gradient stylesheet matches this attribute directly, which
     // makes WKWebView invalidate the painted background when light/dark mode
     // changes instead of relying only on a custom-property dependency update.
-    root.setAttribute("data-buzz-theme", themeName);
+    root.setAttribute("data-g6-theme", themeName);
   } else {
-    root.removeAttribute("data-buzz-sidebar");
-    root.removeAttribute("data-buzz-theme");
-    // Leaving Buzz: drop translucency synchronously here too. Going *opaque*
+    root.removeAttribute("data-g6-sidebar");
+    root.removeAttribute("data-g6-theme");
+    // Leaving Gear6: drop translucency synchronously here too. Going *opaque*
     // never shows desktop/prior content through, so there's no ordering risk
     // on the way out — only on the way in.
-    setBuzzTranslucent(false);
+    setGear6Translucent(false);
   }
 }
 
 /**
  * Toggle the translucent (see-through) treatment: transparent root/body so the
  * native macOS vibrancy layer shows through behind the sidebar glass. The
- * transparent root/body themselves are driven by the `data-buzz-translucent`
+ * transparent root/body themselves are driven by the `data-g6-translucent`
  * CSS rule (theme.css), so we only flip the attribute here — no inline styles.
  *
  * IMPORTANT: enabling translucency exposes whatever the compositor paints
  * behind the webview. Only enable it once the native `NSVisualEffectView`
  * vibrancy layer is confirmed installed, otherwise there's a frame where the
  * transparent webview reveals the content behind it (the "main app nav
- * underneath" flicker). {@link applyBuzzVibrancy} owns that sequencing.
+ * underneath" flicker). {@link applyGear6Vibrancy} owns that sequencing.
  */
-function setBuzzTranslucent(enabled: boolean) {
+function setGear6Translucent(enabled: boolean) {
   const root = document.documentElement;
   if (enabled) {
-    root.setAttribute("data-buzz-translucent", "");
+    root.setAttribute("data-g6-translucent", "");
   } else {
-    root.removeAttribute("data-buzz-translucent");
+    root.removeAttribute("data-g6-translucent");
   }
 }
 
 /**
  * Monotonic token identifying the most recent vibrancy request. Because
- * {@link applyBuzzVibrancy} awaits the native `set_window_vibrancy` IPC, a rapid
- * Buzz → non-Buzz toggle can fire two overlapping calls whose awaits resolve out
+ * {@link applyGear6Vibrancy} awaits the native `set_window_vibrancy` IPC, a rapid
+ * Gear6 → non-Gear6 toggle can fire two overlapping calls whose awaits resolve out
  * of order. Each call captures the token before awaiting and re-checks it after;
  * a stale continuation (superseded by a newer request) bails without touching
- * translucency — otherwise the earlier Buzz call could re-add
- * `data-buzz-translucent` after the later non-Buzz call already cleared it,
- * leaving the window transparent under a non-Buzz theme.
+ * translucency — otherwise the earlier Gear6 call could re-add
+ * `data-g6-translucent` after the later non-Gear6 call already cleared it,
+ * leaving the window transparent under a non-Gear6 theme.
  */
-let buzzVibrancyRequest = 0;
+let g6VibrancyRequest = 0;
 
 /**
- * Whether the native vibrancy layer is confirmed installed for a Buzz theme.
+ * Whether the native vibrancy layer is confirmed installed for a Gear6 theme.
  * Set true only after `set_window_vibrancy(true)` resolves; cleared as soon as a
  * new vibrancy request is issued (its outcome is not yet known).
  */
-let buzzVibrancyReady = false;
+let g6VibrancyReady = false;
 
-/** The native layer does not need rebuilding when Buzz only changes mode. */
-let buzzVibrancyEnabled = false;
+/** The native layer does not need rebuilding when Gear6 only changes mode. */
+let g6VibrancyEnabled = false;
 
 /**
  * Enable the CSS translucency treatment, but only once BOTH prerequisites for
  * the current request are in place:
  *
- *  1. the native vibrancy layer is installed ({@link buzzVibrancyReady}), and
- *  2. the Buzz sidebar marker + gradient vars are applied (`data-buzz-sidebar`,
- *     set synchronously by {@link applyBuzzSidebar} inside {@link applyTheme}).
+ *  1. the native vibrancy layer is installed ({@link g6VibrancyReady}), and
+ *  2. the Gear6 sidebar marker + gradient vars are applied (`data-g6-sidebar`,
+ *     set synchronously by {@link applyGear6Sidebar} inside {@link applyTheme}).
  *
  * Translucency clears the body/sidebar surfaces so the vibrancy layer shows
- * through; enabling it before the Buzz gradient vars are installed would flash a
+ * through; enabling it before the Gear6 gradient vars are installed would flash a
  * transparent/unstyled sidebar. `applyTheme` (theme vars) and
- * `applyBuzzVibrancy` (native layer) are independent async effects that can win
+ * `applyGear6Vibrancy` (native layer) are independent async effects that can win
  * their race in either order, so each calls this after its own step completes —
  * whichever lands last flips translucency on. The token check drops stale
  * continuations superseded by a newer theme switch.
  */
-function maybeEnableBuzzTranslucent(themeName: string, requestToken: number) {
-  if (requestToken !== buzzVibrancyRequest) return;
-  if (!isBuzzTheme(themeName) || !isMacPlatform()) return;
-  if (!buzzVibrancyReady) return;
-  if (!document.documentElement.hasAttribute("data-buzz-sidebar")) return;
-  setBuzzTranslucent(true);
+function maybeEnableGear6Translucent(themeName: string, requestToken: number) {
+  if (requestToken !== g6VibrancyRequest) return;
+  if (!isGear6Theme(themeName) || !isMacPlatform()) return;
+  if (!g6VibrancyReady) return;
+  if (!document.documentElement.hasAttribute("data-g6-sidebar")) return;
+  setGear6Translucent(true);
 }
 
 /**
@@ -332,66 +332,66 @@ function maybeEnableBuzzTranslucent(themeName: string, requestToken: number) {
  * the right order and never leave a transparent webview with nothing painted
  * behind it:
  *
- * - Entering Buzz (macOS): install the vibrancy layer first (await the IPC),
+ * - Entering Gear6 (macOS): install the vibrancy layer first (await the IPC),
  *   *then* flip on translucency. This closes the frame-gap where the root was
  *   transparent before the vibrancy view existed — the flicker.
- * - Leaving Buzz: translucency was already removed synchronously in
- *   `applyBuzzSidebar` (safe — opaque never shows through), so here we just
+ * - Leaving Gear6: translucency was already removed synchronously in
+ *   `applyGear6Sidebar` (safe — opaque never shows through), so here we just
  *   clear the native layer.
  *
  * On non-macOS `set_window_vibrancy` is a no-op and translucency stays off, so
- * these platforms fall back to the opaque Buzz gradient.
+ * these platforms fall back to the opaque Gear6 gradient.
  *
- * Overlapping calls are guarded by {@link buzzVibrancyRequest} so a stale async
+ * Overlapping calls are guarded by {@link g6VibrancyRequest} so a stale async
  * continuation can't re-enable translucency after a newer theme superseded it.
  */
-async function applyBuzzVibrancy(themeName: string) {
-  const buzz = isBuzzTheme(themeName);
-  const requestToken = ++buzzVibrancyRequest;
+async function applyGear6Vibrancy(themeName: string) {
+  const g6 = isGear6Theme(themeName);
+  const requestToken = ++g6VibrancyRequest;
 
-  // Buzz Light and Buzz Dark use the same native material. Rebuilding the
+  // Gear6 Light and Gear6 Dark use the same native material. Rebuilding the
   // NSVisualEffectView on every mode change briefly clears the layer behind
   // the webview and makes the new CSS theme appear late. Keep the installed
   // layer and let applyTheme swap only the color tokens.
-  if (buzz && buzzVibrancyEnabled && buzzVibrancyReady) {
-    maybeEnableBuzzTranslucent(themeName, requestToken);
+  if (g6 && g6VibrancyEnabled && g6VibrancyReady) {
+    maybeEnableGear6Translucent(themeName, requestToken);
     return;
   }
 
   // A new request is in flight — the vibrancy layer's readiness for it is not
   // yet known, so any stale "ready" from a prior request must not gate this one.
-  buzzVibrancyReady = false;
+  g6VibrancyReady = false;
 
   if (!isTauri()) {
     // Web/dev preview: no native vibrancy layer exists, so translucency would
     // show raw page background. Keep it off; the opaque gradient stands in.
-    setBuzzTranslucent(false);
+    setGear6Translucent(false);
     return;
   }
 
   try {
     await invokeTauri<void>("set_window_vibrancy", {
-      enabled: buzz,
-      material: BUZZ_VIBRANCY_MATERIAL,
+      enabled: g6,
+      material: GEAR6_VIBRANCY_MATERIAL,
     });
     // A newer theme change superseded this request while the IPC was in flight;
     // that later call owns the current translucency state, so don't clobber it.
-    if (requestToken !== buzzVibrancyRequest) return;
-    buzzVibrancyEnabled = buzz;
+    if (requestToken !== g6VibrancyRequest) return;
+    g6VibrancyEnabled = g6;
     // Native layer is installed. Record readiness and try to enable translucency
-    // — but only if `applyBuzzSidebar` has already installed the Buzz gradient
+    // — but only if `applyGear6Sidebar` has already installed the Gear6 gradient
     // vars. If that effect hasn't landed yet (the IPC won the race), it will
-    // call maybeEnableBuzzTranslucent itself once the marker is applied.
-    if (buzz && isMacPlatform()) {
-      buzzVibrancyReady = true;
-      maybeEnableBuzzTranslucent(themeName, requestToken);
+    // call maybeEnableGear6Translucent itself once the marker is applied.
+    if (g6 && isMacPlatform()) {
+      g6VibrancyReady = true;
+      maybeEnableGear6Translucent(themeName, requestToken);
     }
   } catch (error) {
     console.warn("set_window_vibrancy failed", error);
-    if (requestToken !== buzzVibrancyRequest) return;
+    if (requestToken !== g6VibrancyRequest) return;
     // Vibrancy failed — don't go transparent or we'd show through to nothing.
-    buzzVibrancyEnabled = false;
-    setBuzzTranslucent(false);
+    g6VibrancyEnabled = false;
+    setGear6Translucent(false);
   }
 }
 
@@ -407,12 +407,12 @@ function applyCachedVars(): string | null {
     }
     root.classList.remove("light", "dark");
     root.classList.add(isDark ? "dark" : "light");
-    applyBuzzSidebar(themeName);
+    applyGear6Sidebar(themeName);
 
     const accent =
       window.localStorage.getItem(ACCENT_STORAGE_KEY) ?? DEFAULT_ACCENT;
-    // Pin Buzz themes to the neutral accent here too, matching applyTheme.
-    // Otherwise a cached Buzz theme + non-neutral stored accent flashes the
+    // Pin Gear6 themes to the neutral accent here too, matching applyTheme.
+    // Otherwise a cached Gear6 theme + non-neutral stored accent flashes the
     // old accent on reload until the async applyTheme effect runs.
     applyAccentColor(resolveEffectiveAccent(themeName, accent));
 
@@ -447,18 +447,18 @@ async function applyTheme(
 
   root.classList.remove("light", "dark");
   root.classList.add(isDark ? "dark" : "light");
-  applyBuzzSidebar(name);
-  // The Buzz gradient vars are now installed. If the vibrancy layer already
+  applyGear6Sidebar(name);
+  // The Gear6 gradient vars are now installed. If the vibrancy layer already
   // resolved for the current request (the IPC won the race against this theme
-  // load), enable translucency now — otherwise applyBuzzVibrancy does it. This
+  // load), enable translucency now — otherwise applyGear6Vibrancy does it. This
   // is the second half of the two-effect handshake; the token guards against a
   // superseding theme switch.
-  maybeEnableBuzzTranslucent(name, buzzVibrancyRequest);
+  maybeEnableGear6Translucent(name, g6VibrancyRequest);
 
   // Apply the accent synchronously in the same batch as the theme vars so the
   // browser paints the new theme + accent together. Doing this in a later
   // microtask (e.g. the caller's `.then`) let the previous accent flash on the
-  // new theme for a frame — the flicker seen when switching to Buzz. Buzz
+  // new theme for a frame — the flicker seen when switching to Gear6. Gear6
   // themes resolve to the neutral accent regardless of the stored value.
   applyAccentColor(
     resolveEffectiveAccent(
@@ -482,7 +482,7 @@ async function applyTheme(
 
 export function ThemeProvider({
   children,
-  defaultTheme = "buzz",
+  defaultTheme = "g6",
 }: ThemeProviderProps) {
   // Apply cached vars synchronously before first render
   const [selectedTheme, setSelectedTheme] = useState<string>(() => {
@@ -500,7 +500,7 @@ export function ThemeProvider({
   const [followSystem, setFollowSystemState] = useState<boolean>(() => {
     const stored = window.localStorage.getItem(FOLLOW_SYSTEM_KEY);
     if (stored !== null) return stored === "true";
-    // Fresh profiles (no saved theme) default to System mode so the Buzz
+    // Fresh profiles (no saved theme) default to System mode so the Gear6
     // default tracks the OS light/dark scheme. Profiles that picked a theme
     // before this toggle existed keep their fixed theme until they opt in.
     return window.localStorage.getItem(THEME_STORAGE_KEY) === null;
@@ -542,7 +542,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     if (!isValidThemeName(effectiveTheme)) return;
-    void applyBuzzVibrancy(effectiveTheme);
+    void applyGear6Vibrancy(effectiveTheme);
   }, [effectiveTheme]);
 
   // Listen for system color scheme changes when followSystem is enabled
@@ -588,7 +588,7 @@ export function ThemeProvider({
   }, [followSystem]);
 
   // Re-apply the accent when the user picks a new swatch or the effective theme
-  // changes. applyTheme already applies the (Buzz-neutral-aware) accent in the
+  // changes. applyTheme already applies the (Gear6-neutral-aware) accent in the
   // same synchronous batch as the theme vars — the flicker fix — so this effect
   // is idempotent on theme changes and simply covers accent-only changes.
   useEffect(() => {

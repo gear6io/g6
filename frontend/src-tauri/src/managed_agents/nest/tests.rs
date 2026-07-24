@@ -3,18 +3,18 @@ use super::*;
 #[test]
 fn nest_dir_is_under_home() {
     if let Some(dir) = nest_dir() {
-        // Accepts both .buzz (prod) and .buzz-dev (dev) depending on
+        // Accepts both .g6 (prod) and .g6-dev (dev) depending on
         // whether init_nest_dir was called before this test ran.
         let name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
         assert!(
             name == NEST_DIR_PROD || name == NEST_DIR_DEV,
-            "nest_dir must end with .buzz or .buzz-dev, got {dir:?}"
+            "nest_dir must end with .g6 or .g6-dev, got {dir:?}"
         );
     }
 }
 
 #[test]
-fn init_nest_dir_prod_sets_buzz() {
+fn init_nest_dir_prod_sets_g6() {
     // init_nest_dir is idempotent (OnceLock) — once set, subsequent calls
     // are no-ops. We can only test the fallback path if the OnceLock is
     // unset, which is only true in a fresh process. Instead, verify that
@@ -24,7 +24,7 @@ fn init_nest_dir_prod_sets_buzz() {
         let name = d.file_name().and_then(|n| n.to_str()).unwrap_or("");
         assert!(
             name == NEST_DIR_PROD || name == NEST_DIR_DEV,
-            "nest_dir suffix must be .buzz or .buzz-dev, got {d:?}"
+            "nest_dir suffix must be .g6 or .g6-dev, got {d:?}"
         );
     }
 }
@@ -32,7 +32,7 @@ fn init_nest_dir_prod_sets_buzz() {
 #[test]
 fn ensure_nest_creates_all_dirs_and_agents_md() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
 
     ensure_nest_at(&root).unwrap();
 
@@ -70,7 +70,7 @@ fn ensure_nest_creates_all_dirs_and_agents_md() {
 #[test]
 fn ensure_nest_is_idempotent_and_preserves_custom_content() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
 
     // First call creates everything.
     ensure_nest_at(&root).unwrap();
@@ -99,7 +99,7 @@ fn ensure_nest_rejects_symlink_root() {
     let tmp = tempfile::tempdir().unwrap();
     let target = tmp.path().join("real_dir");
     fs::create_dir(&target).unwrap();
-    let link = tmp.path().join(".buzz");
+    let link = tmp.path().join(".g6");
     std::os::unix::fs::symlink(&target, &link).unwrap();
 
     let result = ensure_nest_at(&link);
@@ -110,27 +110,27 @@ fn ensure_nest_rejects_symlink_root() {
 #[test]
 fn ensure_nest_creates_skill_file() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
 
     // Canonical location under .agents.
-    let skill = root.join(".agents/skills/buzz-cli/SKILL.md");
+    let skill = root.join(".agents/skills/g6-cli/SKILL.md");
     assert!(skill.exists(), "SKILL.md should exist at .agents path");
     let content = fs::read_to_string(&skill).unwrap();
-    assert_eq!(content, BUZZ_CLI_SKILL_MD);
+    assert_eq!(content, GEAR6_CLI_SKILL_MD);
 
     // On unix, harness-specific symlinks should resolve to the canonical dir.
     #[cfg(unix)]
     {
         for dir in [".goose/skills", ".claude/skills", ".codex/skills"] {
-            let link = root.join(dir).join("buzz-cli");
+            let link = root.join(dir).join("g6-cli");
             assert!(
                 link.symlink_metadata().unwrap().file_type().is_symlink(),
-                "{dir}/buzz-cli should be a symlink"
+                "{dir}/g6-cli should be a symlink"
             );
             assert!(
                 link.join("SKILL.md").exists(),
-                "symlink at {dir}/buzz-cli should resolve to dir with SKILL.md"
+                "symlink at {dir}/g6-cli should resolve to dir with SKILL.md"
             );
         }
     }
@@ -139,10 +139,10 @@ fn ensure_nest_creates_skill_file() {
 #[test]
 fn ensure_nest_does_not_overwrite_skill_file() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
 
-    let skill = root.join(".agents/skills/buzz-cli/SKILL.md");
+    let skill = root.join(".agents/skills/g6-cli/SKILL.md");
     fs::write(&skill, "custom skill content").unwrap();
 
     ensure_nest_at(&root).unwrap();
@@ -154,14 +154,14 @@ fn ensure_nest_does_not_overwrite_skill_file() {
 fn ensure_nest_skill_dir_has_700_permissions() {
     use std::os::unix::fs::PermissionsExt;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
     // Canonical path and all provider parent dirs should be locked down.
-    // Symlinks (e.g. .goose/skills/buzz-cli) are skipped by the chmod loop.
+    // Symlinks (e.g. .goose/skills/g6-cli) are skipped by the chmod loop.
     for dir in [
         ".agents",
         ".agents/skills",
-        ".agents/skills/buzz-cli",
+        ".agents/skills/g6-cli",
         ".goose",
         ".goose/skills",
         ".claude",
@@ -181,7 +181,7 @@ fn ensure_nest_skips_permissions_on_symlinked_child() {
     use std::os::unix::fs::PermissionsExt;
 
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
 
     // First call creates the real nest.
     ensure_nest_at(&root).unwrap();
@@ -208,32 +208,32 @@ fn ensure_nest_skips_permissions_on_symlinked_child() {
 #[test]
 fn ensure_nest_migrates_old_skill_dir() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
 
     // Simulate a pre-migration install: real directory at old path.
     // Create the nest first to get all dirs, then simulate old layout.
     ensure_nest_at(&root).unwrap();
 
     // Remove the symlink and new skill dir, recreate old real dir.
-    let _ = fs::remove_file(root.join(".claude/skills/buzz-cli"));
-    let _ = fs::remove_dir_all(root.join(".agents/skills/buzz-cli"));
-    let old_skill_dir = root.join(".claude/skills/buzz-cli");
+    let _ = fs::remove_file(root.join(".claude/skills/g6-cli"));
+    let _ = fs::remove_dir_all(root.join(".agents/skills/g6-cli"));
+    let old_skill_dir = root.join(".claude/skills/g6-cli");
     fs::create_dir_all(&old_skill_dir).unwrap();
     fs::write(old_skill_dir.join("SKILL.md"), "user edited skill").unwrap();
 
     // Delete version file to force refresh.
-    let _ = fs::remove_file(root.join(".agents/skills/buzz-cli/.skill-version"));
+    let _ = fs::remove_file(root.join(".agents/skills/g6-cli/.skill-version"));
 
     // Re-run ensure_nest_at — should trigger migration in refresh_skill_md_if_stale.
     ensure_nest_at(&root).unwrap();
 
     // New canonical location exists with user's content preserved.
-    let new_skill = root.join(".agents/skills/buzz-cli/SKILL.md");
+    let new_skill = root.join(".agents/skills/g6-cli/SKILL.md");
     assert!(new_skill.exists(), "SKILL.md should exist at new path");
     assert_eq!(fs::read_to_string(&new_skill).unwrap(), "user edited skill");
 
     // Old path is now a symlink, not a real directory.
-    let old_path = root.join(".claude/skills/buzz-cli");
+    let old_path = root.join(".claude/skills/g6-cli");
     assert!(
         old_path
             .symlink_metadata()
@@ -248,23 +248,23 @@ fn ensure_nest_migrates_old_skill_dir() {
 #[test]
 fn ensure_skill_symlinks_are_idempotent() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
     // Second call should succeed without errors.
     ensure_nest_at(&root).unwrap();
     // All symlinks still valid and point to relative targets.
     for dir in [".goose/skills", ".claude/skills", ".codex/skills"] {
-        let link = root.join(dir).join("buzz-cli");
+        let link = root.join(dir).join("g6-cli");
         assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
         assert!(
             link.join("SKILL.md").exists(),
-            "symlink at {dir}/buzz-cli should resolve to dir with SKILL.md"
+            "symlink at {dir}/g6-cli should resolve to dir with SKILL.md"
         );
         let target = fs::read_link(&link).unwrap();
         assert_eq!(
             target.to_str().unwrap(),
             format!("../../{CANONICAL_SKILL_DIR}"),
-            "symlink at {dir}/buzz-cli should use relative target"
+            "symlink at {dir}/g6-cli should use relative target"
         );
     }
 }
@@ -274,13 +274,13 @@ fn ensure_skill_symlinks_are_idempotent() {
 fn ensure_skill_symlinks_skips_existing_path_during_initial_pass() {
     // ensure_skill_symlinks skips any path where symlink_metadata succeeds.
     // However, refresh_skill_md_if_stale (called after ensure_skill_symlinks)
-    // migrates pre-existing real directories at .claude/skills/buzz-cli to
+    // migrates pre-existing real directories at .claude/skills/g6-cli to
     // symlinks. This test verifies the end-to-end behavior: a pre-existing real
     // dir at the claude path is migrated to a symlink.
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     // Pre-create a real directory where a symlink would go.
-    let real_dir = root.join(".claude/skills/buzz-cli");
+    let real_dir = root.join(".claude/skills/g6-cli");
     fs::create_dir_all(&real_dir).unwrap();
     // Place SKILL.md so migration preserves it.
     fs::write(real_dir.join("SKILL.md"), "custom skill content").unwrap();
@@ -294,10 +294,10 @@ fn ensure_skill_symlinks_skips_existing_path_during_initial_pass() {
             .unwrap()
             .file_type()
             .is_symlink(),
-        ".claude/skills/buzz-cli should be migrated to a symlink"
+        ".claude/skills/g6-cli should be migrated to a symlink"
     );
     // The canonical path now holds the migrated content.
-    let canonical = root.join(".agents/skills/buzz-cli/SKILL.md");
+    let canonical = root.join(".agents/skills/g6-cli/SKILL.md");
     assert_eq!(
         fs::read_to_string(&canonical).unwrap(),
         "custom skill content"
@@ -308,11 +308,11 @@ fn ensure_skill_symlinks_skips_existing_path_during_initial_pass() {
 #[test]
 fn ensure_skill_symlinks_skip_dangling_symlink() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     // Pre-create a dangling symlink where the .codex link would go.
     let codex_skills = root.join(".codex/skills");
     fs::create_dir_all(&codex_skills).unwrap();
-    let dangling = codex_skills.join("buzz-cli");
+    let dangling = codex_skills.join("g6-cli");
     std::os::unix::fs::symlink("/nonexistent/target", &dangling).unwrap();
 
     ensure_nest_at(&root).unwrap();
@@ -330,13 +330,13 @@ fn ensure_skill_symlinks_skip_dangling_symlink() {
 }
 
 #[test]
-fn cli_link_name_prod_is_buzz() {
-    assert_eq!(cli_link_name(false), "buzz");
+fn cli_link_name_prod_is_g6() {
+    assert_eq!(cli_link_name(false), "g6");
 }
 
 #[test]
-fn cli_link_name_dev_is_buzz_dev() {
-    assert_eq!(cli_link_name(true), "buzz-dev");
+fn cli_link_name_dev_is_g6_dev() {
+    assert_eq!(cli_link_name(true), "g6-dev");
 }
 
 #[cfg(unix)]
@@ -345,16 +345,16 @@ fn ensure_cli_symlink_creates_symlink_prod() {
     let tmp = tempfile::tempdir().unwrap();
     let exe_parent = tmp.path().join("MacOS");
     fs::create_dir(&exe_parent).unwrap();
-    fs::write(exe_parent.join("buzz"), "binary").unwrap();
+    fs::write(exe_parent.join("g6"), "binary").unwrap();
 
     let local_bin = tmp.path().join("local_bin");
     fs::create_dir_all(&local_bin).unwrap();
 
-    // Prod link name is "buzz"; simulate the symlink creation path.
+    // Prod link name is "g6"; simulate the symlink creation path.
     let link = local_bin.join(cli_link_name(false));
-    std::os::unix::fs::symlink(exe_parent.join("buzz"), &link).unwrap();
+    std::os::unix::fs::symlink(exe_parent.join("g6"), &link).unwrap();
     assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
-    assert_eq!(fs::read_link(&link).unwrap(), exe_parent.join("buzz"));
+    assert_eq!(fs::read_link(&link).unwrap(), exe_parent.join("g6"));
 }
 
 #[cfg(unix)]
@@ -363,20 +363,20 @@ fn ensure_cli_symlink_creates_symlink_dev() {
     let tmp = tempfile::tempdir().unwrap();
     let exe_parent = tmp.path().join("MacOS");
     fs::create_dir(&exe_parent).unwrap();
-    fs::write(exe_parent.join("buzz"), "binary").unwrap();
+    fs::write(exe_parent.join("g6"), "binary").unwrap();
 
     let local_bin = tmp.path().join("local_bin");
     fs::create_dir_all(&local_bin).unwrap();
 
-    // Dev link must be "buzz-dev", never "buzz".
-    assert_eq!(cli_link_name(true), "buzz-dev");
+    // Dev link must be "g6-dev", never "g6".
+    assert_eq!(cli_link_name(true), "g6-dev");
 
     let link = local_bin.join(cli_link_name(true));
-    std::os::unix::fs::symlink(exe_parent.join("buzz"), &link).unwrap();
+    std::os::unix::fs::symlink(exe_parent.join("g6"), &link).unwrap();
     assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
-    assert_eq!(fs::read_link(&link).unwrap(), exe_parent.join("buzz"));
+    assert_eq!(fs::read_link(&link).unwrap(), exe_parent.join("g6"));
     // Prod link must not exist — the two builds don't touch each other.
-    assert!(!local_bin.join("buzz").exists());
+    assert!(!local_bin.join("g6").exists());
 }
 
 #[cfg(unix)]
@@ -400,13 +400,13 @@ fn ensure_cli_symlink_does_not_clobber_regular_file_dev() {
     let local_bin = tmp.path().join("local_bin");
     fs::create_dir_all(&local_bin).unwrap();
     let link = local_bin.join(cli_link_name(true));
-    fs::write(&link, "user-installed buzz-dev binary").unwrap();
+    fs::write(&link, "user-installed g6-dev binary").unwrap();
 
     // Regular files at the dev path are also preserved.
     assert!(link.symlink_metadata().unwrap().file_type().is_file());
     assert_eq!(
         fs::read_to_string(&link).unwrap(),
-        "user-installed buzz-dev binary"
+        "user-installed g6-dev binary"
     );
 }
 
@@ -519,15 +519,15 @@ fn test_upsert_managed_section_with_markers() {
     let file = tmp.path().join("AGENTS.md");
     fs::write(
             &file,
-            "# Header\n\nsome content\n\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\nold section\n<!-- END BUZZ MANAGED -->\n\nafter\n",
+            "# Header\n\nsome content\n\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\nold section\n<!-- END GEAR6 MANAGED -->\n\nafter\n",
         )
         .unwrap();
 
     upsert_managed_section(&file, "new section").unwrap();
 
     let result = fs::read_to_string(&file).unwrap();
-    assert!(result.contains("<!-- BEGIN BUZZ MANAGED"));
-    assert!(result.contains("<!-- END BUZZ MANAGED -->"));
+    assert!(result.contains("<!-- BEGIN GEAR6 MANAGED"));
+    assert!(result.contains("<!-- END GEAR6 MANAGED -->"));
     assert!(result.contains("new section"));
     assert!(!result.contains("old section"));
     assert!(result.contains("# Header"));
@@ -546,10 +546,10 @@ fn test_upsert_managed_section_without_markers() {
     let result = fs::read_to_string(&file).unwrap();
     assert!(result.contains("# Header"));
     assert!(result.contains("existing content"));
-    assert!(result.contains("<!-- BEGIN BUZZ MANAGED"));
-    assert!(result.contains("<!-- END BUZZ MANAGED -->"));
+    assert!(result.contains("<!-- BEGIN GEAR6 MANAGED"));
+    assert!(result.contains("<!-- END GEAR6 MANAGED -->"));
     assert!(result.contains("injected section"));
-    let begin_pos = result.find("<!-- BEGIN BUZZ MANAGED").unwrap();
+    let begin_pos = result.find("<!-- BEGIN GEAR6 MANAGED").unwrap();
     let header_pos = result.find("# Header").unwrap();
     assert!(
         header_pos < begin_pos,
@@ -589,7 +589,7 @@ fn test_upsert_end_before_begin() {
     let file = tmp.path().join("AGENTS.md");
     fs::write(
             &file,
-            "# Header\n\n<!-- END BUZZ MANAGED -->\nsome middle content\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\nold section\n",
+            "# Header\n\n<!-- END GEAR6 MANAGED -->\nsome middle content\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\nold section\n",
         )
         .unwrap();
 
@@ -636,7 +636,7 @@ fn test_upsert_begin_only_no_end() {
     let file = tmp.path().join("AGENTS.md");
     fs::write(
             &file,
-            "# Header\n\nsome content\n\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\norphaned section without end marker\n",
+            "# Header\n\nsome content\n\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\norphaned section without end marker\n",
         )
         .unwrap();
 
@@ -677,7 +677,7 @@ fn test_upsert_duplicate_markers() {
     let file = tmp.path().join("AGENTS.md");
     fs::write(
             &file,
-            "# Header\n\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\nfirst block\n<!-- END BUZZ MANAGED -->\n\nbetween blocks\n\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\nsecond block\n<!-- END BUZZ MANAGED -->\n",
+            "# Header\n\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\nfirst block\n<!-- END GEAR6 MANAGED -->\n\nbetween blocks\n\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\nsecond block\n<!-- END GEAR6 MANAGED -->\n",
         )
         .unwrap();
 
@@ -710,7 +710,7 @@ fn test_upsert_marker_in_code_block() {
     // Indented by 4 spaces — not at column 0, so should NOT match as a real marker.
     fs::write(
         &file,
-        "# Header\n\n    <!-- BEGIN BUZZ MANAGED — some indented marker -->\n\nReal content here\n",
+        "# Header\n\n    <!-- BEGIN GEAR6 MANAGED — some indented marker -->\n\nReal content here\n",
     )
     .unwrap();
 
@@ -719,7 +719,7 @@ fn test_upsert_marker_in_code_block() {
     let result = fs::read_to_string(&file).unwrap();
 
     assert!(
-        result.contains("    <!-- BEGIN BUZZ MANAGED — some indented marker -->"),
+        result.contains("    <!-- BEGIN GEAR6 MANAGED — some indented marker -->"),
         "indented marker inside code block must be preserved verbatim"
     );
     assert!(
@@ -733,7 +733,7 @@ fn test_upsert_marker_in_code_block() {
 
     // The real markers appended at the end must be at line-start (column 0).
     let begin_pos = result
-        .find("<!-- BEGIN BUZZ MANAGED — regenerated")
+        .find("<!-- BEGIN GEAR6 MANAGED — regenerated")
         .expect("regenerated BEGIN marker must be present");
     assert!(
         begin_pos == 0 || result.as_bytes()[begin_pos - 1] == b'\n',
@@ -798,7 +798,7 @@ fn test_upsert_idempotent() {
     let file = tmp.path().join("AGENTS.md");
     fs::write(
             &file,
-            "# Header\n\n<!-- BEGIN BUZZ MANAGED — regenerated automatically, do not edit below -->\nexisting section\n<!-- END BUZZ MANAGED -->\n",
+            "# Header\n\n<!-- BEGIN GEAR6 MANAGED — regenerated automatically, do not edit below -->\nexisting section\n<!-- END GEAR6 MANAGED -->\n",
         )
         .unwrap();
 
@@ -817,7 +817,7 @@ fn test_upsert_idempotent() {
 #[test]
 fn refresh_agents_md_writes_version_file() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
     let version = fs::read_to_string(root.join(".nest-agents-version")).unwrap();
     assert_eq!(version.trim(), NEST_AGENTS_VERSION.to_string());
@@ -826,16 +826,16 @@ fn refresh_agents_md_writes_version_file() {
 #[test]
 fn refresh_skill_md_writes_version_file() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
-    let version = fs::read_to_string(root.join(".agents/skills/buzz-cli/.skill-version")).unwrap();
+    let version = fs::read_to_string(root.join(".agents/skills/g6-cli/.skill-version")).unwrap();
     assert_eq!(version.trim(), NEST_SKILL_VERSION.to_string());
 }
 
 #[test]
 fn refresh_agents_md_preserves_managed_section() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
 
     // Simulate a managed section update.
@@ -855,7 +855,7 @@ fn refresh_agents_md_preserves_managed_section() {
     let content = fs::read_to_string(&agents_md).unwrap();
     // Static content should be refreshed (from template).
     assert!(
-        content.starts_with("# Buzz Nest"),
+        content.starts_with("# Gear6 Nest"),
         "template header must be present"
     );
     // Managed section should be preserved.
@@ -870,7 +870,7 @@ fn refresh_agents_md_preserves_managed_section() {
 #[test]
 fn refresh_skips_when_version_current() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
 
     // Manually change AGENTS.md content after version file is written.
@@ -890,45 +890,45 @@ fn refresh_skips_when_version_current() {
 #[test]
 fn refresh_skill_overwrites_on_version_bump() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join(".buzz");
+    let root = tmp.path().join(".g6");
     ensure_nest_at(&root).unwrap();
 
-    let skill_md = root.join(".agents/skills/buzz-cli/SKILL.md");
+    let skill_md = root.join(".agents/skills/g6-cli/SKILL.md");
     fs::write(&skill_md, "stale skill content").unwrap();
 
     // Remove version file to simulate upgrade.
-    let _ = fs::remove_file(root.join(".agents/skills/buzz-cli/.skill-version"));
+    let _ = fs::remove_file(root.join(".agents/skills/g6-cli/.skill-version"));
 
     ensure_nest_at(&root).unwrap();
 
     let content = fs::read_to_string(&skill_md).unwrap();
     assert_eq!(
-        content, BUZZ_CLI_SKILL_MD,
+        content, GEAR6_CLI_SKILL_MD,
         "SKILL.md must be refreshed on version bump"
     );
 }
 
 #[test]
 fn test_path_is_dev_nest_dev_path_returns_true() {
-    let path = std::path::Path::new("/Users/someone/.buzz-dev");
+    let path = std::path::Path::new("/Users/someone/.g6-dev");
     assert!(
         path_is_dev_nest(path),
-        ".buzz-dev path must be identified as dev nest"
+        ".g6-dev path must be identified as dev nest"
     );
 }
 
 #[test]
 fn test_path_is_dev_nest_prod_path_returns_false() {
-    let path = std::path::Path::new("/Users/someone/.buzz");
+    let path = std::path::Path::new("/Users/someone/.g6");
     assert!(
         !path_is_dev_nest(path),
-        ".buzz path must not be identified as dev nest"
+        ".g6 path must not be identified as dev nest"
     );
 }
 
 #[test]
 fn test_path_is_dev_nest_unrelated_path_returns_false() {
-    let path = std::path::Path::new("/Users/someone/.buzz-staging");
+    let path = std::path::Path::new("/Users/someone/.g6-staging");
     assert!(
         !path_is_dev_nest(path),
         "unrelated path must not be identified as dev nest"

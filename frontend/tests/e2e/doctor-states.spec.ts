@@ -29,16 +29,16 @@ const GOOSE_AVAILABLE = {
   auth_status: { status: "not_applicable" },
 };
 
-/** buzz-agent is always available and has no auth step. */
-const BUZZ_AGENT_AVAILABLE = {
-  id: "buzz-agent",
-  label: "Buzz Agent",
+/** g6-agent is always available and has no auth step. */
+const GEAR6_AGENT_AVAILABLE = {
+  id: "g6-agent",
+  label: "Gear6 Agent",
   avatar_url: "",
   availability: "available",
-  command: "buzz-agent",
-  binary_path: "/usr/local/bin/buzz-agent",
+  command: "g6-agent",
+  binary_path: "/usr/local/bin/g6-agent",
   default_args: [],
-  mcp_command: "buzz-dev-mcp",
+  mcp_command: "g6-dev-mcp",
   install_hint: "",
   install_instructions_url: "https://github.com/block/buzz",
   can_auto_install: false,
@@ -120,7 +120,7 @@ test.describe("Doctor panel state screenshots", () => {
         GOOSE_AVAILABLE,
         CLAUDE_AVAILABLE_LOGGED_IN,
         CODEX_NOT_INSTALLED,
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
     });
 
@@ -141,18 +141,18 @@ test.describe("Doctor panel state screenshots", () => {
           rows.map((row) => row.getAttribute("data-testid")),
         ),
     ).toEqual([
-      "doctor-runtime-buzz-agent",
+      "doctor-runtime-g6-agent",
       "doctor-runtime-goose",
       "doctor-runtime-claude",
       "doctor-runtime-codex",
     ]);
-    for (const runtimeId of ["goose", "claude", "codex", "buzz-agent"]) {
+    for (const runtimeId of ["goose", "claude", "codex", "g6-agent"]) {
       await expect(
         page.getByTestId(`doctor-runtime-logo-${runtimeId}`),
       ).toBeVisible();
     }
     const rowHeights = await Promise.all(
-      ["goose", "claude", "codex", "buzz-agent"].map((runtimeId) =>
+      ["goose", "claude", "codex", "g6-agent"].map((runtimeId) =>
         page
           .getByTestId(`doctor-runtime-${runtimeId}`)
           .evaluate((element) =>
@@ -179,7 +179,7 @@ test.describe("Doctor panel state screenshots", () => {
         .locator("..")
         .locator(".."),
     ).toHaveCSS("align-items", "center");
-    for (const runtimeId of ["goose", "claude", "buzz-agent"]) {
+    for (const runtimeId of ["goose", "claude", "g6-agent"]) {
       await expect(
         page.getByTestId(`doctor-runtime-menu-${runtimeId}`),
       ).toHaveCount(0);
@@ -227,7 +227,7 @@ test.describe("Doctor panel state screenshots", () => {
         GOOSE_AVAILABLE,
         CLAUDE_AVAILABLE_LOGGED_IN,
         CODEX_NOT_INSTALLED,
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
     });
 
@@ -268,7 +268,7 @@ test.describe("Doctor panel state screenshots", () => {
           auth_status: { status: "logged_out" },
           login_hint: "Run `codex login` to authenticate.",
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
     });
 
@@ -312,7 +312,7 @@ test.describe("Doctor panel state screenshots", () => {
           login_hint: "Run the Claude CLI to complete authentication.",
         },
         CODEX_NOT_INSTALLED,
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
     });
 
@@ -357,7 +357,7 @@ test.describe("Doctor panel state screenshots", () => {
           install_hint:
             "Install the Codex ACP adapter: npm install -g @zed-industries/codex-acp",
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
     });
 
@@ -409,7 +409,7 @@ test.describe("Doctor panel state screenshots", () => {
           can_auto_install: true,
           node_required: false,
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       installAcpRuntimeDelayMs: 250,
       installAcpRuntimeResults: [
@@ -509,7 +509,7 @@ test.describe("Doctor panel state screenshots", () => {
           auth_status: { status: "logged_out" },
           login_hint: "Run `codex login` to authenticate.",
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       connectAcpRuntimeDelayMs: 250,
       acpAuthMethods: {
@@ -569,7 +569,7 @@ test.describe("Doctor panel state screenshots", () => {
           login_hint: "Run the Claude CLI to complete authentication.",
         },
         CODEX_NOT_INSTALLED,
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       acpAuthMethods: {
         claude: { methods: [] },
@@ -607,7 +607,7 @@ test.describe("Doctor panel state screenshots", () => {
           availability: "available",
           auth_status: { status: "logged_out" },
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       acpAuthMethodsErrors: {
         codex: "Could not inspect the Codex adapter.",
@@ -632,7 +632,7 @@ test.describe("Doctor panel state screenshots", () => {
           availability: "available",
           auth_status: { status: "logged_out" },
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       acpAuthMethods: {
         codex: {
@@ -668,7 +668,7 @@ test.describe("Doctor panel state screenshots", () => {
           availability: "available",
           auth_status: { status: "logged_out" },
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       acpAuthMethods: {
         codex: {
@@ -708,7 +708,7 @@ test.describe("Doctor panel state screenshots", () => {
           underlying_cli_path: "/usr/local/bin/codex",
           can_auto_install: true,
         },
-        BUZZ_AGENT_AVAILABLE,
+        GEAR6_AGENT_AVAILABLE,
       ],
       installAcpRuntimeDelayMs: 250,
     });
@@ -724,7 +724,7 @@ test.describe("Doctor panel state screenshots", () => {
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toContainText("Update Codex adapter?");
     await expect(dialog).toContainText(
-      "Older Buzz releases using the legacy adapter may lose community access",
+      "Older Gear6 releases using the legacy adapter may lose community access",
     );
     await expect(page.getByTestId("doctor-runtime-loading-codex")).toHaveCount(
       0,

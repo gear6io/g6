@@ -9,9 +9,9 @@ async function setMockWebsocketSendsStalled(
   await page.evaluate((shouldStall) => {
     const setter = (
       window as Window & {
-        __BUZZ_E2E_SET_STALL_WEBSOCKET_SENDS__?: (stall: boolean) => void;
+        __GEAR6_E2E_SET_STALL_WEBSOCKET_SENDS__?: (stall: boolean) => void;
       }
-    ).__BUZZ_E2E_SET_STALL_WEBSOCKET_SENDS__;
+    ).__GEAR6_E2E_SET_STALL_WEBSOCKET_SENDS__;
     if (!setter) {
       throw new Error("E2E websocket stall setter is not installed.");
     }
@@ -23,9 +23,9 @@ async function disconnectMockWebsockets(page: import("@playwright/test").Page) {
   const disconnected = await page.evaluate(() => {
     const disconnect = (
       window as Window & {
-        __BUZZ_E2E_DISCONNECT_MOCK_WEBSOCKETS__?: () => number;
+        __GEAR6_E2E_DISCONNECT_MOCK_WEBSOCKETS__?: () => number;
       }
-    ).__BUZZ_E2E_DISCONNECT_MOCK_WEBSOCKETS__;
+    ).__GEAR6_E2E_DISCONNECT_MOCK_WEBSOCKETS__;
     if (!disconnect) {
       throw new Error("E2E mock websocket disconnect seam is not installed.");
     }
@@ -42,13 +42,13 @@ async function emitMockMessages(
   await page.evaluate((items) => {
     const emit = (
       window as Window & {
-        __BUZZ_E2E_EMIT_MOCK_MESSAGE__?: (input: {
+        __GEAR6_E2E_EMIT_MOCK_MESSAGE__?: (input: {
           channelName: string;
           content: string;
           createdAt: number;
         }) => unknown;
       }
-    ).__BUZZ_E2E_EMIT_MOCK_MESSAGE__;
+    ).__GEAR6_E2E_EMIT_MOCK_MESSAGE__;
     if (!emit) {
       throw new Error("E2E mock message emitter is not installed.");
     }
@@ -66,9 +66,9 @@ async function driveConnectionDegraded(
   await page.evaluate((s) => {
     const setter = (
       window as Window & {
-        __BUZZ_E2E_SET_RELAY_CONNECTION_STATE__?: (state: string) => void;
+        __GEAR6_E2E_SET_RELAY_CONNECTION_STATE__?: (state: string) => void;
       }
-    ).__BUZZ_E2E_SET_RELAY_CONNECTION_STATE__;
+    ).__GEAR6_E2E_SET_RELAY_CONNECTION_STATE__;
     if (!setter) {
       throw new Error("E2E relay state setter is not installed.");
     }

@@ -7,9 +7,9 @@ import 'adaptive_theme.dart';
 import 'color_scheme.dart';
 import 'theme_catalog.dart';
 
-const _themeModeKey = 'buzz_theme_mode';
-const _accentKey = 'buzz_accent_color';
-const _schemeKey = 'buzz_color_scheme';
+const _themeModeKey = 'g6_theme_mode';
+const _accentKey = 'g6_accent_color';
+const _schemeKey = 'g6_color_scheme';
 
 const defaultSchemeName = 'github-light';
 const defaultSchemeDisplayName = 'GitHub Light';

@@ -36,7 +36,7 @@ use super::{
 };
 
 /// The prompt a spawn would actually deliver: `Some("")` collapses to `None`
-/// because an empty `BUZZ_ACP_SYSTEM_PROMPT` is no prompt.
+/// because an empty `GEAR6_ACP_SYSTEM_PROMPT` is no prompt.
 ///
 /// The single source of truth for the spawn env write AND the config hash.
 pub(crate) fn effective_spawn_prompt(record: &ManagedAgentRecord) -> Option<String> {
@@ -117,7 +117,7 @@ pub(crate) fn spawn_config_hash(
     record.auth_tag.hash(&mut hasher);
     record.respond_to.as_str().hash(&mut hasher);
     // The allowlist is hashed as the env receives it: spawn sets
-    // BUZZ_ACP_RESPOND_TO_ALLOWLIST only in allowlist mode, and normalized
+    // GEAR6_ACP_RESPOND_TO_ALLOWLIST only in allowlist mode, and normalized
     // (trim/lowercase/dedup via `validate_respond_to_allowlist`) — so edits
     // that don't survive normalization, or edits while another mode is
     // active, must not badge. A list spawn would reject hashes raw: the

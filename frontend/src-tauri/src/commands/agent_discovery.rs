@@ -147,7 +147,7 @@ fn install_acp_runtime_blocking(runtime_id: &str) -> Result<InstallRuntimeResult
     // Phase 1: Install CLI if missing and commands are available.
     // Today every entry in `cli_install_commands` is a curl-pipe; npm-backed
     // adapter installs live in Phase 2 below where they are rewritten to a
-    // Buzz-private prefix before execution.
+    // Gear6-private prefix before execution.
     if let Some(cli) = runtime.underlying_cli {
         if crate::managed_agents::resolve_command(cli).is_none() {
             for cmd in runtime.cli_install_commands_for_os() {
@@ -476,12 +476,12 @@ async fn restart_single_agent_after_install(
     let runtime_keys = match stop_result {
         Ok(Ok(runtime_keys)) => runtime_keys,
         Ok(Err(e)) => {
-            eprintln!("buzz-desktop: install_acp_runtime: skipping restart of {pubkey}: {e}");
+            eprintln!("g6-desktop: install_acp_runtime: skipping restart of {pubkey}: {e}");
             return InstallRestartOutcome::Skipped;
         }
         Err(e) => {
             eprintln!(
-                "buzz-desktop: install_acp_runtime: spawn_blocking failed for stop of {pubkey}: {e}"
+                "g6-desktop: install_acp_runtime: spawn_blocking failed for stop of {pubkey}: {e}"
             );
             return InstallRestartOutcome::Skipped;
         }
@@ -494,17 +494,17 @@ async fn restart_single_agent_after_install(
     {
         Ok(_) => {
             eprintln!(
-                "buzz-desktop: install_acp_runtime: restarted setup-mode agent {pubkey} after install"
+                "g6-desktop: install_acp_runtime: restarted setup-mode agent {pubkey} after install"
             );
             InstallRestartOutcome::Restarted
         }
         Err(e) => {
             eprintln!(
-                "buzz-desktop: install_acp_runtime: failed to start {pubkey} after install: {e}"
+                "g6-desktop: install_acp_runtime: failed to start {pubkey} after install: {e}"
             );
             if let Err(save_err) = persist_last_error_on_install(app, pubkey, &e) {
                 eprintln!(
-                    "buzz-desktop: install_acp_runtime: failed to persist last_error for {pubkey}: {save_err}"
+                    "g6-desktop: install_acp_runtime: failed to persist last_error for {pubkey}: {save_err}"
                 );
             }
             InstallRestartOutcome::FailedAfterStop
@@ -537,13 +537,13 @@ fn persist_last_error_on_install(
 }
 
 /// Build a login-shell `Command` for `command` with hermit env vars stripped,
-/// Buzz-managed npm locations set, and the user's PATH set. This is the
+/// Gear6-managed npm locations set, and the user's PATH set. This is the
 /// single source of truth for
 /// the shell selection and environment cleanup shared by `run_install_command`
 /// and managed npm install path — keeping them in sync so the hermit-strip list
 /// can't drift between command execution paths.
 ///
-/// On Windows, resolves Git Bash via `resolve_bash_path` (skips `BUZZ_SHELL`
+/// On Windows, resolves Git Bash via `resolve_bash_path` (skips `GEAR6_SHELL`
 /// since install commands require bash syntax). Returns `Err` when no shell
 /// can be found.
 fn install_shell_command(command: &str) -> Result<std::process::Command, String> {
@@ -554,13 +554,13 @@ fn install_shell_command(command: &str) -> Result<std::process::Command, String>
 
     // Strip hermit env vars so npm/node use the user's normal registry rather
     // than the project-local hermit-managed paths, then give npm defaults for
-    // Buzz-owned app data. Adapter install commands also pass --prefix
+    // Gear6-owned app data. Adapter install commands also pass --prefix
     // explicitly; these env vars keep subprocesses/cache/corepack aligned.
     cmd.env_remove("NPM_CONFIG_PREFIX");
     cmd.env_remove("NPM_CONFIG_CACHE");
     cmd.env_remove("COREPACK_HOME");
 
-    if let Some(prefix) = crate::managed_agents::buzz_managed_npm_prefix() {
+    if let Some(prefix) = crate::managed_agents::g6_managed_npm_prefix() {
         cmd.env("NPM_CONFIG_PREFIX", &prefix);
         cmd.env("npm_config_prefix", &prefix);
         cmd.env("COREPACK_HOME", prefix.join("corepack"));
@@ -569,10 +569,10 @@ fn install_shell_command(command: &str) -> Result<std::process::Command, String>
     }
 
     let mut path_parts = Vec::new();
-    if let Some(managed_node_bin) = crate::managed_agents::buzz_managed_node_bin_dir() {
+    if let Some(managed_node_bin) = crate::managed_agents::g6_managed_node_bin_dir() {
         path_parts.push(managed_node_bin);
     }
-    if let Some(managed_bin) = crate::managed_agents::buzz_managed_npm_bin_dir() {
+    if let Some(managed_bin) = crate::managed_agents::g6_managed_npm_bin_dir() {
         path_parts.push(managed_bin);
     }
     if let Some(ref path) = crate::managed_agents::login_shell_path() {
@@ -612,8 +612,8 @@ fn install_shell_command(command: &str) -> Result<std::process::Command, String>
 /// Resolve the shell binary for install commands.
 ///
 /// Unix: `/bin/zsh` if present, else `/bin/bash`.
-/// Windows: Git Bash via `resolve_bash_path` — skips `BUZZ_SHELL` because install
-/// commands use bash-only `-l -c` syntax. A `BUZZ_SHELL=pwsh` user gets a green
+/// Windows: Git Bash via `resolve_bash_path` — skips `GEAR6_SHELL` because install
+/// commands use bash-only `-l -c` syntax. A `GEAR6_SHELL=pwsh` user gets a green
 /// Doctor prereq (their agents work) but installs use the Git Bash fallback chain.
 fn resolve_install_shell() -> Result<std::path::PathBuf, String> {
     #[cfg(not(windows))]
@@ -1321,13 +1321,13 @@ mod tests {
         );
     }
 
-    /// buzz-agent has no install commands on any platform.
+    /// g6-agent has no install commands on any platform.
     #[test]
-    fn test_buzz_agent_has_no_install_commands() {
-        let buzz = crate::managed_agents::known_acp_runtime_exact("buzz-agent").unwrap();
+    fn test_g6_agent_has_no_install_commands() {
+        let g6 = crate::managed_agents::known_acp_runtime_exact("g6-agent").unwrap();
         assert!(
-            buzz.cli_install_commands_for_os().is_empty(),
-            "buzz-agent ships with the app — must never have install commands"
+            g6.cli_install_commands_for_os().is_empty(),
+            "g6-agent ships with the app — must never have install commands"
         );
     }
 
@@ -1454,7 +1454,7 @@ mod tests {
     }
 }
 
-/// Returns the Windows-only Git Bash prerequisite used by buzz-agent's shell MCP.
+/// Returns the Windows-only Git Bash prerequisite used by g6-agent's shell MCP.
 /// `None` on other platforms keeps the shared Doctor surfaces platform-neutral.
 #[tauri::command]
 pub async fn discover_git_bash_prerequisite(

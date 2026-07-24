@@ -1,6 +1,6 @@
 // Thin Tauri shell for gear6.
 //
-// The buzz frontend now talks to the gear6 backend directly from the webview
+// The g6 frontend now talks to the gear6 backend directly from the webview
 // (HTTP + /rtm websocket) when built with VITE_GEAR6=1, so the desktop side no
 // longer needs the nostr command handlers or relay backend. This shell's only
 // job is to open the window and load the webview. The former ~50-file nostr

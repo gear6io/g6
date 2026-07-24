@@ -47,7 +47,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import {
   ACCENT_COLORS,
-  isBuzzTheme,
+  isGear6Theme,
   NEUTRAL_ACCENT,
   useTheme,
 } from "@/shared/theme/ThemeProvider";
@@ -58,7 +58,7 @@ import {
   getThemePair,
 } from "@/shared/theme/theme-loader";
 import {
-  BUZZ_GRADIENT_STOPS,
+  GEAR6_GRADIENT_STOPS,
   SystemPreferencePreviewFrame,
   ThemePreviewFrame,
   type ThemePreviewVars,
@@ -337,9 +337,9 @@ function PairedThemeTile({
             ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
             : "group-hover:ring-2 group-hover:ring-border",
         )}
-        darkGradient={darkName ? BUZZ_GRADIENT_STOPS[darkName] : undefined}
+        darkGradient={darkName ? GEAR6_GRADIENT_STOPS[darkName] : undefined}
         darkVars={darkVars}
-        lightGradient={BUZZ_GRADIENT_STOPS[lightName]}
+        lightGradient={GEAR6_GRADIENT_STOPS[lightName]}
         lightVars={lightVars}
       />
       <span
@@ -380,7 +380,7 @@ function SingleThemeTile({
             ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
             : "group-hover:ring-2 group-hover:ring-border",
         )}
-        sidebarGradient={BUZZ_GRADIENT_STOPS[name]}
+        sidebarGradient={GEAR6_GRADIENT_STOPS[name]}
         vars={vars}
       />
       <span
@@ -399,8 +399,8 @@ type AppearanceMode = "system" | "light" | "dark";
 
 // Reveal/hide motion for the accent picker: a small translate + opacity fade.
 // The picker sits below the theme grid and reads as tucking up behind it, so
-// it enters from above (slides *down* into place when a non-Buzz theme reveals
-// it) and exits upward (slides up behind the grid when Buzz hides it). No
+// it enters from above (slides *down* into place when a non-Gear6 theme reveals
+// it) and exits upward (slides up behind the grid when Gear6 hides it). No
 // height/scale — height collapse clipped the swatches behind the grid's bottom
 // fade (the "white bar"). Snappier than the modal 0.2s since this is a small
 // settings control, sharing the modal/ProfileSettingsCard easing curve.
@@ -421,10 +421,10 @@ function ThemeSettingsCard() {
     setFollowSystem,
   } = useTheme();
 
-  // Buzz themes pin a neutral accent (GitHub black in light, white in dark),
-  // so the accent picker is hidden while a Buzz theme is active. `themeName` is
-  // the effective theme, so this also covers System mode resolving to Buzz.
-  const accentPickerHidden = isBuzzTheme(themeName);
+  // Gear6 themes pin a neutral accent (GitHub black in light, white in dark),
+  // so the accent picker is hidden while a Gear6 theme is active. `themeName` is
+  // the effective theme, so this also covers System mode resolving to Gear6.
+  const accentPickerHidden = isGear6Theme(themeName);
   const shouldReduceMotion = useReducedMotion();
 
   const previewVarsByTheme = useThemePreviewVars();
@@ -518,7 +518,7 @@ function ThemeSettingsCard() {
     >
       <SettingsSectionHeader
         title="Appearance"
-        description="Choose a theme for Buzz."
+        description="Choose a theme for Gear6."
       />
 
       {/* Mode selector: System / Light / Dark */}
@@ -561,7 +561,7 @@ function ThemeSettingsCard() {
           }}
         />
         {/* Bottom fade — hidden while the accent picker is visible so its
-            near-white gradient (Buzz light) can't mask the swatches below it
+            near-white gradient (Gear6 light) can't mask the swatches below it
             (the "white bar"). Kept only when the picker is hidden. */}
         {accentPickerHidden ? (
           <div
@@ -614,7 +614,7 @@ function ThemeSettingsCard() {
         </div>
       </div>
 
-      {/* Accent color picker — hidden for Buzz themes (pinned neutral accent).
+      {/* Accent color picker — hidden for Gear6 themes (pinned neutral accent).
           Reveal/hide with the translate-up + opacity fade defined by
           ACCENT_PICKER_TRANSITION above. Reduced motion skips the transition
           and just renders/unrenders. */}

@@ -47,22 +47,22 @@
     --sidebar-accent-foreground: 234 16.02% 35.49%;
     --sidebar-border: 225 13.56% 76.86%;
     --sidebar-ring: 225 13.56% 76.86%;
-    /* Exact Buzz palette tokens; components consume these semantically. */
-    --buzz-gradient-light-top: #e6e6b6;
-    --buzz-gradient-light-bottom: #c4d0da;
-    --buzz-gradient-dark-top: #4a4616;
-    --buzz-gradient-dark-bottom: #0a1423;
-    --buzz-content-dark: 0 0% 10.1960784314%;
+    /* Exact Gear6 palette tokens; components consume these semantically. */
+    --g6-gradient-light-top: #e6e6b6;
+    --g6-gradient-light-bottom: #c4d0da;
+    --g6-gradient-dark-top: #4a4616;
+    --g6-gradient-dark-bottom: #0a1423;
+    --g6-content-dark: 0 0% 10.1960784314%;
     /* Hosted-community onboarding intentionally keeps this light palette in
        both app themes; semantic tokens keep component code color-agnostic. */
-    --buzz-hosted-community-surface-fg: 23 23 23;
-    --buzz-hosted-community-divider-border: 150 150 10;
-    --buzz-hosted-community-action-bg: 240 240 205;
-    --buzz-hosted-community-action-bg-hover: 232 232 188;
-    --buzz-hosted-community-input-bg: 255 255 255;
-    --buzz-hosted-community-modal-action-fg: 255 255 255;
-    --buzz-hosted-community-modal-overlay-bg: 0 0 0;
-    --buzz-hosted-community-identity-bg: 255 255 255;
+    --g6-hosted-community-surface-fg: 23 23 23;
+    --g6-hosted-community-divider-border: 150 150 10;
+    --g6-hosted-community-action-bg: 240 240 205;
+    --g6-hosted-community-action-bg-hover: 232 232 188;
+    --g6-hosted-community-input-bg: 255 255 255;
+    --g6-hosted-community-modal-action-fg: 255 255 255;
+    --g6-hosted-community-modal-overlay-bg: 0 0 0;
+    --g6-hosted-community-identity-bg: 255 255 255;
   }
 
   .dark {
@@ -181,12 +181,12 @@
 }
 
 /*
- * Buzz theme - sidebar gradient.
+ * Gear6 theme - sidebar gradient.
  *
- * Buzz reuses the GitHub Light palette for every base color; its one
+ * Gear6 reuses the GitHub Light palette for every base color; its one
  * distinguishing feature is this gradient painted across the sidebar/nav
  * canvas, replacing GitHub Light's flat grey. ThemeProvider toggles the
- * `data-buzz-sidebar` attribute on <html> when the Buzz theme is active.
+ * `data-g6-sidebar` attribute on <html> when the Gear6 theme is active.
  *
  * These rules are intentionally UNLAYERED: the `bg-sidebar` background-color
  * lives in Tailwind's `utilities` layer, and unlayered declarations win over
@@ -200,156 +200,156 @@
  * paint because it lives outside the app surface.
  *
  * Small transient `bg-sidebar` chips inside the shell that are NOT canvas
- * surfaces (the drag-overlay pills) opt out via `[data-buzz-flat]` - a
+ * surfaces (the drag-overlay pills) opt out via `[data-g6-flat]` - a
  * floating chip should retain its own fill rather than becoming transparent
  * over the full-app gradient.
  *
  * Item hover/active states use `bg-sidebar-accent` / `bg-sidebar-active`
  * (distinct tokens) and are intentionally left untouched.
  */
-:root[data-buzz-sidebar] {
-  --buzz-gradient-top: var(--buzz-gradient-light-top);
-  --buzz-gradient-bottom: var(--buzz-gradient-light-bottom);
-  --buzz-muted-foreground: rgb(0 0 0 / 40%);
-  --buzz-search-surface: rgb(0 0 0 / 4%);
-  --buzz-chrome-foreground: rgb(0 0 0 / 50%);
-  --buzz-channel-fg: inherit;
-  --buzz-dm-fg: inherit;
-  --buzz-nav-fg: inherit;
-  --buzz-hover-surface: rgb(0 0 0 / 4%);
-  --buzz-sidebar-scrollbar-thumb: var(--buzz-hover-surface);
-  --buzz-active-fill: 0 0% 0%;
-  --buzz-active-surface: rgb(0 0 0 / 7%);
-  --buzz-active-foreground: var(--foreground);
+:root[data-g6-sidebar] {
+  --g6-gradient-top: var(--g6-gradient-light-top);
+  --g6-gradient-bottom: var(--g6-gradient-light-bottom);
+  --g6-muted-foreground: rgb(0 0 0 / 40%);
+  --g6-search-surface: rgb(0 0 0 / 4%);
+  --g6-chrome-foreground: rgb(0 0 0 / 50%);
+  --g6-channel-fg: inherit;
+  --g6-dm-fg: inherit;
+  --g6-nav-fg: inherit;
+  --g6-hover-surface: rgb(0 0 0 / 4%);
+  --g6-sidebar-scrollbar-thumb: var(--g6-hover-surface);
+  --g6-active-fill: 0 0% 0%;
+  --g6-active-surface: rgb(0 0 0 / 7%);
+  --g6-active-foreground: var(--foreground);
 }
 
 /*
- * Dark variant (Buzz Dark). Reuses the GitHub Dark base palette; only the
- * Buzz color tokens change, so every downstream rule (gradient fill, hover,
+ * Dark variant (Gear6 Dark). Reuses the GitHub Dark base palette; only the
+ * Gear6 color tokens change, so every downstream rule (gradient fill, hover,
  * search box, muted labels, active pill) adapts automatically. The `.dark`
  * class is set on the document root whenever a dark theme is active.
  */
-:root[data-buzz-sidebar].dark {
-  --buzz-gradient-top: var(--buzz-gradient-dark-top);
-  --buzz-gradient-bottom: var(--buzz-gradient-dark-bottom);
-  --buzz-muted-foreground: rgb(255 255 255 / 40%);
-  --buzz-search-surface: rgb(255 255 255 / 4%);
-  --buzz-chrome-foreground: rgb(255 255 255 / 50%);
-  --buzz-hover-surface: rgb(255 255 255 / 4%);
-  --buzz-active-fill: 0 0% 100%;
-  --buzz-active-surface: color-mix(
+:root[data-g6-sidebar].dark {
+  --g6-gradient-top: var(--g6-gradient-dark-top);
+  --g6-gradient-bottom: var(--g6-gradient-dark-bottom);
+  --g6-muted-foreground: rgb(255 255 255 / 40%);
+  --g6-search-surface: rgb(255 255 255 / 4%);
+  --g6-chrome-foreground: rgb(255 255 255 / 50%);
+  --g6-hover-surface: rgb(255 255 255 / 4%);
+  --g6-active-fill: 0 0% 100%;
+  --g6-active-surface: color-mix(
     in srgb,
-    hsl(var(--buzz-active-fill)) 16%,
+    hsl(var(--g6-active-fill)) 16%,
     transparent
   );
-  --buzz-active-foreground: 0 0% 100%;
+  --g6-active-foreground: 0 0% 100%;
 }
 
-/* Keep the subtle content-card lift in Buzz Light only. */
-:root[data-buzz-sidebar]:not(.dark) [data-buzz-content-surface] {
+/* Keep the subtle content-card lift in Gear6 Light only. */
+:root[data-g6-sidebar]:not(.dark) [data-g6-content-surface] {
   box-shadow:
     -1px -1px 0 0 hsl(var(--sidebar-border) / 0.45),
     0 0 4px 0 rgb(0 0 0 / 7%);
 }
 
 /* Let the content card's shadow feather into the surrounding gradient. */
-:root[data-buzz-sidebar]:not(.dark) [data-buzz-shadow-viewport] {
+:root[data-g6-sidebar]:not(.dark) [data-g6-shadow-viewport] {
   overflow: visible;
 }
 
 /*
- * Buzz Dark uses a warmer neutral for the inset main/settings content canvas.
+ * Gear6 Dark uses a warmer neutral for the inset main/settings content canvas.
  * Override `--background` locally as well as the surface fill so descendant
  * headers and panes using `bg-background` remain visually continuous.
  */
-:root[data-buzz-sidebar].dark [data-buzz-content-surface] {
-  --background: var(--buzz-content-dark);
+:root[data-g6-sidebar].dark [data-g6-content-surface] {
+  --background: var(--g6-content-dark);
   background-color: hsl(var(--background));
 }
 
-:root[data-buzz-sidebar] .buzz-huddle-app-surface {
+:root[data-g6-sidebar] .g6-huddle-app-surface {
   background-color: transparent;
   background-image: none;
   isolation: isolate;
 }
 
 /*
- * Keep both Buzz gradients painted and switch only which layer is visible.
+ * Keep both Gear6 gradients painted and switch only which layer is visible.
  * WKWebView can retain the old raster when `background-image` is replaced on
  * a translucent surface. The center content already follows `.dark`, so using
  * that same state for layer visibility keeps both surfaces in lockstep.
  */
-:root[data-buzz-sidebar] .buzz-theme-gradient-layer-light {
+:root[data-g6-sidebar] .g6-theme-gradient-layer-light {
   background-image: linear-gradient(
     to bottom,
-    var(--buzz-gradient-light-top),
-    var(--buzz-gradient-light-bottom)
+    var(--g6-gradient-light-top),
+    var(--g6-gradient-light-bottom)
   );
   background-size: 100vw 100vh;
   background-repeat: no-repeat;
 }
 
-:root[data-buzz-sidebar] .buzz-theme-gradient-layer-dark {
+:root[data-g6-sidebar] .g6-theme-gradient-layer-dark {
   background-image: linear-gradient(
     to bottom,
-    var(--buzz-gradient-dark-top),
-    var(--buzz-gradient-dark-bottom)
+    var(--g6-gradient-dark-top),
+    var(--g6-gradient-dark-bottom)
   );
   background-size: 100vw 100vh;
   background-repeat: no-repeat;
 }
 
-:root[data-buzz-sidebar]:not(.dark) .buzz-theme-gradient-layer-light,
-:root[data-buzz-sidebar].dark .buzz-theme-gradient-layer-dark {
+:root[data-g6-sidebar]:not(.dark) .g6-theme-gradient-layer-light,
+:root[data-g6-sidebar].dark .g6-theme-gradient-layer-dark {
   opacity: 1;
 }
 
 /* The mobile sidebar is portaled outside the app surface. */
-:root[data-buzz-sidebar]:not(.dark)
+:root[data-g6-sidebar]:not(.dark)
   [data-sidebar="sidebar"][data-mobile="true"].bg-sidebar {
   background-color: transparent;
   background-image: linear-gradient(
     to bottom,
-    var(--buzz-gradient-light-top),
-    var(--buzz-gradient-light-bottom)
+    var(--g6-gradient-light-top),
+    var(--g6-gradient-light-bottom)
   );
   background-size: 100vw 100vh;
   background-repeat: no-repeat;
 }
 
-:root[data-buzz-sidebar].dark
+:root[data-g6-sidebar].dark
   [data-sidebar="sidebar"][data-mobile="true"].bg-sidebar {
   background-color: transparent;
   background-image: linear-gradient(
     to bottom,
-    var(--buzz-gradient-dark-top),
-    var(--buzz-gradient-dark-bottom)
+    var(--g6-gradient-dark-top),
+    var(--g6-gradient-dark-bottom)
   );
   background-size: 100vw 100vh;
   background-repeat: no-repeat;
 }
 
 /* All in-shell chrome reveals the single gradient painted above. */
-:root[data-buzz-sidebar] .group\/sidebar-wrapper,
-:root[data-buzz-sidebar] [data-testid="app-sidebar"],
-:root[data-buzz-sidebar] [data-buzz-glass-inset],
-:root[data-buzz-sidebar] [data-buzz-glass-footer-wrap],
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar] .group\/sidebar-wrapper,
+:root[data-g6-sidebar] [data-testid="app-sidebar"],
+:root[data-g6-sidebar] [data-g6-glass-inset],
+:root[data-g6-sidebar] [data-g6-glass-footer-wrap],
+:root[data-g6-sidebar]
   .group\/sidebar-wrapper
-  .bg-sidebar:not([data-buzz-flat]),
-:root[data-buzz-sidebar] [data-testid="community-rail"].bg-sidebar,
-:root[data-buzz-sidebar]
+  .bg-sidebar:not([data-g6-flat]),
+:root[data-g6-sidebar] [data-testid="community-rail"].bg-sidebar,
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"],
-:root[data-buzz-sidebar] [data-testid="app-sidebar"] [data-sidebar="footer"] {
+:root[data-g6-sidebar] [data-testid="app-sidebar"] [data-sidebar="footer"] {
   background-color: transparent;
   background-image: none;
 }
 
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"]::before,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-sidebar="footer"]::before {
   background: none;
@@ -359,7 +359,7 @@
  * Active nav item. The accent system (`applyAccentColor` in ThemeProvider)
  * sets `--sidebar-active` to the theme foreground as an INLINE style on
  * :root, which renders the selected page as a solid black pill under GitHub
- * Light. For the Buzz theme we want a subtle theme-specific tint instead.
+ * Light. For the Gear6 theme we want a subtle theme-specific tint instead.
  * Override the two active tokens on the sidebar element itself; element-local
  * custom properties win over the inherited inline values from :root. Text
  * uses the theme foreground, and the derived
@@ -369,34 +369,34 @@
  * `text-sidebar-active-foreground` tokens are also consumed by non-sidebar
  * controls (avatar edit buttons in ProfileSettingsCard / AgentCreationPreview,
  * the selected persona row in PersonaCatalogDialog). A root-level override
- * turned those white (white-on-white under Buzz Dark); scoping keeps them on
+ * turned those white (white-on-white under Gear6 Dark); scoping keeps them on
  * the normal accent-driven active colors.
  */
-:root[data-buzz-sidebar] [data-testid="app-sidebar"],
-:root[data-buzz-sidebar] [data-testid="settings-sidebar"] {
-  --sidebar-active: var(--buzz-active-fill);
-  --sidebar-active-foreground: var(--buzz-active-foreground);
+:root[data-g6-sidebar] [data-testid="app-sidebar"],
+:root[data-g6-sidebar] [data-testid="settings-sidebar"] {
+  --sidebar-active: var(--g6-active-fill);
+  --sidebar-active-foreground: var(--g6-active-foreground);
 }
 
 /*
  * Dark variant: keep the active-pill foreground white on the dark gradient.
  * (The pill itself is repainted to a translucent tint by the rule below.)
  */
-:root[data-buzz-sidebar].dark [data-testid="app-sidebar"],
-:root[data-buzz-sidebar].dark [data-testid="settings-sidebar"] {
-  --sidebar-active: var(--buzz-active-fill);
-  --sidebar-active-foreground: var(--buzz-active-foreground);
+:root[data-g6-sidebar].dark [data-testid="app-sidebar"],
+:root[data-g6-sidebar].dark [data-testid="settings-sidebar"] {
+  --sidebar-active: var(--g6-active-fill);
+  --sidebar-active-foreground: var(--g6-active-foreground);
 }
 
 /*
  * Active nav pill: use a subtle 7% black tint in light mode and drop the drop
- * shadow so the selection sits flat on the gradient (Buzz-only; other themes
+ * shadow so the selection sits flat on the gradient (Gear6-only; other themes
  * keep `shadow-xs`). Higher specificity than the active utilities and
  * unlayered, so it wins.
  */
-:root[data-buzz-sidebar] [data-testid="app-sidebar"] [data-active="true"],
-:root[data-buzz-sidebar] [data-testid="settings-sidebar"] [data-active="true"] {
-  background-color: var(--buzz-active-surface);
+:root[data-g6-sidebar] [data-testid="app-sidebar"] [data-active="true"],
+:root[data-g6-sidebar] [data-testid="settings-sidebar"] [data-active="true"] {
+  background-color: var(--g6-active-surface);
   box-shadow: none;
 }
 
@@ -406,32 +406,32 @@
  * they retain the active surface. Covers both top-level menu buttons and
  * channel sub-buttons, in the app nav and the settings nav.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-sidebar="menu-button"]:not([data-active="true"]):hover,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-sidebar="menu-sub-button"]:not([data-active="true"]):hover,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
   [data-sidebar="menu-button"]:not([data-active="true"]):hover,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
   [data-sidebar="menu-sub-button"]:not([data-active="true"]):hover {
-  background-color: var(--buzz-hover-surface);
+  background-color: var(--g6-hover-surface);
 }
 
 /*
  * Row actions such as the DM close button are siblings of the menu button.
  * Hovering them still activates the row's Tailwind `group-hover` treatment,
  * so cover the whole menu item to keep that sibling-hover path on the same
- * Buzz neutral surface instead of falling back to the legacy accent.
+ * Gear6 neutral surface instead of falling back to the legacy accent.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   :where([data-sidebar="menu-item"]:hover)
   > [data-sidebar="menu-button"]:not([data-active="true"]) {
-  background-color: var(--buzz-hover-surface);
+  background-color: var(--g6-hover-surface);
 }
 
 /*
@@ -439,74 +439,74 @@
  * `bg-sidebar-border/35` fill. Its label, shortcut, and magnifying glass share
  * the 40% muted foreground at rest and on hover/focus.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="open-search"],
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="open-search"]:hover,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="open-search"]:focus-visible {
-  background-color: var(--buzz-search-surface);
-  color: var(--buzz-muted-foreground);
+  background-color: var(--g6-search-surface);
+  color: var(--g6-muted-foreground);
 }
 
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="open-search"]
   > * {
-  color: var(--buzz-muted-foreground);
+  color: var(--g6-muted-foreground);
 }
 
 /*
  * App and settings sidebar section headings plus secondary footer text use the
  * same tint. Navigation rows keep their normal foreground in both sidebars.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-sidebar="group-label"],
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
   [data-sidebar="group-label"],
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
-  [data-buzz-sidebar-secondary],
-:root[data-buzz-sidebar]
+  [data-g6-sidebar-secondary],
+:root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
-  [data-buzz-sidebar-secondary] {
-  color: var(--buzz-muted-foreground);
+  [data-g6-sidebar-secondary] {
+  color: var(--g6-muted-foreground);
 }
 
 /* Sidebar toggle plus back/forward navigation controls in the top chrome. */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-top-chrome"]
   :is(
     [data-sidebar="trigger"],
     [data-testid="global-back"],
     [data-testid="global-forward"]
   ) {
-  color: var(--buzz-chrome-foreground);
+  color: var(--g6-chrome-foreground);
 }
 
 /*
  * Section action buttons (the "+" and "..." at the right edge of each sidebar
  * section header): match the same translucent white fill (see
- * `--buzz-hover-surface`) on hover/focus instead of the grey
- * `bg-sidebar-border/35` fill. Unlayered + `[data-buzz-sidebar]` prefix beats
- * the Tailwind utility so it only applies under the Buzz theme.
+ * `--g6-hover-surface`) on hover/focus instead of the grey
+ * `bg-sidebar-border/35` fill. Unlayered + `[data-g6-sidebar]` prefix beats
+ * the Tailwind utility so it only applies under the Gear6 theme.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   .sidebar-section-action:hover,
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   .sidebar-section-action:focus-visible {
-  background-color: var(--buzz-hover-surface);
+  background-color: var(--g6-hover-surface);
 }
 
 /*
- * Per-row-type text colors (Buzz theme).
+ * Per-row-type text colors (Gear6 theme).
  *
  * By default the whole sidebar inherits a single `--sidebar-foreground`, so
  * channels, direct messages, and the Inbox/Agents nav rows all share one text
@@ -514,39 +514,39 @@
  * keeping the default value unchanged.
  *
  * Each var defaults to `inherit`, so with nothing set the sidebar looks
- * exactly as before. Scoped to the Buzz sidebar container so other themes are
+ * exactly as before. Scoped to the Gear6 sidebar container so other themes are
  * untouched.
  */
 /* Channels: rows live inside the `stream-list` / `starred-list` menus. */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="stream-list"]
   [data-sidebar="menu-button"]:not([data-active="true"]),
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="stream-list"]
   [data-sidebar="menu-sub-button"]:not([data-active="true"]),
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="starred-list"]
   [data-sidebar="menu-button"]:not([data-active="true"]),
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="starred-list"]
   [data-sidebar="menu-sub-button"]:not([data-active="true"]) {
-  color: var(--buzz-channel-fg);
+  color: var(--g6-channel-fg);
 }
 
 /* Direct messages: rows live inside the `dm-list` menu. */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="dm-list"]
   [data-sidebar="menu-button"]:not([data-active="true"]),
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="dm-list"]
   [data-sidebar="menu-sub-button"]:not([data-active="true"]) {
-  color: var(--buzz-dm-fg);
+  color: var(--g6-dm-fg);
 }
 
 /*
@@ -554,40 +554,40 @@
  * Projects, Agents, Workflows). Excludes the active row so the active-pill
  * foreground still wins.
  */
-:root[data-buzz-sidebar]
+:root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-primary-menu"]
   [data-sidebar="menu-button"]:not([data-active="true"]) {
-  color: var(--buzz-nav-fg);
+  color: var(--g6-nav-fg);
 }
 
 /*
- * Translucency (Buzz theme).
+ * Translucency (Gear6 theme).
  *
- * ThemeProvider toggles `data-buzz-translucent` for Buzz themes. Keep the
+ * ThemeProvider toggles `data-g6-translucent` for Gear6 themes. Keep the
  * frosted layer on the outer canvases only; nested sidebar/header/footer
  * surfaces pass through so the nav reads as one continuous pane.
  */
-:root[data-buzz-translucent] {
-  --buzz-translucency-gradient-alpha: 70%;
-  --buzz-translucency-wash-alpha: 2.4%;
+:root[data-g6-translucent] {
+  --g6-translucency-gradient-alpha: 70%;
+  --g6-translucency-wash-alpha: 2.4%;
 }
 
-:root[data-buzz-translucent] .buzz-theme-gradient-layer-light {
-  /* Buzz color wash above a neutral frost wash. */
+:root[data-g6-translucent] .g6-theme-gradient-layer-light {
+  /* Gear6 color wash above a neutral frost wash. */
   background-image:
     linear-gradient(
       to bottom,
       color-mix(
         in srgb,
-        var(--buzz-gradient-light-top)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-top)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--buzz-gradient-light-bottom)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-bottom)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       )
     ),
@@ -595,12 +595,12 @@
       to bottom,
       color-mix(
         in srgb,
-        #ffffff var(--buzz-translucency-wash-alpha, 2.4%),
+        #ffffff var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       ),
       color-mix(
         in srgb,
-        #ffffff var(--buzz-translucency-wash-alpha, 2.4%),
+        #ffffff var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       )
     );
@@ -610,20 +610,20 @@
   background-repeat: no-repeat, no-repeat;
 }
 
-:root[data-buzz-translucent] .buzz-theme-gradient-layer-dark {
+:root[data-g6-translucent] .g6-theme-gradient-layer-dark {
   background-image:
     linear-gradient(
       to bottom,
       color-mix(
         in srgb,
-        var(--buzz-gradient-dark-top)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-top)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--buzz-gradient-dark-bottom)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-bottom)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       )
     ),
@@ -631,12 +631,12 @@
       to bottom,
       color-mix(
         in srgb,
-        #12161d var(--buzz-translucency-wash-alpha, 2.4%),
+        #12161d var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       ),
       color-mix(
         in srgb,
-        #12161d var(--buzz-translucency-wash-alpha, 2.4%),
+        #12161d var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       )
     );
@@ -646,7 +646,7 @@
   background-repeat: no-repeat, no-repeat;
 }
 
-:root[data-buzz-translucent]:not(.dark)
+:root[data-g6-translucent]:not(.dark)
   [data-sidebar="sidebar"][data-mobile="true"].bg-sidebar {
   background-color: transparent;
   background-image:
@@ -654,14 +654,14 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--buzz-gradient-light-top)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-top)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--buzz-gradient-light-bottom)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-bottom)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       )
     ),
@@ -669,12 +669,12 @@
       to bottom,
       color-mix(
         in srgb,
-        #ffffff var(--buzz-translucency-wash-alpha, 2.4%),
+        #ffffff var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       ),
       color-mix(
         in srgb,
-        #ffffff var(--buzz-translucency-wash-alpha, 2.4%),
+        #ffffff var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       )
     );
@@ -684,7 +684,7 @@
   background-repeat: no-repeat, no-repeat;
 }
 
-:root[data-buzz-translucent].dark
+:root[data-g6-translucent].dark
   [data-sidebar="sidebar"][data-mobile="true"].bg-sidebar {
   background-color: transparent;
   background-image:
@@ -692,14 +692,14 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--buzz-gradient-dark-top)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-top)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--buzz-gradient-dark-bottom)
-          var(--buzz-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-bottom)
+          var(--g6-translucency-gradient-alpha, 70%),
         transparent
       )
     ),
@@ -707,12 +707,12 @@
       to bottom,
       color-mix(
         in srgb,
-        #12161d var(--buzz-translucency-wash-alpha, 2.4%),
+        #12161d var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       ),
       color-mix(
         in srgb,
-        #12161d var(--buzz-translucency-wash-alpha, 2.4%),
+        #12161d var(--g6-translucency-wash-alpha, 2.4%),
         transparent
       )
     );
@@ -722,16 +722,16 @@
   background-repeat: no-repeat, no-repeat;
 }
 
-:root[data-buzz-translucent] [data-testid="app-sidebar"],
-:root[data-buzz-translucent] [data-buzz-glass-inset],
-:root[data-buzz-translucent] [data-buzz-glass-footer-wrap],
-:root[data-buzz-translucent]
+:root[data-g6-translucent] [data-testid="app-sidebar"],
+:root[data-g6-translucent] [data-g6-glass-inset],
+:root[data-g6-translucent] [data-g6-glass-footer-wrap],
+:root[data-g6-translucent]
   .group\/sidebar-wrapper
-  .bg-sidebar:not([data-buzz-flat]),
-:root[data-buzz-translucent]
+  .bg-sidebar:not([data-g6-flat]),
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"],
-:root[data-buzz-translucent]
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-sidebar="footer"] {
   background-color: transparent;
@@ -739,41 +739,41 @@
 }
 
 /* Remove edge fades and stacking contexts that made header/footer look separate. */
-:root[data-buzz-translucent]
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"],
-:root[data-buzz-translucent] [data-buzz-glass-inset],
-:root[data-buzz-translucent]
+:root[data-g6-translucent] [data-g6-glass-inset],
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
-  [data-buzz-glass-footer-wrap],
-:root[data-buzz-translucent]
+  [data-g6-glass-footer-wrap],
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-sidebar="footer"] {
   isolation: auto;
   z-index: auto;
 }
 
-:root[data-buzz-translucent]
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"]::before,
-:root[data-buzz-translucent]
+:root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-sidebar="footer"]::before {
   background: none;
 }
 
 /* Let the native transparent window show through behind the sidebar glass. */
-:root[data-buzz-translucent],
-:root[data-buzz-translucent] body {
+:root[data-g6-translucent],
+:root[data-g6-translucent] body {
   background-color: transparent;
   background-image: none;
 }
 
 /* The outer shell stays clear; the app surface owns the gradient above. */
-:root[data-buzz-translucent] .buzz-huddle-shell {
+:root[data-g6-translucent] .g6-huddle-shell {
   background: transparent;
 }
 
-:root[data-buzz-translucent] .buzz-huddle-app-surface::after {
+:root[data-g6-translucent] .g6-huddle-app-surface::after {
   background: transparent;
 }

@@ -179,7 +179,7 @@ export function EditCommunityDialog({
             <Input
               id="edit-ws-token"
               onChange={(e) => setToken(e.target.value)}
-              placeholder="buzz_..."
+              placeholder="g6_..."
               type="password"
               value={token}
             />

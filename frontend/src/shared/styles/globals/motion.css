@@ -1,8 +1,8 @@
 /*
- * Buzz motion system
+ * Gear6 motion system
  *
  * Keep shared timing, easing, distance, and semantic motion primitives here.
- * Features decide when motion runs; this layer defines how Buzz moves.
+ * Features decide when motion runs; this layer defines how Gear6 moves.
  */
 
 :root {

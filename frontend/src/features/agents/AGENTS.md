@@ -4,7 +4,7 @@ Scope: `desktop/src/features/agents/` (config surfaces, shared config renderer,
 and the agent config core). Read this before changing how harness / provider /
 model / effort configuration is modeled, rendered, persisted, or applied.
 
-Plan of record: `Buzz/Harness-Provider-Model.md` in Morgan's Obsidian vault
+Plan of record: `Gear6/Harness-Provider-Model.md` in Morgan's Obsidian vault
 (PR sequence, decisions log). PRs: #2140 (rename), #2148 (flag reduction),
 #2156 (honest model states), #2158 (Agent Config Core).
 
@@ -30,7 +30,7 @@ with a TypeScript lookup table or an id comparison in a component.
    (`hasRenderableAgentConfigField`, `getRenderableEffortField`).
 2. **Effort reads/writes go through the descriptor.** Use the effort
    descriptor's `currentPersistence` key — never a raw
-   `BUZZ_AGENT_THINKING_EFFORT` literal in UI code. `currentPersistence` is
+   `GEAR6_AGENT_THINKING_EFFORT` literal in UI code. `currentPersistence` is
    where the value lives *today*; `targetApplication` is how the harness
    *should* receive it. They intentionally differ until PR 2.7 migrates
    Goose/Claude — do not "fix" one to match the other without doing the

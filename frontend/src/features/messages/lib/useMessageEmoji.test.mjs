@@ -10,18 +10,18 @@ import { isEmojiOnlyMessage } from "@/shared/lib/emojiOnly.ts";
 // InboxMessageRow (inbox) now derive their emoji rendering from, so a custom
 // emoji tag on an event must produce the same `customEmoji`/`emojiOnly`
 // regardless of which row reads it.
-const EMOJI_TAGS = [["emoji", "buzz", "https://relay/buzz.png"]];
+const EMOJI_TAGS = [["emoji", "g6", "https://relay/g6.png"]];
 
 test("derives custom emoji and emoji-only flag from event tags", () => {
   const customEmoji = customEmojiFromTags(EMOJI_TAGS);
   assert.deepEqual(customEmoji, [
-    { shortcode: "buzz", url: "https://relay/buzz.png" },
+    { shortcode: "g6", url: "https://relay/g6.png" },
   ]);
-  assert.equal(isEmojiOnlyMessage(":buzz:", customEmoji), true);
-  assert.equal(isEmojiOnlyMessage("hi :buzz:", customEmoji), false);
+  assert.equal(isEmojiOnlyMessage(":g6:", customEmoji), true);
+  assert.equal(isEmojiOnlyMessage("hi :g6:", customEmoji), false);
 });
 
 test("messages without tags get no custom emoji and are never emoji-only", () => {
   const customEmoji = undefined;
-  assert.equal(isEmojiOnlyMessage(":buzz:", customEmoji), false);
+  assert.equal(isEmojiOnlyMessage(":g6:", customEmoji), false);
 });

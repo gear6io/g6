@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Buzz",
+  "productName": "Gear6",
   "version": "0.4.23",
-  "identifier": "xyz.block.buzz.app",
+  "identifier": "xyz.block.g6.app",
   "build": {
     "beforeDevCommand": {
       "script": "exec env VITE_GEAR6=1 ./node_modules/.bin/vite",
@@ -45,7 +45,7 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["buzz"]
+        "schemes": ["g6"]
       }
     }
   },

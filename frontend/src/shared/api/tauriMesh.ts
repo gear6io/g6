@@ -69,7 +69,7 @@ export type MeshCatalogEntry = {
   installed: boolean;
   recommended: boolean;
   /**
-   * Buzz-curated pick — known to survive the agent harness. Curated entries
+   * Gear6-curated pick — known to survive the agent harness. Curated entries
    * render above the fold; everything else is "advanced".
    */
   curated: boolean;

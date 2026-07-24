@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
       json: {
         code: "qr-download-test",
         expires_at: Math.floor(Date.now() / 1000) + 86_400,
-        url: "buzz://join?relay=wss%3A%2F%2Frelay.example.com&code=qr-download-test",
+        url: "g6://join?relay=wss%3A%2F%2Frelay.example.com&code=qr-download-test",
       },
       status: 200,
     });
@@ -38,15 +38,15 @@ test("invite QR reuses the media menu and saves its PNG", async ({ page }) => {
   const payload = await page.evaluate(() => {
     const log = (
       window as Window & {
-        __BUZZ_E2E_COMMAND_LOG__?: Array<{
+        __GEAR6_E2E_COMMAND_LOG__?: Array<{
           command: string;
           payload: Record<string, unknown> | null;
         }>;
       }
-    ).__BUZZ_E2E_COMMAND_LOG__;
+    ).__GEAR6_E2E_COMMAND_LOG__;
     return log?.find(({ command }) => command === "save_png_data_url")?.payload;
   });
 
-  expect(payload?.filename).toBe("buzz-community-invite.png");
+  expect(payload?.filename).toBe("g6-community-invite.png");
   expect(payload?.dataUrl).toMatch(/^data:image\/png;base64,/);
 });

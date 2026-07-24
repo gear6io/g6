@@ -12,7 +12,7 @@ const CHANNEL_ID = "9a1657ac-f7aa-5db0-b632-d8bbeb6dfb50";
 const channels = [
   {
     id: CHANNEL_ID,
-    name: "buzz-bugs",
+    name: "g6-bugs",
     channelType: "stream",
   },
 ];
@@ -57,7 +57,7 @@ test("mention rows use the channel list when feed channelName is blank", () => {
 
   assert.deepEqual(getInboxTypeLabel(inboxItem), {
     text: "Mentioned in",
-    channelLabel: "buzz-bugs",
+    channelLabel: "g6-bugs",
   });
 });
 
@@ -80,7 +80,7 @@ test("thread activity rows use the channel list when feed channelName is blank",
 
   assert.deepEqual(getInboxTypeLabel(inboxItem), {
     text: "Thread in",
-    channelLabel: "buzz-bugs",
+    channelLabel: "g6-bugs",
   });
 });
 
@@ -118,7 +118,7 @@ test("thread groups are represented by the latest reply rather than the root", (
   );
   assert.deepEqual(getInboxTypeLabel(inboxItem), {
     text: "Thread in",
-    channelLabel: "buzz-bugs",
+    channelLabel: "g6-bugs",
   });
 });
 
@@ -157,7 +157,7 @@ test("thread groups use the latest row label even when the root was a mention", 
   );
   assert.deepEqual(getInboxTypeLabel(inboxItem), {
     text: "Thread in",
-    channelLabel: "buzz-bugs",
+    channelLabel: "g6-bugs",
   });
 });
 

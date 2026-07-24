@@ -1,4 +1,4 @@
-const STORAGE_KEY_PREFIX = "buzz-channel-stars.v1";
+const STORAGE_KEY_PREFIX = "g6-channel-stars.v1";
 
 export type ChannelStarEntry = {
   starred: boolean;

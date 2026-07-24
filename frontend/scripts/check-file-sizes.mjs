@@ -171,7 +171,7 @@ const overrides = new Map([
   // +1: pub(crate) mod cli_probe declaration for doctor auth probe access.
   // +3: auth_probe_args: None + login_hint: None added to make_cli_runtime and
   // make_codex_runtime stubs (new KnownAcpRuntime fields).
-  // Git Bash readiness is intentionally colocated with buzz-agent's other
+  // Git Bash readiness is intentionally colocated with g6-agent's other
   // setup-mode requirements. The Windows-only requirement and serialization
   // test add eight lines; split remains queued with the existing file debt.
   // Windows Doctor install fix: cli_install_commands_windows field added to test stubs.
@@ -251,7 +251,7 @@ const overrides = new Map([
   // config-bridge: schema-driven field extraction adds ~26 lines. Queued to split.
   // config-parity: max_tokens_env_var + context_limit_env_var fields added to
   // KnownAcpRuntime (2 fields × 4 runtimes + discovery tests = ~13 lines).
-  // Load-bearing — required for buzz-agent normalized config parity.
+  // Load-bearing — required for g6-agent normalized config parity.
   // same-runtime-pin: update_time_agent_command_override + its override /
   // same-runtime / alias / sentinel / non-override / persona-less test matrix
   // (~135 lines, mostly tests) so a deliberate Custom pin survives the update
@@ -289,7 +289,7 @@ const overrides = new Map([
   // +13: fetch_login_shell_path_inner Windows guard (POSIX PATH → None).
   // resolve_git_bash made pub(crate) for Windows test access.
   // +1: login_shell_candidates doc comment expanded for resolve_bash_path.
-  // Buzz-managed Node path helpers and resolution tests moved to
+  // Gear6-managed Node path helpers and resolution tests moved to
   // managed_node_paths.rs and discovery/tests/managed_path_resolution.rs;
   // ratcheting 1366 -> 1392 after adding the managed-path probes to discovery.
   ["src-tauri/src/managed_agents/discovery.rs", 1393],
@@ -379,7 +379,7 @@ const overrides = new Map([
   // keychain shapes (main blob, DPK blob, per-key "identity"). +73 lines.
   ["src-tauri/src/secret_store.rs", 1307],
   // keyring-dev-isolation: keyring_service() fn (7 lines) replaces the const
-  // to return "buzz-desktop-dev" in debug builds. Load-bearing isolation fix.
+  // to return "g6-desktop-dev" in debug builds. Load-bearing isolation fix.
   // +10 (1042 -> 1052): media_fetch_client with redirect::Policy::none() so a
   // relay 3xx cannot forward the minted auth header cross-origin (SSRF fix).
   // +16 (1052 -> 1068): extracted that client into `build_media_fetch_client()`
@@ -462,7 +462,7 @@ const overrides = new Map([
   // global-agent-config: get_agent_config_surface / write_agent_config_field /
   // put_agent_session_config commands + GlobalAgentConfig serde types. New file
   // in this PR; queued to split with the command module refactor.
-  // +17: baked-env-global-unify: BUZZ_AGENT_THINKING_EFFORT added to
+  // +17: baked-env-global-unify: GEAR6_AGENT_THINKING_EFFORT added to
   // is_safe_to_reveal allowlist + baked_env_thinking_effort_is_unmasked test.
   // +1: doctor-install-reliability: login_hint: None added to goose_runtime test stub.
   // +1: doctor-install-reliability review fixes: auth_probe_args: None added to stub.
@@ -514,7 +514,7 @@ const overrides = new Map([
   // lives in threading.ts (diffAddedMentionPubkeys); this is the minimal
   // composer-side wiring. Queued to split with the rest of this list.
   ["src/features/messages/ui/MessageComposer.tsx", 1114],
-  // global-agent-config: model-tuning section (BuzzAgentModelTuningFields via
+  // global-agent-config: model-tuning section (Gear6AgentModelTuningFields via
   // EditAgentAdvancedFields) + providerValid gate + effectiveProvider derivation
   // + globalProvider threading into getPersonaProviderOptions. All load-bearing
   // feature logic; queued to split with the rest of this list.
@@ -525,13 +525,13 @@ const overrides = new Map([
   // extracted as a testable helper with originalRuntimeSupportsProvider to close
   // the runtime-switch hole in Will's (b) providerValid gate narrowing.
   // E2E-fix round: added globalProvider fallback to useRequiredCredentialState
-  // call site and buzz-agent auto-expand effect for model-tuning knob visibility.
+  // call site and g6-agent auto-expand effect for model-tuning knob visibility.
   // F1-fix: added globalEnvVars to useRequiredCredentialState so globally-satisfied
   // credential keys are excluded from requiredEnvKeyMissing (display/gate parity).
   // Feature logic, not generic debt. Approved override; still queued to split.
   // +23 rebase onto #1667: behavioral quad fields (respond_to/parallelism/toolsets)
   // plumbed through AgentInstanceEditDialog from PersonaAdvancedFields.
-  // +2 provider-aware effort: model/provider props threaded to BuzzAgentModelTuningFields.
+  // +2 provider-aware effort: model/provider props threaded to Gear6AgentModelTuningFields.
   // +15 provider/model dropdown fixes: useBakedBuildEnvKeysQuery + hideProviderIds
   // for Databricks v1 gate; prospectiveRuntimeId default fallback for builtins.
   // PR-B moves default/API-key derivation into shared hooks; the explicit

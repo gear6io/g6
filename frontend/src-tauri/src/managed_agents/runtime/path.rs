@@ -6,8 +6,8 @@ use std::path::PathBuf;
 ///
 /// Concatenates, in priority order:
 ///   1. `<home>/.local/bin` — bundled CLI symlink
-///   2. Buzz-managed npm prefix bin dir — app-private ACP adapter shims
-///   3. Buzz-managed Node.js bin dir — app-private Node/npm runtime
+///   2. Gear6-managed npm prefix bin dir — app-private ACP adapter shims
+///   3. Gear6-managed Node.js bin dir — app-private Node/npm runtime
 ///   4. `nvm_bin` — nvm's default Node.js bin dir (if the user uses nvm)
 ///   5. exe parent dir — DMG sidecars under `Contents/MacOS/`
 ///   6. user's login-shell `PATH` — runtimes like node/python from other managers
@@ -16,7 +16,7 @@ use std::path::PathBuf;
 /// split into individual entries before joining. Pushing it as a single segment
 /// would make `join_paths` reject it (a segment containing the separator is an
 /// error), collapsing the entire augmented `PATH` to `None` — the bug this
-/// guards against, which left managed agents unable to find `buzz`. Returns
+/// guards against, which left managed agents unable to find `g6`. Returns
 /// `None` only when no entries exist.
 pub(in crate::managed_agents) fn build_augmented_path(
     home: Option<PathBuf>,
@@ -33,10 +33,10 @@ pub(in crate::managed_agents) fn build_augmented_path(
     // This keeps tests/utility callers that intentionally pass no local context
     // from manufacturing a PATH out of ambient platform dirs alone.
     if home_added || exe_parent.is_some() {
-        if let Some(managed_npm_bin) = crate::managed_agents::buzz_managed_npm_bin_dir() {
+        if let Some(managed_npm_bin) = crate::managed_agents::g6_managed_npm_bin_dir() {
             parts.push(managed_npm_bin);
         }
-        if let Some(managed_node_bin) = crate::managed_agents::buzz_managed_node_bin_dir() {
+        if let Some(managed_node_bin) = crate::managed_agents::g6_managed_node_bin_dir() {
             parts.push(managed_node_bin);
         }
     }
@@ -69,17 +69,17 @@ mod tests {
         // Regression: the shell PATH arrives as one colon-delimited string. It
         // must be split into segments before join_paths, or join_paths rejects
         // it and the whole augmented PATH collapses to None (managed agents then
-        // lose `buzz`).
+        // lose `g6`).
         let result = build_augmented_path(
             Some(PathBuf::from("/home/agent")),
-            Some(PathBuf::from("/Applications/Buzz.app/Contents/MacOS")),
+            Some(PathBuf::from("/Applications/Gear6.app/Contents/MacOS")),
             Some("/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin".to_string()),
             None,
         );
         let result = result.expect("path");
         assert!(result.starts_with("/home/agent/.local/bin:"), "{result}");
         assert!(
-            result.contains(":/Applications/Buzz.app/Contents/MacOS:"),
+            result.contains(":/Applications/Gear6.app/Contents/MacOS:"),
             "{result}"
         );
         assert!(
@@ -105,7 +105,7 @@ mod tests {
     fn nvm_bin_inserted_after_local_bin_before_exe_parent() {
         let result = build_augmented_path(
             Some(PathBuf::from("/home/user")),
-            Some(PathBuf::from("/Applications/Buzz.app/Contents/MacOS")),
+            Some(PathBuf::from("/Applications/Gear6.app/Contents/MacOS")),
             Some("/usr/bin:/bin".to_string()),
             Some(PathBuf::from("/home/user/.nvm/versions/node/v20.0.0/bin")),
         );
@@ -115,7 +115,7 @@ mod tests {
             .find("/home/user/.nvm/versions/node/v20.0.0/bin")
             .unwrap();
         let exe = result
-            .find("/Applications/Buzz.app/Contents/MacOS")
+            .find("/Applications/Gear6.app/Contents/MacOS")
             .unwrap();
         assert!(local < nvm && nvm < exe, "{result}");
         assert!(result.ends_with(":/usr/bin:/bin"), "{result}");

@@ -21,12 +21,12 @@ import { getApiIdentity } from "@/shared/api/invoke";
 rtm.connect();
 
 type E2eWindow = Window & {
-  __BUZZ_E2E__?: unknown;
+  __GEAR6_E2E__?: unknown;
 };
 
 const E2E_DEFAULT_PUBKEY = "deadbeef".repeat(8);
 const E2E_COMMUNITY_ID = "e2e-default-community";
-const ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX = "buzz-onboarding-complete.v1:";
+const ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX = "g6-onboarding-complete.v1:";
 const DEV_STATE_RESET_PARAM = "resetDevState";
 
 function resetDevWebviewStateFromUrl() {
@@ -39,7 +39,7 @@ function resetDevWebviewStateFromUrl() {
     return;
   }
 
-  // WebKit groups every Buzz binary under one disk directory, but storage is
+  // WebKit groups every Gear6 binary under one disk directory, but storage is
   // isolated by origin. Clearing here resets only this dev server's origin;
   // deleting the shared WebKit directory would also destroy installed-app state.
   window.localStorage.clear();
@@ -59,7 +59,7 @@ function configureDevE2eBridgeFromUrl() {
   }
 
   const e2eWindow = window as E2eWindow;
-  e2eWindow.__BUZZ_E2E__ ??= { mode: "mock" };
+  e2eWindow.__GEAR6_E2E__ ??= { mode: "mock" };
 
   const community = {
     addedAt: new Date().toISOString(),
@@ -67,8 +67,8 @@ function configureDevE2eBridgeFromUrl() {
     name: "E2E Test",
     relayUrl: "ws://localhost:3000",
   };
-  window.localStorage.setItem("buzz-communities", JSON.stringify([community]));
-  window.localStorage.setItem("buzz-active-community-id", E2E_COMMUNITY_ID);
+  window.localStorage.setItem("g6-communities", JSON.stringify([community]));
+  window.localStorage.setItem("g6-active-community-id", E2E_COMMUNITY_ID);
   window.localStorage.setItem(
     `${ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX}${E2E_DEFAULT_PUBKEY}`,
     "true",
@@ -80,7 +80,7 @@ function renderApp() {
     <React.StrictMode>
       <CommunitiesProvider>
         <CommunityOnboardingProvider>
-          <ThemeProvider defaultTheme="buzz">
+          <ThemeProvider defaultTheme="g6">
             <TooltipProvider delayDuration={300}>
               <EmojiBurstProvider>
                 <PoofBurstProvider>
@@ -104,7 +104,7 @@ async function installE2eBridgeIfConfigured() {
   // pre-bootstrap global alone must never activate mock IPC in production.
   if (
     !(import.meta.env.DEV || import.meta.env.MODE === "e2e") ||
-    !(window as E2eWindow).__BUZZ_E2E__
+    !(window as E2eWindow).__GEAR6_E2E__
   ) {
     return;
   }
@@ -123,7 +123,7 @@ async function seedApiSession() {
   try {
     const identity = await getApiIdentity();
     window.localStorage.setItem(
-      "buzz-communities",
+      "g6-communities",
       JSON.stringify([
         {
           id: COMMUNITY_ID,
@@ -134,9 +134,9 @@ async function seedApiSession() {
         },
       ]),
     );
-    window.localStorage.setItem("buzz-active-community-id", COMMUNITY_ID);
+    window.localStorage.setItem("g6-active-community-id", COMMUNITY_ID);
     window.localStorage.setItem(
-      `buzz-machine-onboarding-complete.v2:${identity.pubkey}`,
+      `g6-machine-onboarding-complete.v2:${identity.pubkey}`,
       "true",
     );
   } catch (err) {

@@ -12,14 +12,14 @@ import 'package:http/testing.dart' as http_testing;
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:nostr/nostr.dart' as nostr;
-import 'package:buzz/features/channels/channel.dart';
-import 'package:buzz/features/channels/channel_management_provider.dart';
-import 'package:buzz/features/channels/compose_bar.dart';
-import 'package:buzz/features/channels/channels_provider.dart';
-import 'package:buzz/features/channels/mentions/mention_candidates.dart';
-import 'package:buzz/features/channels/mentions/mention_candidates_provider.dart';
-import 'package:buzz/shared/relay/relay.dart';
-import 'package:buzz/shared/theme/theme.dart';
+import 'package:g6/features/channels/channel.dart';
+import 'package:g6/features/channels/channel_management_provider.dart';
+import 'package:g6/features/channels/compose_bar.dart';
+import 'package:g6/features/channels/channels_provider.dart';
+import 'package:g6/features/channels/mentions/mention_candidates.dart';
+import 'package:g6/features/channels/mentions/mention_candidates_provider.dart';
+import 'package:g6/shared/relay/relay.dart';
+import 'package:g6/shared/theme/theme.dart';
 
 final _pngBytes = Uint8List.fromList([
   0x89,
@@ -101,7 +101,7 @@ final _apngBytes = Uint8List.fromList([
   0x00,
 ]);
 
-const _mediaUploadPlatformChannel = MethodChannel('buzz/media_upload');
+const _mediaUploadPlatformChannel = MethodChannel('g6/media_upload');
 
 void _setMockMediaUploadPlatformHandler(
   Future<Object?> Function(MethodCall call)? handler,

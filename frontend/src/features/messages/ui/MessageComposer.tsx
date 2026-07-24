@@ -43,7 +43,7 @@ import {
 import { useLinkEditor } from "@/features/messages/lib/useLinkEditor";
 import { useComposerSpoilerParticles } from "@/features/messages/lib/useComposerSpoilerParticles";
 import { useTypingBroadcast } from "@/features/messages/useTypingBroadcast";
-import { getBuzzCodeBlockClipboardText } from "@/shared/lib/codeBlockClipboard";
+import { getGear6CodeBlockClipboardText } from "@/shared/lib/codeBlockClipboard";
 import { cn } from "@/shared/lib/cn";
 import type { ChannelType } from "@/shared/api/types";
 import { ChannelAutocomplete } from "./ChannelAutocomplete";
@@ -863,11 +863,11 @@ function MessageComposerImpl({
             return true;
           }
 
-          // --- Buzz code-block paste ---
-          // The code block copy button writes a small Buzz marker alongside
+          // --- Gear6 code-block paste ---
+          // The code block copy button writes a small Gear6 marker alongside
           // plain text. Use it to paste back as a literal code block so Markdown
           // parsing cannot reshape indentation, fence markers, or headings.
-          const codeBlockText = getBuzzCodeBlockClipboardText(
+          const codeBlockText = getGear6CodeBlockClipboardText(
             event.clipboardData,
           );
           if (codeBlockText !== null) {
@@ -890,7 +890,7 @@ function MessageComposerImpl({
             return true;
           }
 
-          // Restore Buzz snapshots before normal styled-HTML normalization.
+          // Restore Gear6 snapshots before normal styled-HTML normalization.
           if (handleAgentSnapshotPaste(event, media.setPendingImeta))
             return true;
           // Strip mention/channel wrappers that Tiptap would misread as bold.

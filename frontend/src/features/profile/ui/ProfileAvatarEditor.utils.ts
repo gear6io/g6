@@ -71,7 +71,7 @@ const EMOJI_MART_SHADOW_CSS = `
   }
 
   #root {
-    --padding: var(--buzz-emoji-picker-padding, 16px);
+    --padding: var(--g6-emoji-picker-padding, 16px);
     --sidebar-width: 0px;
     display: flex;
     flex-direction: column;
@@ -86,14 +86,14 @@ const EMOJI_MART_SHADOW_CSS = `
   #root::after {
     background: linear-gradient(
       to bottom,
-      rgba(var(--buzz-emoji-picker-rgb-background), 0),
-      rgba(var(--buzz-emoji-picker-rgb-background), 0.98)
+      rgba(var(--g6-emoji-picker-rgb-background), 0),
+      rgba(var(--g6-emoji-picker-rgb-background), 0.98)
     );
-    bottom: calc(var(--buzz-emoji-picker-nav-button-size, 40px) + 24px);
+    bottom: calc(var(--g6-emoji-picker-nav-button-size, 40px) + 24px);
     content: "";
-    height: var(--buzz-emoji-picker-fade-height, 0px);
+    height: var(--g6-emoji-picker-fade-height, 0px);
     left: 0;
-    opacity: var(--buzz-emoji-picker-fade-opacity, 0);
+    opacity: var(--g6-emoji-picker-fade-opacity, 0);
     pointer-events: none;
     position: absolute;
     right: 0;
@@ -106,7 +106,7 @@ const EMOJI_MART_SHADOW_CSS = `
     overflow-y: auto;
     padding-left: var(--padding);
     padding-right: var(--padding);
-    padding-top: var(--buzz-emoji-picker-scroll-padding-top, 28px);
+    padding-top: var(--g6-emoji-picker-scroll-padding-top, 28px);
     width: 100%;
   }
 
@@ -133,11 +133,11 @@ const EMOJI_MART_SHADOW_CSS = `
   }
 
   .category button:hover .background,
-  .category button[data-buzz-selected="true"] .background {
+  .category button[data-g6-selected="true"] .background {
     background-color: rgba(var(--em-rgb-color), 0.14);
   }
 
-  .category button[data-buzz-selected="true"] .background {
+  .category button[data-g6-selected="true"] .background {
     background-color: rgba(var(--em-rgb-color), 0.2);
   }
 
@@ -150,7 +150,7 @@ const EMOJI_MART_SHADOW_CSS = `
     display: flex;
     flex: 0 0 auto;
     justify-content: space-between;
-    padding: 8px var(--buzz-emoji-picker-nav-padding-x, 24px) 16px;
+    padding: 8px var(--g6-emoji-picker-nav-padding-x, 24px) 16px;
   }
 
   #nav .bar {
@@ -167,14 +167,14 @@ const EMOJI_MART_SHADOW_CSS = `
     border-radius: 999px;
     color: rgba(var(--em-rgb-color), 0.58);
     display: flex;
-    flex: 0 0 var(--buzz-emoji-picker-nav-button-size, 40px);
-    height: var(--buzz-emoji-picker-nav-button-size, 40px);
+    flex: 0 0 var(--g6-emoji-picker-nav-button-size, 40px);
+    height: var(--g6-emoji-picker-nav-button-size, 40px);
     justify-content: center;
     transition:
       background-color var(--duration) var(--easing),
       color var(--duration) var(--easing),
       transform var(--duration) var(--easing);
-    width: var(--buzz-emoji-picker-nav-button-size, 40px);
+    width: var(--g6-emoji-picker-nav-button-size, 40px);
   }
 
   #nav button:hover,
@@ -192,8 +192,8 @@ const EMOJI_MART_SHADOW_CSS = `
 
   #nav svg,
   #nav img {
-    height: var(--buzz-emoji-picker-category-icon-size, 24px);
-    width: var(--buzz-emoji-picker-category-icon-size, 24px);
+    height: var(--g6-emoji-picker-category-icon-size, 24px);
+    width: var(--g6-emoji-picker-category-icon-size, 24px);
   }
 `;
 
@@ -559,9 +559,9 @@ export function useEmojiMartStyles(
         return;
       }
 
-      if (!shadowRoot.querySelector("#buzz-emoji-mart-style")) {
+      if (!shadowRoot.querySelector("#g6-emoji-mart-style")) {
         const style = document.createElement("style");
-        style.id = "buzz-emoji-mart-style";
+        style.id = "g6-emoji-mart-style";
         style.textContent = EMOJI_MART_SHADOW_CSS;
         shadowRoot.appendChild(style);
       }
@@ -593,9 +593,9 @@ export function useEmojiMartThemeVars() {
       );
 
       setThemeVars({
-        "--buzz-emoji-picker-rgb-background": muted ?? "54, 58, 79",
-        "--buzz-emoji-picker-rgb-color": foreground ?? "245, 247, 255",
-        "--buzz-emoji-picker-rgb-input": background ?? "47, 51, 68",
+        "--g6-emoji-picker-rgb-background": muted ?? "54, 58, 79",
+        "--g6-emoji-picker-rgb-color": foreground ?? "245, 247, 255",
+        "--g6-emoji-picker-rgb-input": background ?? "47, 51, 68",
       } as React.CSSProperties);
     };
 

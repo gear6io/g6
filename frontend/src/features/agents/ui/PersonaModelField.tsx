@@ -92,7 +92,7 @@ export function PersonaModelField({
         ) : null}
         {showSharedComputeAutoHint ? (
           <p className="text-xs text-muted-foreground">
-            Buzz will choose an available shared model when the agent starts.
+            Gear6 will choose an available shared model when the agent starts.
           </p>
         ) : null}
         {modelDiscoveryStatus ? (

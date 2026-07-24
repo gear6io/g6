@@ -17,7 +17,7 @@ export function RecoveryScreen({
 
   return (
     <div
-      className="buzz-onboarding-neutral-theme buzz-startup-shell flex items-center justify-center bg-background px-4 py-8 text-foreground"
+      className="g6-onboarding-neutral-theme g6-startup-shell flex items-center justify-center bg-background px-4 py-8 text-foreground"
       data-system-color-scheme={systemColorScheme}
       data-testid={testId}
     >
@@ -33,7 +33,7 @@ export function RecoveryScreen({
           }}
           type="button"
         >
-          Relaunch Buzz
+          Relaunch Gear6
         </Button>
       </div>
     </div>

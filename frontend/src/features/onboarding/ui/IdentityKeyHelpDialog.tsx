@@ -12,7 +12,7 @@ import { ONBOARDING_INK_ICON_CLASS } from "./OnboardingChrome";
 import { OnboardingFooter } from "./OnboardingFooter";
 
 const IDENTITY_KEY_HELP_SEEN_STORAGE_KEY =
-  "buzz.machine-onboarding.identity-key-help-seen.v1";
+  "g6.machine-onboarding.identity-key-help-seen.v1";
 const IDENTITY_KEY_HELP_DELAY_MS = 2_000;
 
 function hasSeenIdentityKeyHelp(): boolean {
@@ -65,7 +65,7 @@ export function IdentityKeyHelpDialog() {
         </DialogTrigger>
       </OnboardingFooter>
       <DialogContent
-        className="buzz-onboarding-neutral-theme max-w-[47.5rem] -translate-y-5"
+        className="g6-onboarding-neutral-theme max-w-[47.5rem] -translate-y-5"
         closeButtonClassName={ONBOARDING_INK_ICON_CLASS}
         data-testid="identity-key-help-dialog"
         overlayVariant="transparent"
@@ -77,21 +77,21 @@ export function IdentityKeyHelpDialog() {
           </DialogTitle>
           <DialogDescription
             asChild
-            className="mt-6 space-y-4 text-pretty text-base leading-7 text-[color:var(--buzz-onboarding-backup-ink)]"
+            className="mt-6 space-y-4 text-pretty text-base leading-7 text-[color:var(--g6-onboarding-backup-ink)]"
           >
             <div>
               <p>
-                Buzz uses an identity key instead of a traditional account. It’s
-                created on your device and represents you whenever you use Buzz.
+                Gear6 uses an identity key instead of a traditional account. It’s
+                created on your device and represents you whenever you use Gear6.
               </p>
               <p>
-                Your identity belongs to you, not Buzz. There’s no password to
-                reset, and Buzz can’t recover your key if you lose it. Keep a
+                Your identity belongs to you, not Gear6. There’s no password to
+                reset, and Gear6 can’t recover your key if you lose it. Keep a
                 backup somewhere safe and never share it. Anyone with your key
                 can act as you.
               </p>
               <p>
-                If you’re new to Buzz, create a new identity key. If you already
+                If you’re new to Gear6, create a new identity key. If you already
                 have a Nostr identity, use your existing key.
               </p>
             </div>

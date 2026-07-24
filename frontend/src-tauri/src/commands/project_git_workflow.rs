@@ -577,11 +577,11 @@ pub async fn merge_project_pull_request(
                 ));
             }
 
-            let merge_email = format!("{merger_pubkey}@users.noreply.buzz");
+            let merge_email = format!("{merger_pubkey}@users.noreply.g6");
             let merge_result = run_git(
                 &[
                     "-c",
-                    "user.name=Buzz User",
+                    "user.name=Gear6 User",
                     "-c",
                     format!("user.email={merge_email}").as_str(),
                     "merge",
@@ -762,7 +762,7 @@ mod tests {
         let pull_request_id = "d".repeat(64);
         let pull_request_author = "b".repeat(64);
         let merge_commit = "e".repeat(40);
-        let repo_address = format!("30617:{owner}:buzz");
+        let repo_address = format!("30617:{owner}:g6");
         let before = Timestamp::now().as_secs();
         let event = Event::from_json(
             build_merged_status_event(
@@ -795,7 +795,7 @@ mod tests {
         let event = Event::from_json(
             build_merged_status_event(
                 &keys,
-                &format!("30617:{owner}:buzz"),
+                &format!("30617:{owner}:g6"),
                 &"d".repeat(64),
                 &"b".repeat(64),
                 &"e".repeat(40),
@@ -812,21 +812,21 @@ mod tests {
     fn merge_status_metadata_is_rejected_before_git_work() {
         let owner = "a".repeat(64);
         assert!(validate_merge_status_metadata(
-            &format!("30617:{}:buzz", "b".repeat(64)),
+            &format!("30617:{}:g6", "b".repeat(64)),
             &owner,
             &"d".repeat(64),
             &"e".repeat(64),
         )
         .is_err());
         assert!(validate_merge_status_metadata(
-            &format!("30617:{owner}:buzz"),
+            &format!("30617:{owner}:g6"),
             &owner,
             "not-an-event-id",
             &"e".repeat(64),
         )
         .is_err());
         assert!(validate_merge_status_metadata(
-            &format!("30617:{owner}:buzz"),
+            &format!("30617:{owner}:g6"),
             &owner,
             &"d".repeat(64),
             "not-an-author",
@@ -839,7 +839,7 @@ mod tests {
         let keys = Keys::generate();
         let owner = keys.public_key().to_hex();
         let reviewer = "b".repeat(64);
-        let repo_address = format!("30617:{owner}:buzz");
+        let repo_address = format!("30617:{owner}:g6");
         let event = Event::from_json(
             build_review_request_event(
                 &keys,

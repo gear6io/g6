@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::managed_agents::{
-    buzz_managed_command_path, buzz_managed_node_bin_dir, buzz_managed_npm_bin_dir,
+    g6_managed_command_path, g6_managed_node_bin_dir, g6_managed_npm_bin_dir,
     AcpAvailabilityStatus, AcpRuntimeCatalogEntry, AuthStatus, CommandAvailabilityInfo,
 };
 
@@ -16,7 +16,7 @@ pub(crate) use runtime_metadata::KnownAcpRuntime;
 const GOOSE_AVATAR_URL: &str = "https://goose-docs.ai/img/logo_dark.png";
 const CLAUDE_CODE_AVATAR_URL: &str = "https://anthropic.gallerycdn.vsassets.io/extensions/anthropic/claude-code/2.1.77/1773707456892/Microsoft.VisualStudio.Services.Icons.Default";
 const CODEX_AVATAR_URL: &str = "https://openai.gallerycdn.vsassets.io/extensions/openai/chatgpt/26.5313.41514/1773706730621/Microsoft.VisualStudio.Services.Icons.Default";
-const BUZZ_AGENT_AVATAR_URL: &str =
+const GEAR6_AGENT_AVATAR_URL: &str =
     "https://raw.githubusercontent.com/block/buzz/refs/heads/main/crates/buzz-agent/buzz-agent.png";
 
 fn common_binary_paths() -> &'static [PathBuf] {
@@ -28,10 +28,10 @@ fn common_binary_paths() -> &'static [PathBuf] {
             PathBuf::from("/usr/bin"),
             PathBuf::from("/home/linuxbrew/.linuxbrew/bin"),
         ];
-        if let Some(managed_node_bin) = buzz_managed_node_bin_dir() {
+        if let Some(managed_node_bin) = g6_managed_node_bin_dir() {
             paths.insert(0, managed_node_bin);
         }
-        if let Some(managed_bin) = buzz_managed_npm_bin_dir() {
+        if let Some(managed_bin) = g6_managed_npm_bin_dir() {
             paths.insert(0, managed_bin);
         }
         if let Some(home) = dirs::home_dir() {
@@ -131,7 +131,7 @@ const KNOWN_ACP_RUNTIMES: &[KnownAcpRuntime] = &[
         commands: &["codex-acp"],
         aliases: &[],
         avatar_url: CODEX_AVATAR_URL,
-        mcp_command: Some("buzz-dev-mcp"),
+        mcp_command: Some("g6-dev-mcp"),
         mcp_hooks: false,
         underlying_cli: Some("codex"),
         cli_install_commands: &["curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
@@ -158,32 +158,32 @@ const KNOWN_ACP_RUNTIMES: &[KnownAcpRuntime] = &[
         auth_probe_args: Some(&["codex", "login", "status"]),
     },
     KnownAcpRuntime {
-        id: "buzz-agent",
-        label: "Buzz Agent",
-        commands: &["buzz-agent"],
+        id: "g6-agent",
+        label: "Gear6 Agent",
+        commands: &["g6-agent"],
         aliases: &[],
-        avatar_url: BUZZ_AGENT_AVATAR_URL,
-        mcp_command: Some("buzz-dev-mcp"),
+        avatar_url: GEAR6_AGENT_AVATAR_URL,
+        mcp_command: Some("g6-dev-mcp"),
         mcp_hooks: true,
         underlying_cli: None,
         cli_install_commands: &[],
         cli_install_commands_windows: &[],
         adapter_install_commands: &[],
         install_instructions_url: "https://github.com/block/buzz",
-        cli_install_hint: "Ships with the Buzz desktop app.",
+        cli_install_hint: "Ships with the Gear6 desktop app.",
         adapter_install_hint: "",
         skill_dir: None,
         supports_acp_model_switching: true,
-        model_env_var: Some("BUZZ_AGENT_MODEL"),
-        provider_env_var: Some("BUZZ_AGENT_PROVIDER"),
+        model_env_var: Some("GEAR6_AGENT_MODEL"),
+        provider_env_var: Some("GEAR6_AGENT_PROVIDER"),
         provider_locked: false,
         default_env: &[],
         config_file_path: None,
         config_file_format: None,
         supports_acp_native_config: false,
-        thinking_env_var: Some("BUZZ_AGENT_THINKING_EFFORT"),
-        max_tokens_env_var: Some("BUZZ_AGENT_MAX_OUTPUT_TOKENS"),
-        context_limit_env_var: Some("BUZZ_AGENT_MAX_CONTEXT_TOKENS"),
+        thinking_env_var: Some("GEAR6_AGENT_THINKING_EFFORT"),
+        max_tokens_env_var: Some("GEAR6_AGENT_MAX_OUTPUT_TOKENS"),
+        context_limit_env_var: Some("GEAR6_AGENT_MAX_CONTEXT_TOKENS"),
         required_normalized_fields: &["model", "provider"],
         login_hint: None,
         auth_probe_args: None,
@@ -260,17 +260,17 @@ pub(crate) fn known_acp_runtime_exact(id: &str) -> Option<&'static KnownAcpRunti
 }
 
 /// The agent command a freshly-created agent defaults to when the create
-/// request supplies none. Resolves the bundled `buzz-agent` from the catalog so
+/// request supplies none. Resolves the bundled `g6-agent` from the catalog so
 /// the default cannot drift from the provider definition. Falls back to the id
 /// if the catalog entry is missing.
 ///
 /// The previous default was the bare global `goose`, which is not on PATH on a
 /// stock Windows install: every worker failed with `program not found`. The
-/// bundled `buzz-agent` ships with the app and resolves on every platform.
+/// bundled `g6-agent` ships with the app and resolves on every platform.
 pub fn default_agent_command() -> String {
-    known_acp_runtime_exact("buzz-agent")
+    known_acp_runtime_exact("g6-agent")
         .and_then(|p| p.commands.first().copied())
-        .unwrap_or("buzz-agent")
+        .unwrap_or("g6-agent")
         .to_string()
 }
 
@@ -344,7 +344,7 @@ fn default_agent_args(command: &str) -> Option<Vec<String>> {
     match normalize_command_identity(command).as_str() {
         "goose" => Some(vec!["acp".to_string()]),
         "codex" | "codex-acp" | "claude-agent-acp" | "claude-code-acp" | "claude-code"
-        | "claudecode" | "buzz-agent" => Some(Vec::new()),
+        | "claudecode" | "g6-agent" => Some(Vec::new()),
         _ => None,
     }
 }
@@ -445,7 +445,7 @@ fn resolve_cache() -> &'static std::sync::Mutex<std::collections::HashMap<String
 /// The cache eliminates redundant login-shell spawns when multiple agents share
 /// the same binaries (e.g. `npx`, `uvx`).
 pub fn resolve_command(command: &str) -> Option<PathBuf> {
-    if let Some(managed) = resolve_buzz_managed_command(command) {
+    if let Some(managed) = resolve_g6_managed_command(command) {
         return Some(managed);
     }
 
@@ -563,11 +563,11 @@ fn command_basenames(command: &str) -> Vec<String> {
     candidates
 }
 
-fn resolve_buzz_managed_command(command: &str) -> Option<PathBuf> {
+fn resolve_g6_managed_command(command: &str) -> Option<PathBuf> {
     let basenames = command_basenames(command);
     basenames
         .iter()
-        .find_map(|basename| buzz_managed_command_path(command, basename))
+        .find_map(|basename| g6_managed_command_path(command, basename))
 }
 
 fn resolve_command_uncached(command: &str) -> Option<PathBuf> {
@@ -582,7 +582,7 @@ fn resolve_command_uncached(command: &str) -> Option<PathBuf> {
         return path.exists().then_some(path);
     }
 
-    if let Some(managed) = resolve_buzz_managed_command(command) {
+    if let Some(managed) = resolve_g6_managed_command(command) {
         return Some(managed);
     }
 
@@ -660,7 +660,7 @@ fn path_candidates_from_env_raw(basename: &str) -> Vec<PathBuf> {
 /// Collect login shell candidates for the current platform.
 ///
 /// On Unix: `/bin/zsh`, `/bin/bash` (the historical defaults).
-/// On Windows: Git Bash via `resolve_bash_path` — skips `BUZZ_SHELL` because
+/// On Windows: Git Bash via `resolve_bash_path` — skips `GEAR6_SHELL` because
 /// login-shell callers use bash-only `-l -c` syntax.
 fn login_shell_candidates() -> Vec<PathBuf> {
     #[cfg(not(windows))]
@@ -886,7 +886,7 @@ fn runtime_needs_npm(runtime: &KnownAcpRuntime) -> bool {
 
 /// Returns `true` when `cmd` is an npm global install/uninstall invocation.
 ///
-/// Buzz rewrites these catalog commands to an app-private npm prefix before
+/// Gear6 rewrites these catalog commands to an app-private npm prefix before
 /// execution; the global shape remains in the catalog so existing install plans
 /// and Doctor's Node.js-required detection stay simple.
 pub(crate) fn is_npm_global_install(cmd: &str) -> bool {
@@ -1220,14 +1220,14 @@ pub fn discover_acp_runtimes() -> Vec<AcpRuntimeCatalogEntry> {
                 }
             };
 
-            // node_required now means Buzz cannot provide npm for this platform.
-            // On supported desktop platforms, Buzz downloads a private Node/npm
+            // node_required now means Gear6 cannot provide npm for this platform.
+            // On supported desktop platforms, Gear6 downloads a private Node/npm
             // runtime into app data before running npm-backed adapter installs.
             let node_required = matches!(
                 availability,
                 AcpAvailabilityStatus::AdapterMissing | AcpAvailabilityStatus::NotInstalled
             ) && runtime_needs_npm(runtime)
-                && buzz_managed_node_bin_dir().is_none()
+                && g6_managed_node_bin_dir().is_none()
                 && resolve_command("npm").is_none()
                 && resolve_command("node").is_none();
 

@@ -56,8 +56,8 @@ test("upload a file and see a FileCard in the timeline", async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          (window as Window & { __BUZZ_E2E_COMMANDS__?: string[] })
-            .__BUZZ_E2E_COMMANDS__ ?? [],
+          (window as Window & { __GEAR6_E2E_COMMANDS__?: string[] })
+            .__GEAR6_E2E_COMMANDS__ ?? [],
       ),
     )
     .toContain("download_file");
@@ -125,8 +125,8 @@ test("forum posts emit a FileCard for generic attachments, not a broken image", 
     .poll(() =>
       page.evaluate(
         () =>
-          (window as Window & { __BUZZ_E2E_COMMANDS__?: string[] })
-            .__BUZZ_E2E_COMMANDS__ ?? [],
+          (window as Window & { __GEAR6_E2E_COMMANDS__?: string[] })
+            .__GEAR6_E2E_COMMANDS__ ?? [],
       ),
     )
     .toContain("download_file");

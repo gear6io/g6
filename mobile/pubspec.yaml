@@ -1,5 +1,5 @@
-name: buzz
-description: Buzz mobile client
+name: g6
+description: Gear6 mobile client
 publish_to: 'none'
 version: 0.4.11+1
 
@@ -44,7 +44,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/buzz-icon.png
+    - assets/images/g6-icon.png
   fonts:
     - family: Inter
       fonts:

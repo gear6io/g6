@@ -7,18 +7,18 @@ type McpServersSectionProps = {
   extensions: ExtensionEntry[];
   runtimeId: string | null;
   variant?: "compact" | "profile";
-  buzzAgentSlot?: React.ReactNode;
+  g6AgentSlot?: React.ReactNode;
 };
 
 export function McpServersSection({
-  buzzAgentSlot,
+  g6AgentSlot,
   extensions,
   runtimeId,
   variant = "compact",
 }: McpServersSectionProps) {
-  const isBuzzAgent = runtimeId === "buzz-agent";
+  const isGear6Agent = runtimeId === "g6-agent";
 
-  if (!isBuzzAgent && extensions.length === 0) {
+  if (!isGear6Agent && extensions.length === 0) {
     return null;
   }
 
@@ -38,7 +38,7 @@ export function McpServersSection({
         MCP Servers
       </p>
 
-      {isBuzzAgent && buzzAgentSlot ? buzzAgentSlot : null}
+      {isGear6Agent && g6AgentSlot ? g6AgentSlot : null}
 
       {extensions.length > 0 ? (
         <div className="divide-y divide-border/50">

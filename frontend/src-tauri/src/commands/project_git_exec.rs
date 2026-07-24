@@ -253,14 +253,14 @@ pub(crate) fn validate_clone_url(clone_url: &str) -> Result<(), String> {
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err("clone URL must be http or https".into());
     }
-    // Buzz git remotes are served at `…/git/<owner-pubkey>/<repo-id>` — a
+    // Gear6 git remotes are served at `…/git/<owner-pubkey>/<repo-id>` — a
     // literal `git` segment followed by the 64-hex owner pubkey and a
     // non-empty repository id (the relay may live under a path prefix).
     let segments = parsed
         .path_segments()
         .map(|segments| segments.filter(|s| !s.is_empty()).collect::<Vec<_>>())
         .unwrap_or_default();
-    let is_buzz_repo_path = segments
+    let is_g6_repo_path = segments
         .iter()
         .rposition(|segment| *segment == "git")
         .filter(|index| segments.len() == index + 3)
@@ -270,8 +270,8 @@ pub(crate) fn validate_clone_url(clone_url: &str) -> Result<(), String> {
                 && !segments[index + 2].is_empty()
         })
         .unwrap_or(false);
-    if !is_buzz_repo_path {
-        return Err("clone URL must point at a Buzz git repository".into());
+    if !is_g6_repo_path {
+        return Err("clone URL must point at a Gear6 git repository".into());
     }
     Ok(())
 }
@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(
             git_subcommand(&[
                 "-c",
-                "user.name=Buzz User",
+                "user.name=Gear6 User",
                 "-c",
                 "user.email=user@example.com",
                 "merge",
@@ -343,7 +343,7 @@ mod tests {
         assert!(git_needs_credentials(&["fetch", "origin"]));
         assert!(git_needs_credentials(&[
             "-c",
-            "user.name=Buzz User",
+            "user.name=Gear6 User",
             "merge",
             "HEAD"
         ]));
@@ -388,7 +388,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_clone_url_requires_buzz_repo_shape() {
+    fn validate_clone_url_requires_g6_repo_shape() {
         let owner = "a".repeat(64);
         assert!(validate_clone_url(&format!("https://relay.example/git/{owner}/repo")).is_ok());
         assert!(

@@ -43,7 +43,7 @@ fn load_mesh_sharing_config(app: &AppHandle) -> Result<Option<MeshSharingConfig>
 }
 
 const RELAY_MESH_RUNTIME_NO_TARGET: &str =
-    "Buzz shared compute requires a live serving member; start serving the selected model on a member, then try again";
+    "Gear6 shared compute requires a live serving member; start serving the selected model on a member, then try again";
 
 pub type CmdResult<T> = Result<T, String>;
 
@@ -119,7 +119,7 @@ pub(crate) async fn resolve_trusted_owner_ids_or_self_only(state: &AppState) -> 
     match resolve_trusted_owner_ids(state).await {
         Ok(owners) => owners,
         Err(error) => {
-            eprintln!("buzz-mesh: roster query failed; allowing only this node: {error}");
+            eprintln!("g6-mesh: roster query failed; allowing only this node: {error}");
             Vec::new()
         }
     }
@@ -231,7 +231,7 @@ async fn wait_for_mesh_inference(model_id: &str) -> CmdResult<()> {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
     Err(format!(
-        "Buzz shared compute did not become inference-ready for {model_id}: {last_error}"
+        "Gear6 shared compute did not become inference-ready for {model_id}: {last_error}"
     ))
 }
 
@@ -296,7 +296,7 @@ pub(crate) async fn ensure_client_node_for_model(
     };
     let mut runtime = state.mesh_llm_runtime.lock().await;
     if runtime.is_some() {
-        return Err("mesh node changed while starting Buzz shared compute client".to_string());
+        return Err("mesh node changed while starting Gear6 shared compute client".to_string());
     }
     let started = mesh_llm::DesktopMeshRuntime::start(start)
         .await
@@ -367,7 +367,7 @@ fn pick_serve_target_for_model(
 /// wait until its inference router is actually ready. Otherwise re-resolve a
 /// current bootstrap target from the members' client-signed discovery notes,
 /// then bring up the local MeshLLM client. The endpoint contains MeshLLM's
-/// encrypted iroh relay addresses, so no Buzz relay connection coordination is
+/// encrypted iroh relay addresses, so no Gear6 relay connection coordination is
 /// required. The two failure modes get distinct, actionable copy:
 /// a relay query failure ("could not refresh targets") is not the same as a
 /// relay that answered with no live target for this model ("peer offline").
@@ -391,13 +391,13 @@ pub(crate) async fn ensure_relay_mesh_for_record(
         Ok(Some(target)) => target,
         Ok(None) => {
             return Err(
-                "Buzz shared compute cannot start because no live member is serving this model. Start serving it on a member, then try again."
+                "Gear6 shared compute cannot start because no live member is serving this model. Start serving it on a member, then try again."
                     .to_string(),
             );
         }
         Err(error) => {
             return Err(format!(
-                "could not refresh Buzz shared compute serving members: {error}"
+                "could not refresh Gear6 shared compute serving members: {error}"
             ));
         }
     };
@@ -559,7 +559,7 @@ mod tests {
     ///
     /// Before this change, `ensure_client_node_for_model` hard-errored whenever
     /// the running runtime was in `Serve` mode ("stop sharing before using
-    /// Buzz shared compute as a client"). That forbade exactly what a user should be
+    /// Gear6 shared compute as a client"). That forbade exactly what a user should be
     /// able to do: host model A while pointing an agent at a different model B
     /// through the same `9337` ingress.
     ///
@@ -570,7 +570,7 @@ mod tests {
     /// frontend selected earlier.
     ///
     /// Hardware-gated (`#[ignore]`): loads a real model. Run with:
-    ///   cargo test -p buzz-desktop --features mesh-llm \
+    ///   cargo test -p g6-desktop --features mesh-llm \
     ///     ensure_serve_runtime_serves_other_model -- --ignored --nocapture
     #[test]
     #[ignore = "loads a real model; run manually with --ignored"]

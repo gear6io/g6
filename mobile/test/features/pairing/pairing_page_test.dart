@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:buzz/features/pairing/pairing_page.dart';
-import 'package:buzz/features/pairing/pairing_provider.dart';
+import 'package:g6/features/pairing/pairing_page.dart';
+import 'package:g6/features/pairing/pairing_provider.dart';
 
 import '../../helpers/widget_helpers.dart';
 
@@ -16,10 +16,10 @@ void main() {
       );
 
       expect(
-        find.image(const AssetImage('assets/images/buzz-icon.png')),
+        find.image(const AssetImage('assets/images/g6-icon.png')),
         findsOneWidget,
       );
-      expect(find.text('Welcome to Buzz'), findsOneWidget);
+      expect(find.text('Welcome to Gear6'), findsOneWidget);
       expect(find.text('Scan QR Code'), findsOneWidget);
       expect(find.text('or paste pairing code'), findsOneWidget);
       expect(find.text('Connect'), findsOneWidget);

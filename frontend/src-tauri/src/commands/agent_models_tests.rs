@@ -171,7 +171,7 @@ fn saved_agent_model_discovery_uses_record_snapshot() {
             "name": "test-agent",
             "private_key_nsec": "nsec1fake",
             "relay_url": "wss://localhost:3000",
-            "acp_command": "buzz-acp",
+            "acp_command": "g6-acp",
             "agent_command": "goose",
             "agent_args": [],
             "mcp_command": "",
@@ -181,7 +181,7 @@ fn saved_agent_model_discovery_uses_record_snapshot() {
             "provider": "databricks",
             "env_vars": {
                 "OPENAI_API_KEY": "record-key",
-                "BUZZ_PRIVATE_KEY": "must-not-leak"
+                "GEAR6_PRIVATE_KEY": "must-not-leak"
             },
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-01T00:00:00Z",
@@ -209,14 +209,14 @@ fn saved_agent_model_discovery_uses_record_snapshot() {
         config.env.get("OPENAI_API_KEY").map(String::as_str),
         Some("record-key")
     );
-    assert!(!config.env.contains_key("BUZZ_PRIVATE_KEY"));
+    assert!(!config.env.contains_key("GEAR6_PRIVATE_KEY"));
 }
 
 // ---------------------------------------------------------------------------
 // Databricks provider detection
 // ---------------------------------------------------------------------------
 //
-// Parse/filter/pagination tests live in crates/buzz-agent/src/catalog.rs
+// Parse/filter/pagination tests live in crates/g6-agent/src/catalog.rs
 // (they moved there with the Option C refactor).
 
 // ---------------------------------------------------------------------------
@@ -243,7 +243,7 @@ fn update_request_turn_timeout_parses_for_wire_compat() {
     // backward-compatibility with frontends that still send it: the deprecated
     // field must keep parsing cleanly. Nothing consumes it — the patching loop
     // in update_managed_agent has no turn_timeout_seconds arm
-    // (BUZZ_ACP_TURN_TIMEOUT is deprecated and ignored by the harness). That
+    // (GEAR6_ACP_TURN_TIMEOUT is deprecated and ignored by the harness). That
     // absent-arm invariant lives in the code, not in this test: it only
     // guards the wire shape.
     let req: crate::managed_agents::UpdateManagedAgentRequest =

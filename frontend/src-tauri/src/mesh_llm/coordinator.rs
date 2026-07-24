@@ -1,9 +1,9 @@
 //! Runtime-owned shared-compute coordinator.
 //!
-//! Buzz publishes a client-signed, replaceable discovery note containing the
+//! Gear6 publishes a client-signed, replaceable discovery note containing the
 //! member's MeshLLM owner identity and current iroh endpoint. MeshLLM itself
 //! performs transport (direct QUIC or its encrypted iroh relays) and admission.
-//! The Buzz relay is only a generic Nostr store for membership and discovery;
+//! The Gear6 relay is only a generic Nostr store for membership and discovery;
 //! it does not coordinate connections or require mesh-specific handlers.
 
 use std::time::Duration;
@@ -14,11 +14,11 @@ use tauri::{AppHandle, Manager};
 use crate::app_state::AppState;
 
 /// Client-owned parameterized-replaceable discovery note. We use the standard
-/// NIP-51 bookmark-set kind with a reserved d-tag so existing Buzz relays accept
+/// NIP-51 bookmark-set kind with a reserved d-tag so existing Gear6 relays accept
 /// and store it through their generic user-state path. The relay needs no mesh
 /// handler or kind-registry change.
-pub const KIND_BUZZ_MESH_MEMBER_STATUS: u16 = buzz_core_pkg::kind::KIND_BOOKMARK_SET as u16;
-const STATUS_D_TAG_PREFIX: &str = "buzz-mesh-member-status";
+pub const KIND_GEAR6_MESH_MEMBER_STATUS: u16 = g6_core_pkg::kind::KIND_BOOKMARK_SET as u16;
+const STATUS_D_TAG_PREFIX: &str = "g6-mesh-member-status";
 const ROSTER_POLL_INTERVAL: Duration = Duration::from_secs(60);
 const STATUS_PUBLISH_INTERVAL: Duration = Duration::from_secs(45);
 const STATUS_PUBLISH_TIMEOUT: Duration = Duration::from_secs(10);
@@ -58,7 +58,7 @@ pub async fn start_coordinator(app: AppHandle) {
             tokio::time::sleep(ROSTER_POLL_INTERVAL).await;
             let state = roster_app.state::<AppState>();
             if let Err(error) = reconcile_roster(&state, &mut pending_shrink).await {
-                eprintln!("buzz-mesh: roster reconcile failed: {error}");
+                eprintln!("g6-mesh: roster reconcile failed: {error}");
             }
         }
     });
@@ -115,7 +115,7 @@ fn roster_reconcile_action(
     let fresh = match query {
         Err(error) => {
             eprintln!(
-                "buzz-mesh: roster reconcile query failed; keeping current allowlist: {error}"
+                "g6-mesh: roster reconcile query failed; keeping current allowlist: {error}"
             );
             return RosterReconcileAction::Keep;
         }
@@ -169,7 +169,7 @@ async fn reconcile_roster(
             return Ok(());
         }
         RosterReconcileAction::AwaitConfirm(reduced) => {
-            eprintln!("buzz-mesh: roster shrink observed; awaiting confirmation before restart");
+            eprintln!("g6-mesh: roster shrink observed; awaiting confirmation before restart");
             *pending_shrink = Some(reduced);
             return Ok(());
         }
@@ -185,9 +185,9 @@ async fn reconcile_roster(
     let Some(running) = guard.take() else {
         return Ok(());
     };
-    eprintln!("buzz-mesh: membership roster changed; restarting mesh node with fresh allowlist");
+    eprintln!("g6-mesh: membership roster changed; restarting mesh node with fresh allowlist");
     if let Err(error) = running.stop().await {
-        eprintln!("buzz-mesh: stopping mesh node for roster restart failed: {error}");
+        eprintln!("g6-mesh: stopping mesh node for roster restart failed: {error}");
     }
     let replacement = crate::mesh_llm::DesktopMeshRuntime::start(request)
         .await
@@ -205,8 +205,8 @@ pub(crate) async fn publish_current_status_once(app: &AppHandle, reason: &str) {
     .await
     {
         Ok(Ok(())) => {}
-        Ok(Err(error)) => eprintln!("buzz-mesh: status report after {reason} failed: {error}"),
-        Err(_) => eprintln!("buzz-mesh: status report after {reason} timed out"),
+        Ok(Err(error)) => eprintln!("g6-mesh: status report after {reason} failed: {error}"),
+        Err(_) => eprintln!("g6-mesh: status report after {reason} timed out"),
     }
 }
 
@@ -220,9 +220,9 @@ pub(crate) async fn publish_stopped_status_once(app: &AppHandle, reason: &str) {
     {
         Ok(Ok(())) => {}
         Ok(Err(error)) => {
-            eprintln!("buzz-mesh: stopped status report after {reason} failed: {error}");
+            eprintln!("g6-mesh: stopped status report after {reason} failed: {error}");
         }
-        Err(_) => eprintln!("buzz-mesh: stopped status report after {reason} timed out"),
+        Err(_) => eprintln!("g6-mesh: stopped status report after {reason} timed out"),
     }
 }
 
@@ -294,9 +294,9 @@ pub(crate) fn build_status_report_event(
         .ok_or_else(|| "mesh discovery status is missing ownerId".to_string())?;
     let d_tag = format!("{STATUS_D_TAG_PREFIX}:{owner_id}");
     let d = Tag::parse(["d", d_tag.as_str()]).map_err(|error| error.to_string())?;
-    let k = Tag::parse(["k", "buzz-mesh-status"]).map_err(|error| error.to_string())?;
+    let k = Tag::parse(["k", "g6-mesh-status"]).map_err(|error| error.to_string())?;
     Ok(nostr::EventBuilder::new(
-        nostr::Kind::Custom(KIND_BUZZ_MESH_MEMBER_STATUS),
+        nostr::Kind::Custom(KIND_GEAR6_MESH_MEMBER_STATUS),
         payload.to_string(),
     )
     .tags([d, k]))
@@ -437,7 +437,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             event.kind,
-            nostr::Kind::Custom(KIND_BUZZ_MESH_MEMBER_STATUS)
+            nostr::Kind::Custom(KIND_GEAR6_MESH_MEMBER_STATUS)
         );
         assert_eq!(event.pubkey, keys.public_key());
         assert!(event

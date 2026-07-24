@@ -1,4 +1,4 @@
-// Single switch that re-points the buzz frontend at the gear6 backend instead
+// Single switch that re-points the g6 frontend at the gear6 backend instead
 // of the (removed) nostr/Tauri backend. Set VITE_GEAR6=1 at dev/build time.
 //
 // This is deliberately NOT `!isTauri()`: in the desktop webview `isTauri()` is

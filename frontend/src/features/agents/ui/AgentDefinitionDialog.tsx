@@ -425,7 +425,7 @@ export function AgentDefinitionDialog({
   // dynamic missingNormalizedFields check would flip the asterisk off once a
   // value is selected, which is incoherent (required means required, not
   // "required until satisfied"). runtimeCanChooseLlmProvider is the authoritative
-  // gate: it tracks exactly when the provider picker is shown (Buzz Agent/Goose,
+  // gate: it tracks exactly when the provider picker is shown (Gear6 Agent/Goose,
   // plus runtime-less legacy/builtin definitions), so the required marker never
   // drifts from whether Save actually needs a provider.
   const providerIsRequired =
@@ -527,13 +527,13 @@ export function AgentDefinitionDialog({
     modelFieldVisible,
     provider: effectiveProvider,
   });
-  // On internal Block builds, BUZZ_AGENT_PROVIDER is baked in and a boot
+  // On internal Block builds, GEAR6_AGENT_PROVIDER is baked in and a boot
   // migration rewrites any persisted Databricks v1 values → v2. Hide the v1
   // option there so it is not offered for new selections. OSS builds have no
   // baked provider, so v1 remains visible.
   const hideProviderIds = React.useMemo(
     () =>
-      (bakedEnvKeys ?? []).includes("BUZZ_AGENT_PROVIDER")
+      (bakedEnvKeys ?? []).includes("GEAR6_AGENT_PROVIDER")
         ? BLOCK_BUILD_HIDDEN_PROVIDER_IDS
         : new Set<string>(),
     [bakedEnvKeys],
@@ -693,11 +693,11 @@ export function AgentDefinitionDialog({
   function handleProviderDropdownChange(nextValue: string) {
     const nextProvider =
       nextValue === AUTO_PROVIDER_DROPDOWN_VALUE ? "" : nextValue;
-    if (nextProvider === "relay-mesh" && runtime !== "buzz-agent") {
-      handleRuntimeDropdownChange("buzz-agent");
+    if (nextProvider === "relay-mesh" && runtime !== "g6-agent") {
+      handleRuntimeDropdownChange("g6-agent");
     }
     const nextSelection = selectionOnProviderDropdownChange(selection, {
-      runtime: nextProvider === "relay-mesh" ? "buzz-agent" : runtime,
+      runtime: nextProvider === "relay-mesh" ? "g6-agent" : runtime,
       nextValue,
       clearModelWhenApiKeyMissing: true,
     });

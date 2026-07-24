@@ -2,12 +2,12 @@
 use super::{ManagedAgentRecord, RelayMeshConfig};
 
 pub const RELAY_MESH_API_BASE_URL: &str = "http://127.0.0.1:9337/v1";
-pub const RELAY_MESH_API_KEY_PLACEHOLDER: &str = "buzz-mesh-local";
+pub const RELAY_MESH_API_KEY_PLACEHOLDER: &str = "g6-mesh-local";
 pub const RELAY_MESH_PROVIDER_ID: &str = "relay-mesh";
 pub const RELAY_MESH_AUTO_MODEL_ID: &str = "auto";
 
-/// Translate the native Buzz shared compute provider into the OpenAI-compatible
-/// transport understood by buzz-agent. These are derived runtime details, not
+/// Translate the native Gear6 shared compute provider into the OpenAI-compatible
+/// transport understood by g6-agent. These are derived runtime details, not
 /// user-owned agent configuration.
 #[cfg(feature = "mesh-llm")]
 pub fn apply_relay_mesh_env(
@@ -23,8 +23,8 @@ pub fn apply_relay_mesh_env(
         .filter(|value| !value.is_empty())
         .unwrap_or(RELAY_MESH_AUTO_MODEL_ID)
         .to_string();
-    env.insert("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string());
-    env.insert("BUZZ_AGENT_MODEL".to_string(), model.clone());
+    env.insert("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string());
+    env.insert("GEAR6_AGENT_MODEL".to_string(), model.clone());
     env.insert(
         "OPENAI_COMPAT_BASE_URL".to_string(),
         RELAY_MESH_API_BASE_URL.to_string(),
@@ -40,10 +40,10 @@ pub fn apply_relay_mesh_env(
     // Without both settings Qwen3 either fails the router's fit check at the
     // agent default (32K) or can consume a tight cap before serializing a tool.
     env.insert(
-        "BUZZ_AGENT_MAX_OUTPUT_TOKENS".to_string(),
+        "GEAR6_AGENT_MAX_OUTPUT_TOKENS".to_string(),
         "4096".to_string(),
     );
-    env.insert("BUZZ_AGENT_THINKING_EFFORT".to_string(), "none".to_string());
+    env.insert("GEAR6_AGENT_THINKING_EFFORT".to_string(), "none".to_string());
 }
 
 /// Resolve a record's relay-mesh config, typed field first.
@@ -71,7 +71,7 @@ pub fn relay_mesh_config(record: &ManagedAgentRecord) -> Option<RelayMeshConfig>
 }
 
 /// Returns the relay-mesh model id for agents whose provider env points at the
-/// local mesh client endpoint created by Buzz's relay-mesh preset.
+/// local mesh client endpoint created by Gear6's relay-mesh preset.
 ///
 /// Prefer [`relay_mesh_config`]; this remains as a convenience for call sites
 /// that only need the model id.
@@ -89,7 +89,7 @@ fn relay_mesh_model_id_from_env(record: &ManagedAgentRecord) -> Option<String> {
     if base_url.trim_end_matches('/') != RELAY_MESH_API_BASE_URL {
         return None;
     }
-    let provider = record.env_vars.get("BUZZ_AGENT_PROVIDER")?.trim();
+    let provider = record.env_vars.get("GEAR6_AGENT_PROVIDER")?.trim();
     if provider != "openai" {
         return None;
     }
@@ -121,7 +121,7 @@ mod tests {
             auth_tag: Some("tag".into()),
             relay_url: "ws://localhost:3000".into(),
             avatar_url: None,
-            acp_command: "buzz-acp".into(),
+            acp_command: "g6-acp".into(),
             agent_command: "goose".into(),
             agent_command_override: None,
             agent_args: vec![],
@@ -172,7 +172,7 @@ mod tests {
     fn relay_mesh_model_id_detects_mesh_preset_env() {
         let mut rec = fixture();
         rec.env_vars = BTreeMap::from([
-            ("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string()),
+            ("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string()),
             (
                 "OPENAI_COMPAT_BASE_URL".to_string(),
                 "http://127.0.0.1:9337/v1/".to_string(),
@@ -197,11 +197,11 @@ mod tests {
         );
 
         assert_eq!(
-            env.get("BUZZ_AGENT_MAX_OUTPUT_TOKENS").map(String::as_str),
+            env.get("GEAR6_AGENT_MAX_OUTPUT_TOKENS").map(String::as_str),
             Some("4096")
         );
         assert_eq!(
-            env.get("BUZZ_AGENT_THINKING_EFFORT").map(String::as_str),
+            env.get("GEAR6_AGENT_THINKING_EFFORT").map(String::as_str),
             Some("none")
         );
     }
@@ -210,7 +210,7 @@ mod tests {
     fn relay_mesh_model_id_ignores_non_mesh_openai_env() {
         let mut rec = fixture();
         rec.env_vars = BTreeMap::from([
-            ("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string()),
+            ("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string()),
             (
                 "OPENAI_COMPAT_BASE_URL".to_string(),
                 "https://api.openai.com/v1".to_string(),
@@ -225,7 +225,7 @@ mod tests {
     fn relay_mesh_model_id_ignores_user_openai_on_same_local_port() {
         let mut rec = fixture();
         rec.env_vars = BTreeMap::from([
-            ("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string()),
+            ("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string()),
             (
                 "OPENAI_COMPAT_BASE_URL".to_string(),
                 "http://127.0.0.1:9337/v1".to_string(),
@@ -263,7 +263,7 @@ mod tests {
             model_ref: "typed-model".to_string(),
         });
         rec.env_vars = BTreeMap::from([
-            ("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string()),
+            ("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string()),
             (
                 "OPENAI_COMPAT_BASE_URL".to_string(),
                 "http://127.0.0.1:9337/v1".to_string(),
@@ -283,7 +283,7 @@ mod tests {
         let mut rec = fixture();
         rec.relay_mesh = None;
         rec.env_vars = BTreeMap::from([
-            ("BUZZ_AGENT_PROVIDER".to_string(), "openai".to_string()),
+            ("GEAR6_AGENT_PROVIDER".to_string(), "openai".to_string()),
             (
                 "OPENAI_COMPAT_BASE_URL".to_string(),
                 "http://127.0.0.1:9337/v1".to_string(),

@@ -151,7 +151,7 @@ pub struct CreateManagedAgentRequest {
     #[allow(dead_code)]
     pub mcp_command: Option<String>,
     /// Accepted for wire compatibility; not applied to the record.
-    /// `BUZZ_ACP_TURN_TIMEOUT` is deprecated and ignored by the harness.
+    /// `GEAR6_ACP_TURN_TIMEOUT` is deprecated and ignored by the harness.
     ///
     /// @deprecated — sending this field has no effect.
     #[allow(dead_code)]
@@ -210,7 +210,7 @@ pub struct UpdateManagedAgentRequest {
     #[serde(default)]
     pub parallelism: Option<u32>,
     /// Accepted for wire compatibility; not applied to the stored record.
-    /// `BUZZ_ACP_TURN_TIMEOUT` is deprecated and ignored by the harness.
+    /// `GEAR6_ACP_TURN_TIMEOUT` is deprecated and ignored by the harness.
     ///
     /// @deprecated — sending this field has no effect.
     #[allow(dead_code)]

@@ -32,7 +32,7 @@ pub fn spawn_event_sync(app: tauri::AppHandle, owner_keys: nostr::Keys) {
         })
         .await
         {
-            eprintln!("buzz-desktop: event-sync: spawn_blocking failed: {e}");
+            eprintln!("g6-desktop: event-sync: spawn_blocking failed: {e}");
         }
     });
 }
@@ -68,11 +68,11 @@ pub fn migrate_personas_to_events(app: &tauri::AppHandle, keys: &nostr::Keys) {
         Ok(0) => {}
         Ok(migrated) => {
             eprintln!(
-                "buzz-desktop: persona-event-migration: {migrated} personas migrated to retention"
+                "g6-desktop: persona-event-migration: {migrated} personas migrated to retention"
             );
         }
         Err(e) => {
-            eprintln!("buzz-desktop: persona-event-migration: {e}");
+            eprintln!("g6-desktop: persona-event-migration: {e}");
         }
     }
 }
@@ -88,7 +88,7 @@ fn migrate_personas_in_dir(base_dir: &Path, keys: &nostr::Keys) -> Result<u32, S
         retention::{get_retained_event, open_retention_db, retain_event, RetainedEvent},
         AgentDefinition,
     };
-    use buzz_core_pkg::kind::KIND_PERSONA;
+    use g6_core_pkg::kind::KIND_PERSONA;
     use nostr::JsonUtil;
 
     let pubkey = keys.public_key().to_hex();
@@ -212,10 +212,10 @@ pub fn migrate_teams_to_events(app: &tauri::AppHandle, keys: &nostr::Keys) {
     match migrate_teams_in_dir(&base_dir, keys) {
         Ok(0) => {}
         Ok(migrated) => {
-            eprintln!("buzz-desktop: team-event-migration: {migrated} teams migrated to retention");
+            eprintln!("g6-desktop: team-event-migration: {migrated} teams migrated to retention");
         }
         Err(e) => {
-            eprintln!("buzz-desktop: team-event-migration: {e}");
+            eprintln!("g6-desktop: team-event-migration: {e}");
         }
     }
 }
@@ -232,7 +232,7 @@ fn migrate_teams_in_dir(base_dir: &Path, keys: &nostr::Keys) -> Result<u32, Stri
         team_events::build_team_event,
         TeamRecord,
     };
-    use buzz_core_pkg::kind::KIND_TEAM;
+    use g6_core_pkg::kind::KIND_TEAM;
     use nostr::JsonUtil;
 
     let pubkey = keys.public_key().to_hex();

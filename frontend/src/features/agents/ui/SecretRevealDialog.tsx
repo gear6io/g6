@@ -45,7 +45,7 @@ export function SecretRevealDialog({
                         Private key (nsec)
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        This is the agent identity used by `buzz-acp`.
+                        This is the agent identity used by `g6-acp`.
                       </p>
                     </div>
                     <CopyButton

@@ -187,7 +187,7 @@ function PairingDialog({
                 ? "Verify the security code matches your mobile device."
                 : step === "done"
                   ? "Your mobile device is now paired."
-                  : "Scan this QR code with the Buzz mobile app to securely pair."}
+                  : "Scan this QR code with the Gear6 mobile app to securely pair."}
             </DialogDescription>
           </DialogHeader>
 
@@ -251,7 +251,7 @@ function PairingDialog({
                     </p>
                   </div>
                   <p className="text-center text-xs text-muted-foreground">
-                    You are about to transfer your Buzz identity to another
+                    You are about to transfer your Gear6 identity to another
                     device. Only confirm if you initiated this pairing.
                   </p>
                 </div>
@@ -327,7 +327,7 @@ export function MobilePairingCard({
         title="Mobile"
         description={
           <>
-            Connect the Buzz mobile app to this relay by scanning a QR code. The
+            Connect the Gear6 mobile app to this relay by scanning a QR code. The
             connection is secured with end-to-end encryption and a verification
             code.
           </>

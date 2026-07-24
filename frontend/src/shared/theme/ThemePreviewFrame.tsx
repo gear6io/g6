@@ -4,21 +4,21 @@ import { cn } from "@/shared/lib/cn";
 export type ThemePreviewVars = Record<string, string>;
 
 /**
- * Buzz sidebar-gradient stop tokens, keyed by theme name. The actual custom
+ * Gear6 sidebar-gradient stop tokens, keyed by theme name. The actual custom
  * colors live once in `shared/styles/globals/theme.css`; the picker consumes
  * those same semantic variables instead of duplicating raw values here.
  */
-export const BUZZ_GRADIENT_STOPS: Record<
+export const GEAR6_GRADIENT_STOPS: Record<
   string,
   { top: string; bottom: string }
 > = {
-  buzz: {
-    top: "var(--buzz-gradient-light-top)",
-    bottom: "var(--buzz-gradient-light-bottom)",
+  g6: {
+    top: "var(--g6-gradient-light-top)",
+    bottom: "var(--g6-gradient-light-bottom)",
   },
-  "buzz-dark": {
-    top: "var(--buzz-gradient-dark-top)",
-    bottom: "var(--buzz-gradient-dark-bottom)",
+  "g6-dark": {
+    top: "var(--g6-gradient-dark-top)",
+    bottom: "var(--g6-gradient-dark-bottom)",
   },
 };
 
@@ -60,7 +60,7 @@ function ThemePreviewSvg({
   sidebarGradient?: { top: string; bottom: string };
 }) {
   const clipId = React.useId().replace(/:/g, "");
-  const gradientId = `${clipId}-buzz`;
+  const gradientId = `${clipId}-g6`;
   const background = hsl(vars, "--background");
   const border = hsl(vars, "--border");
   const foreground = hsl(vars, "--foreground");
@@ -258,8 +258,8 @@ function SystemPreferencePreviewSvg({
   const clipDark = `${clipBase}-dark`;
   const clipLight = `${clipBase}-light`;
   const clipOuter = `${clipBase}-outer`;
-  const lightGradientId = `${clipBase}-buzz-light`;
-  const darkGradientId = `${clipBase}-buzz-dark`;
+  const lightGradientId = `${clipBase}-g6-light`;
+  const darkGradientId = `${clipBase}-g6-dark`;
 
   // Dark half colors
   const darkBg = hsl(darkVars, "--background");

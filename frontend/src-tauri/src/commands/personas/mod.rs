@@ -302,7 +302,7 @@ pub async fn update_persona(
             )
             .await
             {
-                eprintln!("buzz-desktop: relay profile sync failed after persona update: {e}");
+                eprintln!("g6-desktop: relay profile sync failed after persona update: {e}");
             }
         }
     }
@@ -458,7 +458,7 @@ pub async fn delete_persona(id: String, app: AppHandle) -> Result<(), String> {
                         .lock()
                         .map_err(|error| error.to_string())?;
                     if let Err(e) = stop_managed_agent_process(&app, rec, &mut runtimes) {
-                        eprintln!("buzz-desktop: delete_persona: failed to stop agent {pk}: {e}");
+                        eprintln!("g6-desktop: delete_persona: failed to stop agent {pk}: {e}");
                     }
                     // runtimes drops here (per-agent, process lock not held across stops).
                 }
@@ -557,7 +557,7 @@ fn reconcile_inbound_persona_event_blocking(
         save_managed_agents, save_teams,
         team_events::team_content_from_event,
     };
-    use buzz_core_pkg::kind::{KIND_DELETION, KIND_MANAGED_AGENT, KIND_PERSONA, KIND_TEAM};
+    use g6_core_pkg::kind::{KIND_DELETION, KIND_MANAGED_AGENT, KIND_PERSONA, KIND_TEAM};
     use nostr::JsonUtil;
 
     let state = app.state::<AppState>();
@@ -710,7 +710,7 @@ fn reconcile_inbound_tombstone(
         },
         save_managed_agents, save_teams,
     };
-    use buzz_core_pkg::kind::{KIND_DELETION, KIND_MANAGED_AGENT, KIND_PERSONA, KIND_TEAM};
+    use g6_core_pkg::kind::{KIND_DELETION, KIND_MANAGED_AGENT, KIND_PERSONA, KIND_TEAM};
     use nostr::JsonUtil;
 
     let Some((target_kind, target_d_tag)) = parse_deletion_coordinate(event) else {

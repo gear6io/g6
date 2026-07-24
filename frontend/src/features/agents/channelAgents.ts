@@ -231,7 +231,7 @@ export async function ensureChannelAgentPresetInChannel(
 
   const created = await createManagedAgent({
     name: expectedName,
-    acpCommand: "buzz-acp",
+    acpCommand: "g6-acp",
     agentCommand: input.runtime.command,
     agentArgs: input.runtime.defaultArgs,
     mcpCommand: input.runtime.mcpCommand ?? "",
@@ -351,7 +351,7 @@ export async function provisionChannelManagedAgent(
 
   const created = await createManagedAgent({
     name: trimmedName,
-    acpCommand: "buzz-acp",
+    acpCommand: "g6-acp",
     agentCommand: input.runtime.command,
     harnessOverride: input.harnessOverride ?? false,
     agentArgs: input.runtime.defaultArgs,

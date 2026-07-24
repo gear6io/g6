@@ -52,7 +52,7 @@ const stubModules = new Map([
   ["@emoji-mart/react", "export default function Picker() { return null; }\n"],
 ]);
 
-const STUB_URL_PREFIX = "buzz-test-stub:";
+const STUB_URL_PREFIX = "g6-test-stub:";
 
 export function resolve(specifier, context, nextResolve) {
   if (stubModules.has(specifier)) {

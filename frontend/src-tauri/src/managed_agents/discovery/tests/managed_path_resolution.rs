@@ -2,7 +2,7 @@ use crate::managed_agents::discovery::{clear_resolve_cache, resolve_command};
 
 #[cfg(unix)]
 #[test]
-fn resolve_command_prefers_buzz_managed_npm_shim_over_path() {
+fn resolve_command_prefers_g6_managed_npm_shim_over_path() {
     use std::os::unix::fs::PermissionsExt;
 
     let _guard = crate::managed_agents::lock_path_mutex();
@@ -22,7 +22,7 @@ fn resolve_command_prefers_buzz_managed_npm_shim_over_path() {
     std::env::set_var("XDG_DATA_HOME", &xdg_data);
     let managed_bin = dirs::data_dir()
         .expect("data dir")
-        .join("Buzz")
+        .join("Gear6")
         .join("node-tools")
         .join("bin");
     std::fs::create_dir_all(&managed_bin).expect("create managed bin");
@@ -59,6 +59,6 @@ fn resolve_command_prefers_buzz_managed_npm_shim_over_path() {
     assert_eq!(
         resolved.as_deref(),
         Some(managed_shim.as_path()),
-        "Buzz-managed npm shim must win over PATH/global shims"
+        "Gear6-managed npm shim must win over PATH/global shims"
     );
 }

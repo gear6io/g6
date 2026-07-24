@@ -41,13 +41,13 @@ import {
 import { PersonaProviderApiKeyField } from "@/features/agents/ui/PersonaProviderApiKeyField";
 import { usePersonaModelDiscovery } from "@/features/agents/ui/usePersonaModelDiscovery";
 import {
-  BUZZ_AGENT_THINKING_EFFORT,
+  GEAR6_AGENT_THINKING_EFFORT,
   getProviderEffortConfig,
-} from "@/features/agents/ui/buzzAgentConfig";
+} from "@/features/agents/ui/g6AgentConfig";
 import {
   EffortSelectField,
   useEffortAutoClear,
-} from "@/features/agents/ui/buzzAgentModelTuningFields";
+} from "@/features/agents/ui/g6AgentModelTuningFields";
 import { Input } from "@/shared/ui/input";
 import { SettingsOptionGroup } from "@/features/settings/ui/SettingsOptionGroup";
 
@@ -61,9 +61,9 @@ export const EMPTY_GLOBAL_CONFIG: GlobalAgentConfig = {
 
 /** Baked env keys that route to structured controls, not the generic env editor. */
 const BAKED_STRUCTURED_KEYS = new Set([
-  "BUZZ_AGENT_PROVIDER",
-  "BUZZ_AGENT_MODEL",
-  BUZZ_AGENT_THINKING_EFFORT,
+  "GEAR6_AGENT_PROVIDER",
+  "GEAR6_AGENT_MODEL",
+  GEAR6_AGENT_THINKING_EFFORT,
 ]);
 
 // Canonical behaviors (PR 2 flag cleanup). These were per-surface props;
@@ -200,7 +200,7 @@ export function AgentConfigFields({
       ? effortField.currentPersistence.key
       : null;
   const bakedProvider = React.useMemo(
-    () => bakedEnv.find((e) => e.key === "BUZZ_AGENT_PROVIDER")?.value ?? null,
+    () => bakedEnv.find((e) => e.key === "GEAR6_AGENT_PROVIDER")?.value ?? null,
     [bakedEnv],
   );
   const selectedRuntimeId = selectedRuntime?.id ?? "";
@@ -230,7 +230,7 @@ export function AgentConfigFields({
   }, [modelIsValid, onValidityChange]);
   const bakedEffort = React.useMemo(
     () =>
-      bakedEnv.find((e) => e.key === BUZZ_AGENT_THINKING_EFFORT)?.value ?? null,
+      bakedEnv.find((e) => e.key === GEAR6_AGENT_THINKING_EFFORT)?.value ?? null,
     [bakedEnv],
   );
   const bakedGenericRows = React.useMemo<readonly InheritedEnvRow[]>(
@@ -253,7 +253,7 @@ export function AgentConfigFields({
     selectedRuntimeId,
   )
     ? selectedRuntimeId
-    : "buzz-agent";
+    : "g6-agent";
   const requiredEnvKeys = requiredCredentialEnvKeys(
     credentialRuntimeId,
     credentialProvider,
@@ -485,17 +485,17 @@ export function AgentConfigFields({
     onConfigChange({ ...config, env_vars: merged });
   }
 
-  // On internal Block builds, BUZZ_AGENT_PROVIDER is baked in and a boot
+  // On internal Block builds, GEAR6_AGENT_PROVIDER is baked in and a boot
   // migration rewrites v1→v2. Hide the legacy v1 option so it is not offered
   // for new selections; OSS builds show it.
   const hideProviderIds = React.useMemo(() => {
     const hidden = new Set<string>();
-    if (bakedEnvKeys.includes("BUZZ_AGENT_PROVIDER")) {
+    if (bakedEnvKeys.includes("GEAR6_AGENT_PROVIDER")) {
       for (const providerId of BLOCK_BUILD_HIDDEN_PROVIDER_IDS) {
         hidden.add(providerId);
       }
     }
-    if (selectedRuntimeId !== "buzz-agent") {
+    if (selectedRuntimeId !== "g6-agent") {
       hidden.add("relay-mesh");
     }
     return hidden;
@@ -780,7 +780,7 @@ export function AgentConfigFields({
               requiredKeys={advancedRequiredEnvKeys}
               value={Object.fromEntries(
                 Object.entries(config.env_vars).filter(
-                  ([k]) => k !== BUZZ_AGENT_THINKING_EFFORT,
+                  ([k]) => k !== GEAR6_AGENT_THINKING_EFFORT,
                 ),
               )}
             />

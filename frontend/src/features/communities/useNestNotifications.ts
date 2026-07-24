@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { USE_HTTP_API } from "@/shared/api/mode";
 
-const MIGRATION_TOAST_KEY = "buzz-legacy-nest-migrated-notified";
+const MIGRATION_TOAST_KEY = "g6-legacy-nest-migrated-notified";
 
 /**
  * Surface nest-related backend events as toasts.

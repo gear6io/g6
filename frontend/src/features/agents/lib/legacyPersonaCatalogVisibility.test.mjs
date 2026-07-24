@@ -12,7 +12,7 @@ test("clearLegacyPersonaCatalogVisibility removes the retired preference", () =>
     },
   });
 
-  assert.deepEqual(removedKeys, ["buzz-persona-catalog-visibility-v1"]);
+  assert.deepEqual(removedKeys, ["g6-persona-catalog-visibility-v1"]);
 });
 
 test("clearLegacyPersonaCatalogVisibility ignores unavailable storage", () => {

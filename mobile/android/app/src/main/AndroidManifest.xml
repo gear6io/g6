@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <application
-        android:label="Buzz"
+        android:label="Gear6"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -26,12 +26,12 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Handle buzz:// deep links (e.g. buzz://message?channel=…&id=…). -->
+            <!-- Handle g6:// deep links (e.g. g6://message?channel=…&id=…). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="buzz"/>
+                <data android:scheme="g6"/>
             </intent-filter>
             <!-- Disable Flutter's built-in deeplink handler; app_links owns
                  incoming URLs so they can be routed with app state in Dart. -->

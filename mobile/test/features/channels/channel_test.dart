@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:buzz/features/channels/channel.dart';
+import 'package:g6/features/channels/channel.dart';
 
 void main() {
   group('Channel.fromJson', () {

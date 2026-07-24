@@ -114,8 +114,8 @@ function provenanceSentence(
   configFilePath: string | null,
 ): string {
   switch (origin) {
-    case "buzzExplicit":
-      return "Set in Buzz";
+    case "g6Explicit":
+      return "Set in Gear6";
     case "personaDefault":
       return "Inherited from template";
     case "runtimeOverride":

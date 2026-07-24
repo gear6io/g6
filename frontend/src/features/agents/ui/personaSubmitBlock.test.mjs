@@ -37,7 +37,7 @@ test("missing name is reported first", () => {
   );
 });
 
-test("Buzz Agent + Use AI defaults with no global provider/model names the fix", () => {
+test("Gear6 Agent + Use AI defaults with no global provider/model names the fix", () => {
   const reason = personaSubmitBlock(
     submittable({
       aiConfigurationMode: "defaults",

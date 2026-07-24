@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:buzz/features/pairing/pairing_provider.dart';
-import 'package:buzz/features/pairing/pairing_socket.dart';
-import 'package:buzz/shared/auth/auth.dart';
+import 'package:g6/features/pairing/pairing_provider.dart';
+import 'package:g6/features/pairing/pairing_socket.dart';
+import 'package:g6/shared/auth/auth.dart';
 
-/// Tests for [PairingNotifier]'s legacy `buzz://` payload parsing and
+/// Tests for [PairingNotifier]'s legacy `g6://` payload parsing and
 /// SSRF-prevention validation.
 ///
 /// The pairing flow used to validate by calling `GET /api/users/me/profile`
@@ -17,7 +17,7 @@ import 'package:buzz/shared/auth/auth.dart';
 ///
 /// What we still cover here:
 ///   - Initial state.
-///   - Parsing every documented payload format (raw base64, `buzz://`
+///   - Parsing every documented payload format (raw base64, `g6://`
 ///     prefix, whitespace).
 ///   - Failure modes that return BEFORE any network call: invalid base64,
 ///     wrong shape (non-object, missing fields, missing nsec), and SSRF
@@ -88,10 +88,10 @@ void main() {
       expect(fakeAuth.lastCommunity, isNull);
     });
 
-    test('accepts buzz scheme prefix', () async {
+    test('accepts g6 scheme prefix', () async {
       container = createContainer();
 
-      final code = 'buzz://${_encodePairingCode()}';
+      final code = 'g6://${_encodePairingCode()}';
       await container.read(pairingProvider.notifier).pair(code);
 
       final state = container.read(pairingProvider);

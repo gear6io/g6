@@ -40,22 +40,22 @@ test("writes normally when under quota", () => {
 test("evicts pure caches and retries on quota failure", () => {
   const ls = makeQuotaLocalStorage({ maxEntries: 2 });
   install(ls);
-  ls.store.set("buzz-channel-messages.v1:relay:chan", "big");
-  ls.store.set("buzz-channels.v1:relay", "big");
+  ls.store.set("g6-channel-messages.v1:relay:chan", "big");
+  ls.store.set("g6-channels.v1:relay", "big");
 
   assert.equal(setLocalStorageItemWithRecovery("k", "v"), true);
   assert.equal(ls.getItem("k"), "v");
-  assert.equal(ls.getItem("buzz-channel-messages.v1:relay:chan"), null);
-  assert.equal(ls.getItem("buzz-channels.v1:relay"), null);
+  assert.equal(ls.getItem("g6-channel-messages.v1:relay:chan"), null);
+  assert.equal(ls.getItem("g6-channels.v1:relay"), null);
 });
 
 test("returns false when eviction frees nothing", () => {
   const ls = makeQuotaLocalStorage({ maxEntries: 2 });
   install(ls);
-  ls.store.set("buzz-workspaces", "keep");
-  ls.store.set("buzz-active-workspace-id", "keep");
+  ls.store.set("g6-workspaces", "keep");
+  ls.store.set("g6-active-workspace-id", "keep");
 
   assert.equal(setLocalStorageItemWithRecovery("k", "v"), false);
   assert.equal(ls.getItem("k"), null);
-  assert.equal(ls.getItem("buzz-workspaces"), "keep");
+  assert.equal(ls.getItem("g6-workspaces"), "keep");
 });

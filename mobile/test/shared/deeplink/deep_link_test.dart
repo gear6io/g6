@@ -1,4 +1,4 @@
-import 'package:buzz/shared/deeplink/deep_link.dart';
+import 'package:g6/shared/deeplink/deep_link.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -7,7 +7,7 @@ void main() {
   group('parseMessageDeepLink', () {
     test('parses channel and id', () {
       final link = parseMessageDeepLink(
-        Uri.parse('buzz://message?channel=d14cd131&id=abc123'),
+        Uri.parse('g6://message?channel=d14cd131&id=abc123'),
       );
       expect(
         link,
@@ -17,38 +17,38 @@ void main() {
 
     test('parses optional thread param', () {
       final link = parseMessageDeepLink(
-        Uri.parse('buzz://message?channel=d14cd131&id=abc123&thread=root99'),
+        Uri.parse('g6://message?channel=d14cd131&id=abc123&thread=root99'),
       );
       expect(link?.threadRootId, 'root99');
     });
 
     test('treats empty thread as absent', () {
       final link = parseMessageDeepLink(
-        Uri.parse('buzz://message?channel=d14cd131&id=abc123&thread='),
+        Uri.parse('g6://message?channel=d14cd131&id=abc123&thread='),
       );
       expect(link, isNotNull);
       expect(link?.threadRootId, isNull);
     });
 
     test('rejects missing channel', () {
-      expect(parseMessageDeepLink(Uri.parse('buzz://message?id=abc')), isNull);
+      expect(parseMessageDeepLink(Uri.parse('g6://message?id=abc')), isNull);
     });
 
     test('rejects empty channel', () {
       expect(
-        parseMessageDeepLink(Uri.parse('buzz://message?channel=&id=abc')),
+        parseMessageDeepLink(Uri.parse('g6://message?channel=&id=abc')),
         isNull,
       );
     });
 
     test('rejects missing id', () {
       expect(
-        parseMessageDeepLink(Uri.parse('buzz://message?channel=d14cd131')),
+        parseMessageDeepLink(Uri.parse('g6://message?channel=d14cd131')),
         isNull,
       );
     });
 
-    test('rejects non-buzz scheme', () {
+    test('rejects non-g6 scheme', () {
       expect(
         parseMessageDeepLink(Uri.parse('https://message?channel=a&id=b')),
         isNull,
@@ -57,7 +57,7 @@ void main() {
 
     test('rejects non-message host (connect is desktop-only)', () {
       expect(
-        parseMessageDeepLink(Uri.parse('buzz://connect?relay=wss://x')),
+        parseMessageDeepLink(Uri.parse('g6://connect?relay=wss://x')),
         isNull,
       );
     });
@@ -89,10 +89,10 @@ void _inviteTests() {
       );
     });
 
-    test('parses buzz join handoff link', () {
+    test('parses g6 join handoff link', () {
       final link = parseInviteDeepLink(
         Uri.parse(
-          'buzz://join?relay=wss%3A%2F%2Frelay.example.com&code=abc123',
+          'g6://join?relay=wss%3A%2F%2Frelay.example.com&code=abc123',
         ),
       );
       expect(
@@ -104,10 +104,10 @@ void _inviteTests() {
       );
     });
 
-    test('preserves policy receipt in buzz join handoff', () {
+    test('preserves policy receipt in g6 join handoff', () {
       final link = parseInviteDeepLink(
         Uri.parse(
-          'buzz://join?relay=wss%3A%2F%2Frelay.example.com&code=abc123&policy_receipt=receipt.value',
+          'g6://join?relay=wss%3A%2F%2Frelay.example.com&code=abc123&policy_receipt=receipt.value',
         ),
       );
       expect(
@@ -151,33 +151,33 @@ void _inviteTests() {
       expect(
         parseInviteDeepLink(
           Uri.parse(
-            'buzz://join?relay=wss%3A%2F%2Fuser%3Apass%40relay.example.com&code=abc',
+            'g6://join?relay=wss%3A%2F%2Fuser%3Apass%40relay.example.com&code=abc',
           ),
         ),
         isNull,
       );
     });
 
-    test('rejects buzz join without websocket relay or code', () {
+    test('rejects g6 join without websocket relay or code', () {
       expect(
         parseInviteDeepLink(
-          Uri.parse('buzz://join?relay=https://relay.example.com&code=abc'),
+          Uri.parse('g6://join?relay=https://relay.example.com&code=abc'),
         ),
         isNull,
       );
       expect(
         parseInviteDeepLink(
-          Uri.parse('buzz://join?relay=wss://relay.example.com'),
+          Uri.parse('g6://join?relay=wss://relay.example.com'),
         ),
         isNull,
       );
       expect(
-        parseInviteDeepLink(Uri.parse('buzz://connect?relay=wss://x')),
+        parseInviteDeepLink(Uri.parse('g6://connect?relay=wss://x')),
         isNull,
       );
     });
 
-    test('rejects buzz join with dangerous relay schemes', () {
+    test('rejects g6 join with dangerous relay schemes', () {
       // The `relay=` param is an allowlist — only `ws` / `wss` are safe to
       // hand to a Nostr relay session. Anything else must be dropped by the
       // parser so a hostile QR / share link can't smuggle a browser scheme
@@ -194,7 +194,7 @@ void _inviteTests() {
       ]) {
         final encoded = Uri.encodeQueryComponent(hostile);
         expect(
-          parseInviteDeepLink(Uri.parse('buzz://join?relay=$encoded&code=abc')),
+          parseInviteDeepLink(Uri.parse('g6://join?relay=$encoded&code=abc')),
           isNull,
           reason: 'must reject relay scheme in $hostile',
         );

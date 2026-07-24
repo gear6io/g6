@@ -13,19 +13,19 @@ const DEFAULT_MOCK_PUBKEY = "deadbeef".repeat(8);
 async function enableProjectsFeature(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      "buzz-feature-overrides-v1",
+      "g6-feature-overrides-v1",
       JSON.stringify({ projects: true }),
     );
   });
 }
 
-async function openBuzzProject(page: import("@playwright/test").Page) {
+async function openGear6Project(page: import("@playwright/test").Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.getByTestId("open-projects-view").click();
   await page.getByRole("button", { name: "Repositories", exact: true }).click();
   const projectEntry = page
     .locator(
-      '[data-testid="project-card-buzz"], [data-testid="project-row-buzz"]',
+      '[data-testid="project-card-g6"], [data-testid="project-row-g6"]',
     )
     .first();
   await expect(projectEntry).toBeVisible({ timeout: 10_000 });
@@ -37,10 +37,10 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_EVENT_KINDS__ = [1631];
+    window.__GEAR6_E2E_REJECT_PROJECT_EVENT_KINDS__ = [1631];
   });
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("tab", { name: "Pull Request" }).click();
   const prRows = page.getByTestId("project-pull-request-row");
@@ -82,7 +82,7 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+          window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
             (event) =>
               event.kind === 1 &&
               event.tags.some(
@@ -120,7 +120,7 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
   });
   await expect(requestChanges).toHaveCount(0);
   const changeRequestEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__
+    window.__GEAR6_E2E_SIGNED_EVENTS__
       ?.filter(
         (event) =>
           event.kind === 1 &&
@@ -133,7 +133,7 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
   expect(changeRequestEvent?.tags).toContainEqual(["c", expect.any(String)]);
   const rapidDecisionEvents = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+      window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
         (event) =>
           event.kind === 1 &&
           event.tags.some(
@@ -156,7 +156,7 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
     page.getByRole("button", { name: "Approve", exact: true }),
   ).toHaveCount(0);
   const approvalEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__
+    window.__GEAR6_E2E_SIGNED_EVENTS__
       ?.filter(
         (event) =>
           event.kind === 1 &&
@@ -205,7 +205,7 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+          window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
             (event) => event.kind === 1631,
           ).length ?? 0,
       ),
@@ -230,14 +230,14 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+          window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
             (event) => event.kind === 1631,
           ).length ?? 0,
       ),
     )
     .toBe(1);
   const mergedEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__
+    window.__GEAR6_E2E_SIGNED_EVENTS__
       ?.filter((event) => event.kind === 1631)
       .at(-1),
   );
@@ -248,13 +248,13 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
   expect(mergedEvent?.tags.some((tag) => tag[0] === "e")).toBe(true);
   const mergeCommandCount = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_COMMANDS__?.filter(
+      window.__GEAR6_E2E_COMMANDS__?.filter(
         (command) => command === "merge_project_pull_request",
       ).length ?? 0,
   );
   expect(mergeCommandCount).toBe(1);
   const mergePayload = await page.evaluate(() =>
-    window.__BUZZ_E2E_COMMAND_PAYLOADS__?.find(
+    window.__GEAR6_E2E_COMMAND_PAYLOADS__?.find(
       (entry) => entry.command === "merge_project_pull_request",
     ),
   );
@@ -271,9 +271,9 @@ test("PR creator/owner can toggle draft, request reviews, and approve", async ({
 test("merge conflicts offer persistent terminal recovery", async ({ page }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
   await page.evaluate(() => {
-    window.__BUZZ_E2E_PROJECT_MERGE_ERROR__ = {
+    window.__GEAR6_E2E_PROJECT_MERGE_ERROR__ = {
       code: "merge_conflict",
       message: "Pull request has merge conflicts.",
       recovery: {
@@ -310,7 +310,7 @@ test("merge conflicts offer persistent terminal recovery", async ({ page }) => {
     page.getByText("Recovery commit fetched and terminal opened."),
   ).toBeHidden({ timeout: 10_000 });
   await expect(recovery).toContainText("git switch 'main'");
-  await expect(recovery).toContainText("git merge 'refs/buzz/merge-recovery/");
+  await expect(recovery).toContainText("git merge 'refs/g6/merge-recovery/");
   await expect(
     recovery.getByRole("button", { name: "Copy commands" }),
   ).toBeEnabled();
@@ -323,7 +323,7 @@ test("merge conflicts offer persistent terminal recovery", async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_COMMAND_PAYLOADS__?.find(
+          window.__GEAR6_E2E_COMMAND_PAYLOADS__?.find(
             (entry) => entry.command === "open_project_merge_recovery_terminal",
           ) ?? null,
       ),
@@ -345,7 +345,7 @@ test("reviewer can leave a commit-scoped inline diff comment", async ({
 }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("tab", { name: "Pull Request" }).click();
   const aliceRow = page
@@ -372,14 +372,14 @@ test("reviewer can leave a commit-scoped inline diff comment", async ({
   await expect
     .poll(() =>
       page.evaluate(() =>
-        window.__BUZZ_E2E_SIGNED_EVENTS__?.find(
+        window.__GEAR6_E2E_SIGNED_EVENTS__?.find(
           (event) => event.content === "Please add a type for this parameter.",
         ),
       ),
     )
     .not.toBeUndefined();
   const inlineCommentEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__?.find(
+    window.__GEAR6_E2E_SIGNED_EVENTS__?.find(
       (event) => event.content === "Please add a type for this parameter.",
     ),
   );
@@ -407,7 +407,7 @@ test("reviewer can leave a commit-scoped inline diff comment", async ({
 test("managed agent repository owner can merge", async ({ page }) => {
   await enableProjectsFeature(page);
   await page.addInitScript((owner) => {
-    window.__BUZZ_E2E_PROJECT_OWNER_OVERRIDE__ = owner;
+    window.__GEAR6_E2E_PROJECT_OWNER_OVERRIDE__ = owner;
   }, TEST_IDENTITIES.alice.pubkey);
   await installMockBridge(page, {
     managedAgents: [
@@ -421,7 +421,7 @@ test("managed agent repository owner can merge", async ({ page }) => {
       },
     ],
   });
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("tab", { name: "Pull Request" }).click();
   const agentRow = page
@@ -437,7 +437,7 @@ test("managed agent repository owner can merge", async ({ page }) => {
     .click();
   await expect(page.getByText("Review requested.")).toBeVisible();
   const reviewRequestPayload = await page.evaluate(() =>
-    window.__BUZZ_E2E_COMMAND_PAYLOADS__?.find(
+    window.__GEAR6_E2E_COMMAND_PAYLOADS__?.find(
       (entry) => entry.command === "sign_project_pull_request_review_request",
     ),
   );
@@ -452,7 +452,7 @@ test("managed agent repository owner can merge", async ({ page }) => {
   await expect(page.getByText("Merged feature into main.")).toBeVisible();
 
   const mergePayload = await page.evaluate(() =>
-    window.__BUZZ_E2E_COMMAND_PAYLOADS__?.find(
+    window.__GEAR6_E2E_COMMAND_PAYLOADS__?.find(
       (entry) => entry.command === "merge_project_pull_request",
     ),
   );
@@ -469,7 +469,7 @@ test("managed agent repository owner can merge", async ({ page }) => {
 test("viewer without repository ownership cannot merge", async ({ page }) => {
   await enableProjectsFeature(page);
   await page.addInitScript((owner) => {
-    window.__BUZZ_E2E_PROJECT_OWNER_OVERRIDE__ = owner;
+    window.__GEAR6_E2E_PROJECT_OWNER_OVERRIDE__ = owner;
   }, TEST_IDENTITIES.alice.pubkey);
   await installMockBridge(page, {
     managedAgents: [
@@ -479,7 +479,7 @@ test("viewer without repository ownership cannot merge", async ({ page }) => {
       },
     ],
   });
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("tab", { name: "Pull Request" }).click();
   const prRow = page.getByTestId("project-pull-request-row").first();
@@ -491,7 +491,7 @@ test("viewer without repository ownership cannot merge", async ({ page }) => {
   ).toHaveCount(0);
   const mergeCommandCount = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_COMMANDS__?.filter(
+      window.__GEAR6_E2E_COMMANDS__?.filter(
         (command) => command === "merge_project_pull_request",
       ).length ?? 0,
   );
@@ -499,14 +499,14 @@ test("viewer without repository ownership cannot merge", async ({ page }) => {
 
   const authorizationError = await page.evaluate(async (targetOwner) => {
     try {
-      await window.__BUZZ_E2E_INVOKE_MOCK_COMMAND__?.(
+      await window.__GEAR6_E2E_INVOKE_MOCK_COMMAND__?.(
         "merge_project_pull_request",
         {
           input: {
             expectedCommit: "1".repeat(40),
             pullRequestAuthor: "2".repeat(64),
             pullRequestId: "3".repeat(64),
-            repoAddress: `30617:${targetOwner}:buzz`,
+            repoAddress: `30617:${targetOwner}:g6`,
             sourceBranch: "feature/untrusted",
             statusCreatedAt: 1,
             targetBranch: "main",
@@ -529,7 +529,7 @@ test("project pull requests preserve partial results from batched queries", asyn
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1619];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1619];
   });
   await installMockBridge(page);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -548,7 +548,7 @@ test("project pull requests preserve partial results from batched queries", asyn
 
   const workItemFilters = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_PROJECT_QUERY_FILTERS__?.filter(
+      window.__GEAR6_E2E_PROJECT_QUERY_FILTERS__?.filter(
         (filter) => filter.limit === 2_000,
       ) ?? [],
   );
@@ -565,7 +565,7 @@ test("project pull requests preserve partial results from batched queries", asyn
     workItemFilters.every((filter) => (filter["#a"]?.length ?? 0) > 1),
   ).toBe(true);
   const expectedRepoAddresses = [
-    `30617:${DEFAULT_MOCK_PUBKEY}:buzz`,
+    `30617:${DEFAULT_MOCK_PUBKEY}:g6`,
     `30617:${TEST_IDENTITIES.alice.pubkey}:relay-tools`,
     `30617:${TEST_IDENTITIES.bob.pubkey}:design-system`,
   ].sort();
@@ -574,7 +574,7 @@ test("project pull requests preserve partial results from batched queries", asyn
   }
 
   await page.evaluate(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
   });
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(
@@ -587,7 +587,7 @@ test("project pull requests report aggregate root query failures", async ({
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1618];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1618];
   });
   await installMockBridge(page);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -601,7 +601,7 @@ test("project pull requests report aggregate root query failures", async ({
   await expect(page.getByText("No pull requests yet.")).toHaveCount(0);
 
   await page.evaluate(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
   });
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("Could not load pull requests.")).toHaveCount(0);
@@ -615,7 +615,7 @@ test("project issues preserve partial results from aggregate queries", async ({
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1];
   });
   await installMockBridge(page);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -632,7 +632,7 @@ test("project issues preserve partial results from aggregate queries", async ({
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 
   await page.evaluate(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
   });
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(
@@ -645,7 +645,7 @@ test("project overview reports aggregate work-item failures", async ({
 }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1618];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [1618];
   });
   await installMockBridge(page);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -657,7 +657,7 @@ test("project overview reports aggregate work-item failures", async ({
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 
   await page.evaluate(() => {
-    window.__BUZZ_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
+    window.__GEAR6_E2E_REJECT_PROJECT_QUERY_KINDS__ = [];
   });
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("Could not load project activity.")).toHaveCount(
@@ -670,7 +670,7 @@ test("project without a checkout offers fetch feedback and dropdown cloning", as
 }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await expect(
     page.getByRole("button", { name: "Remote", exact: true }),
@@ -703,7 +703,7 @@ test("project without a checkout offers fetch feedback and dropdown cloning", as
     page.getByRole("button", { name: "Local", exact: true }),
   ).toBeVisible();
   const commands = await page.evaluate(
-    () => window.__BUZZ_E2E_COMMANDS__ ?? [],
+    () => window.__GEAR6_E2E_COMMANDS__ ?? [],
   );
   expect(commands).toContain("clone_project_repository");
 });
@@ -716,7 +716,7 @@ test("project branches can be created from the selected remote branch", async ({
     projectHeadBranch: "master",
     relaySelf: TEST_IDENTITIES.bob.pubkey,
   });
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("button", { name: /main/ }).click();
   await page.getByTestId("project-create-branch").click();
@@ -745,11 +745,11 @@ test("project branches can be created from the selected remote branch", async ({
     page.getByRole("menuitemradio", { name: "feature/branch-management" }),
   ).toBeVisible();
   const commands = await page.evaluate(
-    () => window.__BUZZ_E2E_COMMANDS__ ?? [],
+    () => window.__GEAR6_E2E_COMMANDS__ ?? [],
   );
   expect(commands).toContain("create_project_remote_branch");
 
-  await openBuzzProject(page);
+  await openGear6Project(page);
   await page.getByRole("button", { name: /main/ }).click();
   await expect(
     page.getByRole("menuitemradio", { name: "feature/branch-management" }),
@@ -761,7 +761,7 @@ test("repository tags can be browsed as immutable remote snapshots", async ({
 }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("button", { name: /main/ }).click();
   await expect(page.getByText("Tags", { exact: true })).toBeVisible();
@@ -777,7 +777,7 @@ test("repository tags can be browsed as immutable remote snapshots", async ({
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const call = [...(window.__BUZZ_E2E_COMMAND_PAYLOADS__ ?? [])]
+        const call = [...(window.__GEAR6_E2E_COMMAND_PAYLOADS__ ?? [])]
           .reverse()
           .find((entry) => entry.command === "get_project_repo_snapshot");
         return (call?.payload as { targetRef?: string } | undefined)?.targetRef;
@@ -798,7 +798,7 @@ test("project branches can be deleted but the default branch cannot", async ({
 }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("button", { name: /main/ }).click();
   await expect(page.getByTestId("project-delete-branch")).toBeDisabled();
@@ -820,7 +820,7 @@ test("project branches can be deleted but the default branch cannot", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /main/ })).toBeVisible();
   const commands = await page.evaluate(
-    () => window.__BUZZ_E2E_COMMANDS__ ?? [],
+    () => window.__GEAR6_E2E_COMMANDS__ ?? [],
   );
   expect(commands).toContain("delete_project_remote_branch");
 });
@@ -829,8 +829,8 @@ test("pushed local branch can open a pull request", async ({ page }) => {
   await enableProjectsFeature(page);
   await page.addInitScript(() => {
     const commit = "1234567890abcdef1234567890abcdef12345678";
-    window.__BUZZ_E2E_PROJECT_REPO_SYNC_STATUS__ = {
-      local_path: "/tmp/buzz/REPOS/buzz",
+    window.__GEAR6_E2E_PROJECT_REPO_SYNC_STATUS__ = {
+      local_path: "/tmp/g6/REPOS/g6",
       local_branch: "feature/projects-workflow",
       local_branches: ["feature/projects-workflow", "space"],
       local_head: commit,
@@ -848,10 +848,10 @@ test("pushed local branch can open a pull request", async ({ page }) => {
       can_pull: false,
       pull_block_reason: "Local branch is up to date.",
     };
-    window.__BUZZ_E2E_REJECT_PROJECT_EVENT_KINDS__ = [1619];
+    window.__GEAR6_E2E_REJECT_PROJECT_EVENT_KINDS__ = [1619];
   });
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("button", { name: /main/ }).click();
   await expect(
@@ -863,7 +863,7 @@ test("pushed local branch can open a pull request", async ({ page }) => {
   await page.getByRole("tab", { name: "Pull Request", exact: true }).click();
   await page.getByRole("button", { name: "Pull Request", exact: true }).click();
   await expect(page.getByTestId("create-pull-request-repository")).toHaveValue(
-    /:buzz$/,
+    /:g6$/,
   );
   await expect(page.getByTestId("create-pull-request-base-branch")).toHaveValue(
     "main",
@@ -885,7 +885,7 @@ test("pushed local branch can open a pull request", async ({ page }) => {
 
   const createdEvents = await page.evaluate(
     () =>
-      window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+      window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
         (event) => event.kind === 1618,
       ) ?? [],
   );
@@ -903,14 +903,14 @@ test("pushed local branch can open a pull request", async ({ page }) => {
 
   await page.getByRole("tab", { name: "Overview" }).click();
   await page.evaluate(async () => {
-    const status = window.__BUZZ_E2E_PROJECT_REPO_SYNC_STATUS__;
+    const status = window.__GEAR6_E2E_PROJECT_REPO_SYNC_STATUS__;
     if (!status) throw new Error("Missing mocked repository status.");
     status.local_head = "abcdef0123456789abcdef0123456789abcdef01";
     status.local_short_head = status.local_head.slice(0, 7);
     status.ahead_count = 1;
     status.can_push = true;
     status.push_block_reason = null;
-    await window.__BUZZ_E2E_QUERY_CLIENT__?.invalidateQueries({
+    await window.__GEAR6_E2E_QUERY_CLIENT__?.invalidateQueries({
       queryKey: ["project"],
     });
   });
@@ -920,7 +920,7 @@ test("pushed local branch can open a pull request", async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+          window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
             (event) => event.kind === 1619,
           ).length ?? 0,
       ),
@@ -935,7 +935,7 @@ test("pushed local branch can open a pull request", async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          window.__BUZZ_E2E_SIGNED_EVENTS__?.filter(
+          window.__GEAR6_E2E_SIGNED_EVENTS__?.filter(
             (event) => event.kind === 1619,
           ).length ?? 0,
       ),
@@ -946,7 +946,7 @@ test("pushed local branch can open a pull request", async ({ page }) => {
   ).toHaveCount(0);
 
   const updateEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__
+    window.__GEAR6_E2E_SIGNED_EVENTS__
       ?.filter((event) => event.kind === 1619)
       .at(-1),
   );
@@ -962,7 +962,7 @@ test("project issue can be created from the issues header", async ({
 }) => {
   await enableProjectsFeature(page);
   await installMockBridge(page);
-  await openBuzzProject(page);
+  await openGear6Project(page);
 
   await page.getByRole("tab", { name: "Issues", exact: true }).click();
   await page.getByRole("button", { name: "Issues", exact: true }).click();
@@ -976,7 +976,7 @@ test("project issue can be created from the issues header", async ({
   await expect(page.getByText("Issue created.")).toBeVisible();
 
   const createdEvent = await page.evaluate(() =>
-    window.__BUZZ_E2E_SIGNED_EVENTS__?.find((event) => event.kind === 1621),
+    window.__GEAR6_E2E_SIGNED_EVENTS__?.find((event) => event.kind === 1621),
   );
   expect(createdEvent?.tags).toContainEqual([
     "subject",

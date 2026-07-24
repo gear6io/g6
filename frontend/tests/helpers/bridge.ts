@@ -451,14 +451,14 @@ type BridgeOptions = {
 };
 
 const WELCOME_CHANNEL_ENSURED_STORAGE_KEY_PREFIX =
-  "buzz-welcome-channel-ensured.v2:";
-const ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX = "buzz-onboarding-complete.v1:";
+  "g6-welcome-channel-ensured.v2:";
+const ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX = "g6-onboarding-complete.v1:";
 const DEFAULT_MOCK_PUBKEY = "deadbeef".repeat(8);
-// The relay HTTP/WS URLs follow BUZZ_E2E_RELAY_URL (same env var seed.ts reads),
+// The relay HTTP/WS URLs follow GEAR6_E2E_RELAY_URL (same env var seed.ts reads),
 // so a suite pointed at an isolated relay (e.g. the read-model harness on :3030)
 // uses it without per-spec wiring. Falls back to the shared dev relay when unset.
 const DEFAULT_RELAY_HTTP_URL =
-  process.env.BUZZ_E2E_RELAY_URL ?? "http://localhost:3000";
+  process.env.GEAR6_E2E_RELAY_URL ?? "http://localhost:3000";
 const DEFAULT_RELAY_WS_URL = DEFAULT_RELAY_HTTP_URL.replace(/^http/, "ws");
 
 function cloneEngramEntry(entry: MockEngramEntry): MockEngramEntry {
@@ -482,14 +482,14 @@ export function createMockAgentMemoryListing(
 
 I prefer concise updates, explicit next steps, and visual polish before edge-case handling.
 
-See [[mem/preferences/ui-density]] and [[mem/projects/buzz-memory-viewer]] for details.
+See [[mem/preferences/ui-density]] and [[mem/projects/g6-memory-viewer]] for details.
 
 A retired launch checklist used to live at [[mem/archive/deleted-launch-checklist]], but that memory was deleted after the plan changed.`,
       eventId: "mock-core",
       createdAt: 1_700_000_000,
       outgoingRefs: [
         "mem/preferences/ui-density",
-        "mem/projects/buzz-memory-viewer",
+        "mem/projects/g6-memory-viewer",
         "mem/archive/deleted-launch-checklist",
       ],
     },
@@ -509,14 +509,14 @@ A retired launch checklist used to live at [[mem/archive/deleted-launch-checklis
         outgoingRefs: [],
       },
       {
-        slug: "mem/projects/buzz-memory-viewer",
-        body: "Building the IXI-7 read-only memory viewer in the profile panel.\n\nChild memory: [[mem/projects/buzz-memory-viewer/notes]]",
+        slug: "mem/projects/g6-memory-viewer",
+        body: "Building the IXI-7 read-only memory viewer in the profile panel.\n\nChild memory: [[mem/projects/g6-memory-viewer/notes]]",
         eventId: "mock-project",
         createdAt: 1_700_000_300,
-        outgoingRefs: ["mem/projects/buzz-memory-viewer/notes"],
+        outgoingRefs: ["mem/projects/g6-memory-viewer/notes"],
       },
       {
-        slug: "mem/projects/buzz-memory-viewer/notes",
+        slug: "mem/projects/g6-memory-viewer/notes",
         body: "Tree should auto-expand core. Everything else collapsed with a one-line preview.",
         eventId: "mock-project-notes",
         createdAt: 1_700_000_400,
@@ -639,14 +639,14 @@ async function seedDefaultCommunity(
         addedAt: new Date().toISOString(),
       };
       window.localStorage.setItem(
-        "buzz-communities",
+        "g6-communities",
         JSON.stringify([community]),
       );
-      window.localStorage.setItem("buzz-active-community-id", communityId);
+      window.localStorage.setItem("g6-active-community-id", communityId);
     },
     {
       fallback: fallbackPubkey,
-      identityOverrideKey: "buzz:e2e-identity-override.v1",
+      identityOverrideKey: "g6:e2e-identity-override.v1",
       relayUrl: relayWsUrl ?? DEFAULT_RELAY_WS_URL,
     },
   );
@@ -728,18 +728,18 @@ export async function installBridge(page: Page, options: BridgeOptions) {
       });
 
       const testWindow = window as Window & {
-        __BUZZ_E2E__?: Record<string, unknown>;
-        __BUZZ_E2E_APP_BADGE_COUNT__?: number;
-        __BUZZ_E2E_APP_BADGE_STATE__?: string;
-        __BUZZ_E2E_CLICK_NOTIFICATION__?: (index: number) => boolean;
-        __BUZZ_E2E_NOTIFICATIONS__?: Array<{
+        __GEAR6_E2E__?: Record<string, unknown>;
+        __GEAR6_E2E_APP_BADGE_COUNT__?: number;
+        __GEAR6_E2E_APP_BADGE_STATE__?: string;
+        __GEAR6_E2E_CLICK_NOTIFICATION__?: (index: number) => boolean;
+        __GEAR6_E2E_NOTIFICATIONS__?: Array<{
           body: string | null;
           title: string;
         }>;
       };
-      const currentConfig = testWindow.__BUZZ_E2E__ ?? {};
+      const currentConfig = testWindow.__GEAR6_E2E__ ?? {};
 
-      testWindow.__BUZZ_E2E__ = {
+      testWindow.__GEAR6_E2E__ = {
         ...currentConfig,
         identity: bridgeIdentity ?? currentConfig.identity,
         mock,
@@ -747,9 +747,9 @@ export async function installBridge(page: Page, options: BridgeOptions) {
         relayHttpUrl: relayHttpUrl ?? currentConfig.relayHttpUrl,
         relayWsUrl: relayWsUrl ?? currentConfig.relayWsUrl,
       };
-      testWindow.__BUZZ_E2E_APP_BADGE_COUNT__ = 0;
-      testWindow.__BUZZ_E2E_APP_BADGE_STATE__ = "none";
-      testWindow.__BUZZ_E2E_CLICK_NOTIFICATION__ = (index: number) => {
+      testWindow.__GEAR6_E2E_APP_BADGE_COUNT__ = 0;
+      testWindow.__GEAR6_E2E_APP_BADGE_STATE__ = "none";
+      testWindow.__GEAR6_E2E_CLICK_NOTIFICATION__ = (index: number) => {
         const notification = notificationInstances[index];
         if (!notification) {
           return false;
@@ -760,7 +760,7 @@ export async function installBridge(page: Page, options: BridgeOptions) {
         notification.onclick?.(event);
         return true;
       };
-      testWindow.__BUZZ_E2E_NOTIFICATIONS__ = notificationLog;
+      testWindow.__GEAR6_E2E_NOTIFICATIONS__ = notificationLog;
     },
     {
       identity,
@@ -800,7 +800,7 @@ export async function installRelayBridge(
   await installBridge(page, {
     mode: "relay",
     user,
-    // Thread BUZZ_E2E_RELAY_URL into BOTH transports. The app defaults these to
+    // Thread GEAR6_E2E_RELAY_URL into BOTH transports. The app defaults these to
     // :3000 in relay mode; without explicit wiring HTTP queries (channel list,
     // feed) miss an isolated relay and surface as "Failed to fetch".
     relayHttpUrl: DEFAULT_RELAY_HTTP_URL,

@@ -33,7 +33,7 @@ pub(in crate::commands) fn retain_persona_pending(
         persona_events::{build_persona_event, monotonic_created_at, persona_d_tag},
         retention::{get_retained_event, open_retention_db, retain_event, RetainedEvent},
     };
-    use buzz_core_pkg::kind::KIND_PERSONA;
+    use g6_core_pkg::kind::KIND_PERSONA;
     use nostr::JsonUtil;
 
     let result = (|| -> Result<(), String> {
@@ -66,7 +66,7 @@ pub(in crate::commands) fn retain_persona_pending(
         )
     })();
     if let Err(e) = result {
-        eprintln!("buzz-desktop: persona-retain: {e}");
+        eprintln!("g6-desktop: persona-retain: {e}");
     }
 }
 
@@ -95,7 +95,7 @@ pub(in crate::commands) fn tombstone_persona_pending(
             RetainedEvent,
         },
     };
-    use buzz_core_pkg::kind::KIND_PERSONA;
+    use g6_core_pkg::kind::KIND_PERSONA;
     use nostr::JsonUtil;
 
     const KIND_DELETE: u32 = 5;
@@ -129,6 +129,6 @@ pub(in crate::commands) fn tombstone_persona_pending(
         )
     })();
     if let Err(e) = result {
-        eprintln!("buzz-desktop: persona-tombstone: {e}");
+        eprintln!("g6-desktop: persona-tombstone: {e}");
     }
 }

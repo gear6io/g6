@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'observer_models.dart';
 
-const _buzzReadTools = <String>{
+const _g6ReadTools = <String>{
   'get_messages',
   'get_channel_history',
   'get_thread',
@@ -23,7 +23,7 @@ const _buzzReadTools = <String>{
   'get_contact_list',
 };
 
-const _buzzWriteTools = <String>{
+const _g6WriteTools = <String>{
   'send_message',
   'send_diff_message',
   'edit_message',
@@ -57,12 +57,12 @@ const _buzzWriteTools = <String>{
   'set_contact_list',
 };
 
-final _buzzToolNames = <String>{..._buzzReadTools, ..._buzzWriteTools};
+final _g6ToolNames = <String>{..._g6ReadTools, ..._g6WriteTools};
 
-final _buzzToolNamesByLength = _buzzToolNames.toList()
+final _g6ToolNamesByLength = _g6ToolNames.toList()
   ..sort((a, b) => b.length.compareTo(a.length));
 
-final _buzzToolTitleAliases = <(RegExp, String)>[
+final _g6ToolTitleAliases = <(RegExp, String)>[
   (RegExp(r'\bsending message to channel\b'), 'send_message'),
   (RegExp(r'\bretrieving recent messages from channel\b'), 'get_messages'),
   (RegExp(r'\bgetting channel details\b'), 'get_channel'),
@@ -107,12 +107,12 @@ String _normalizeToolNameText(String value) {
       .replaceAll(RegExp(r'^_+|_+$'), '');
 }
 
-String? _findBuzzToolName(String value, bool includeShortNames) {
-  final alias = _findBuzzToolAlias(value);
+String? _findGear6ToolName(String value, bool includeShortNames) {
+  final alias = _findGear6ToolAlias(value);
   if (alias != null) return alias;
 
   final normalized = _normalizeToolNameText(value);
-  for (final name in _buzzToolNamesByLength) {
+  for (final name in _g6ToolNamesByLength) {
     if ((!includeShortNames && name.length < 8) || !normalized.contains(name)) {
       continue;
     }
@@ -121,13 +121,13 @@ String? _findBuzzToolName(String value, bool includeShortNames) {
   return null;
 }
 
-String? _findBuzzToolAlias(String value) {
+String? _findGear6ToolAlias(String value) {
   final normalizedPhrase = value
       .trim()
       .toLowerCase()
       .replaceAll(RegExp(r'[_-]+'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ');
-  for (final (pattern, name) in _buzzToolTitleAliases) {
+  for (final (pattern, name) in _g6ToolTitleAliases) {
     if (pattern.hasMatch(normalizedPhrase)) return name;
   }
   return null;
@@ -147,12 +147,12 @@ bool _isGenericToolTitle(String value) {
 }
 
 String _normalizeToolName(String title) {
-  final knownName = _findBuzzToolName(title, true);
+  final knownName = _findGear6ToolName(title, true);
   if (knownName != null) return knownName;
 
   final normalized = _normalizeToolNameText(
     title,
-  ).replaceAll(RegExp(r'^buzz_'), '');
+  ).replaceAll(RegExp(r'^g6_'), '');
   return RegExp(r'[a-z][a-z0-9_]+').firstMatch(normalized)?[0] ?? normalized;
 }
 
@@ -219,7 +219,7 @@ _parsePromptText(String text) {
 
   PromptSection? eventSection;
   for (final section in sections) {
-    if (section.title.toLowerCase().startsWith('buzz event')) {
+    if (section.title.toLowerCase().startsWith('gear6 event')) {
       eventSection = section;
       break;
     }
@@ -234,7 +234,7 @@ _parsePromptText(String text) {
     userText: eventContent,
     userTitle: eventKind != null && eventKind.isNotEmpty
         ? _titleCase(eventKind)
-        : 'Buzz event',
+        : 'Gear6 event',
   );
 }
 
@@ -308,16 +308,16 @@ Map<String, dynamic> _extractToolArgs(Map<String, dynamic> update) {
   return const {};
 }
 
-({String title, String toolName, String? buzzToolName}) _extractToolIdentity(
+({String title, String toolName, String? g6ToolName}) _extractToolIdentity(
   Map<String, dynamic> update,
 ) {
   final candidates = _collectToolNameCandidates(update);
   String? knownName;
   for (final c in candidates) {
-    knownName = _findBuzzToolName(c, true);
+    knownName = _findGear6ToolName(c, true);
     if (knownName != null) break;
   }
-  knownName ??= _findBuzzToolName(_safeJsonEncode(update), false);
+  knownName ??= _findGear6ToolName(_safeJsonEncode(update), false);
   String? firstSpecific;
   for (final candidate in candidates) {
     if (!_isGenericToolTitle(candidate)) {
@@ -330,7 +330,7 @@ Map<String, dynamic> _extractToolArgs(Map<String, dynamic> update) {
   return (
     title: title,
     toolName: knownName ?? _normalizeToolName(firstSpecific ?? title),
-    buzzToolName: knownName,
+    g6ToolName: knownName,
   );
 }
 
@@ -509,7 +509,7 @@ List<TranscriptItem> buildTranscript(List<ObserverFrame> events) {
     String id,
     String title,
     String toolName,
-    String? buzzToolName,
+    String? g6ToolName,
     ToolStatus status,
     Map<String, dynamic> args,
     String result,
@@ -517,16 +517,16 @@ List<TranscriptItem> buildTranscript(List<ObserverFrame> events) {
     String timestamp,
   ) {
     final existing = itemsById[id];
-    final canonicalBuzzToolName =
-        buzzToolName ?? _findBuzzToolName(toolName, true);
+    final canonicalGear6ToolName =
+        g6ToolName ?? _findGear6ToolName(toolName, true);
     if (existing is ToolItem) {
       if (!_isGenericToolTitle(title)) {
         existing.title = title;
       }
-      if (canonicalBuzzToolName != null) {
-        existing.buzzToolName = canonicalBuzzToolName;
-        existing.toolName = canonicalBuzzToolName;
-      } else if (existing.buzzToolName == null &&
+      if (canonicalGear6ToolName != null) {
+        existing.g6ToolName = canonicalGear6ToolName;
+        existing.toolName = canonicalGear6ToolName;
+      } else if (existing.g6ToolName == null &&
           !_isGenericToolTitle(toolName)) {
         existing.toolName = toolName;
       }
@@ -540,8 +540,8 @@ List<TranscriptItem> buildTranscript(List<ObserverFrame> events) {
     final item = ToolItem(
       id: id,
       title: title,
-      toolName: canonicalBuzzToolName ?? toolName,
-      buzzToolName: canonicalBuzzToolName,
+      toolName: canonicalGear6ToolName ?? toolName,
+      g6ToolName: canonicalGear6ToolName,
       status: status,
       args: args,
       result: result,
@@ -668,7 +668,7 @@ List<TranscriptItem> buildTranscript(List<ObserverFrame> events) {
         'tool:$toolId',
         identity.title,
         identity.toolName,
-        identity.buzzToolName,
+        identity.g6ToolName,
         _normalizeToolStatus(_asString(update['status']) ?? 'executing'),
         _extractToolArgs(update),
         _extractToolResult(update),
@@ -688,7 +688,7 @@ List<TranscriptItem> buildTranscript(List<ObserverFrame> events) {
         'tool:$toolId',
         identity.title,
         identity.toolName,
-        identity.buzzToolName,
+        identity.g6ToolName,
         status,
         _extractToolArgs(update),
         _extractToolResult(update),

@@ -1,4 +1,4 @@
-# Buzz
+# Gear6
 
 Desktop chat shell with:
 
