@@ -49,7 +49,17 @@ export function messageToRelayEvent(m: RtmMessage): RelayEvent {
     ["h", m.channel],
     ["ts", m.ts],
   ];
-  if (m.thread_ts) tags.push(["e", m.thread_ts]);
+  // A reply's parent tag has to be what `getThreadReference` reads: a
+  // `"reply"`-marked e-tag whose value is an event id (`${channel}:${ts}`), not
+  // the bare Slack ts. Without the marker the reply reports `parentId: null` and
+  // `buildMainTimelineEntries` renders it as a top-level row in the channel.
+  // `thread_ts === ts` is the thread *root* — the backend promotes a message's
+  // thread_ts to its own ts once it has replies — so it stays a root here.
+  // gear6 re-parents every reply to the true root, so parent === root and one
+  // "reply" tag is the whole reference (see buildReplyTags' equal-ids branch).
+  if (m.thread_ts && m.thread_ts !== m.ts) {
+    tags.push(["e", `${m.channel}:${m.thread_ts}`, "", "reply"]);
+  }
   return {
     id: `${m.channel}:${m.ts}`,
     pubkey: m.user,

@@ -10,6 +10,7 @@ import {
   reactionToRelayEvent,
 } from "./eventAdapter.ts";
 import { CHANNEL_EVENT_KINDS } from "../constants/kinds.ts";
+import { getThreadReference } from "../../features/messages/lib/threading.ts";
 
 const MSG = {
   type: "message",
@@ -35,9 +36,30 @@ test("slack decimal ts → whole-seconds created_at, raw ts kept in tag", () => 
   assert.equal(ev.content, "hi <@U00000002>");
 });
 
-test("reply carries an e-tag for the thread root", () => {
+test("reply carries a reply-marked e-tag naming the thread root's event id", () => {
   const ev = messageToRelayEvent({ ...MSG, thread_ts: "1699999999.000000" });
-  assert.deepEqual(ev.tags.at(-1), ["e", "1699999999.000000"]);
+  assert.deepEqual(ev.tags.at(-1), [
+    "e",
+    "C00000001:1699999999.000000",
+    "",
+    "reply",
+  ]);
+  assert.deepEqual(getThreadReference(ev.tags), {
+    parentId: "C00000001:1699999999.000000",
+    rootId: "C00000001:1699999999.000000",
+  });
+});
+
+// The backend promotes a root's thread_ts to its own ts once it has replies.
+// Tagging that as a reply would make the root a reply to itself and drop it out
+// of the channel timeline.
+test("thread root (thread_ts === ts) stays a top-level event", () => {
+  const ev = messageToRelayEvent({ ...MSG, thread_ts: MSG.ts });
+  assert.equal(
+    ev.tags.some((t) => t[0] === "e"),
+    false,
+  );
+  assert.equal(getThreadReference(ev.tags).parentId, null);
 });
 
 test("filter match: kind + #h channel routing", () => {
