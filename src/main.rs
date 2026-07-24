@@ -1,5 +1,6 @@
 mod api;
 mod auth;
+mod channels;
 mod mentions;
 mod slack;
 
@@ -104,9 +105,31 @@ pub fn app(state: AppState) -> Router {
 
     let api = Router::new()
         .route("/auth.test", on(both, api::auth_test))
-        .route("/conversations.list", on(both, api::conversations_list))
-        .route("/conversations.create", on(both, api::conversations_create))
-        .route("/conversations.join", on(both, api::conversations_join))
+        .route("/conversations.list", on(both, channels::conversations_list))
+        .route("/conversations.info", on(both, channels::conversations_info))
+        .route("/conversations.members", on(both, channels::conversations_members))
+        .route("/conversations.create", on(both, channels::conversations_create))
+        .route("/conversations.rename", on(both, channels::conversations_rename))
+        .route("/conversations.setTopic", on(both, channels::conversations_set_topic))
+        .route("/conversations.setPurpose", on(both, channels::conversations_set_purpose))
+        // Not a Slack method: `description` is a gear6 field the web client edits.
+        .route("/conversations.setDescription", on(both, channels::conversations_set_description))
+        .route("/conversations.archive", on(both, channels::conversations_archive))
+        .route("/conversations.unarchive", on(both, channels::conversations_unarchive))
+        .route("/conversations.join", on(both, channels::conversations_join))
+        .route("/conversations.leave", on(both, channels::conversations_leave))
+        .route("/conversations.invite", on(both, channels::conversations_invite))
+        .route("/conversations.kick", on(both, channels::conversations_kick))
+        // Slack keeps deletion and visibility conversion on the admin surface.
+        .route("/admin.conversations.delete", on(both, channels::admin_conversations_delete))
+        .route(
+            "/admin.conversations.convertToPrivate",
+            on(both, channels::admin_conversations_convert_to_private),
+        )
+        .route(
+            "/admin.conversations.convertToPublic",
+            on(both, channels::admin_conversations_convert_to_public),
+        )
         .route("/conversations.history", on(both, api::conversations_history))
         .route("/conversations.replies", on(both, api::conversations_replies))
         .route("/chat.postMessage", on(both, api::chat_post_message))
@@ -114,7 +137,7 @@ pub fn app(state: AppState) -> Router {
         .route("/users.info", on(both, api::users_info))
         .route("/users.identity", on(both, api::users_identity))
         .route("/users.lookupByEmail", on(both, api::users_lookup_by_email))
-        .route("/users.conversations", on(both, api::users_conversations))
+        .route("/users.conversations", on(both, channels::users_conversations))
         .route("/users.profile.get", on(both, api::users_profile_get))
         .route("/users.profile.set", on(both, api::users_profile_set))
         .route("/users.getPresence", on(both, api::users_get_presence))
@@ -528,6 +551,218 @@ mod tests {
         assert_eq!(
             call(&app, "/api/users.conversations", t, "").await["channels"][0]["id"],
             "C00000001"
+        );
+    }
+
+    /// Signs up `username`, logs in, and hands back the bearer token.
+    async fn account(app: &Router, username: &str) -> String {
+        let creds = format!("username={username}&password=password1");
+        call(app, "/register", None, &creds).await;
+        call(app, "/login", None, &creds).await["token"].as_str().unwrap().to_owned()
+    }
+
+    #[tokio::test]
+    async fn channel_metadata_and_lifecycle() {
+        let app = test_app().await;
+        let astha = account(&app, "astha").await;
+        let a = Some(astha.as_str());
+
+        // Creating a channel puts the creator in it.
+        let ch = call(&app, "/api/conversations.create", a, "name=eng").await["channel"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let info = call(&app, "/api/conversations.info", a, &format!("channel={ch}")).await;
+        assert_eq!(info["channel"]["is_member"], true);
+        assert_eq!(info["channel"]["num_members"], 1);
+        // An untouched topic is an empty object, not a missing one.
+        assert_eq!(info["channel"]["topic"]["value"], "");
+        assert_eq!(info["channel"]["topic"]["creator"], "");
+        assert_eq!(info["channel"]["topic"]["last_set"], 0);
+        assert_eq!(info["channel"]["previous_names"].as_array().unwrap().len(), 0);
+
+        for (method, body) in [
+            ("setTopic", "topic=ship+it"),
+            ("setPurpose", "purpose=the+eng+channel"),
+            ("setDescription", "description=where+eng+lives"),
+        ] {
+            let r = call(
+                &app,
+                &format!("/api/conversations.{method}"),
+                a,
+                &format!("channel={ch}&{body}"),
+            )
+            .await;
+            assert_eq!(r["ok"], true, "{method}: {r}");
+        }
+
+        let info = call(&app, "/api/conversations.info", a, &format!("channel={ch}")).await;
+        assert_eq!(info["channel"]["topic"]["value"], "ship it");
+        assert_eq!(info["channel"]["topic"]["creator"], "U00000001");
+        assert!(info["channel"]["topic"]["last_set"].as_i64().unwrap() > 0);
+        assert_eq!(info["channel"]["purpose"]["value"], "the eng channel");
+        assert_eq!(info["channel"]["description"], "where eng lives");
+
+        let long = "x".repeat(251);
+        assert_eq!(
+            call(&app, "/api/conversations.setTopic", a, &format!("channel={ch}&topic={long}"))
+                .await["error"],
+            "too_long"
+        );
+
+        // rename shares create's validation, including the unique index.
+        call(&app, "/api/conversations.create", a, "name=taken").await;
+        assert_eq!(
+            call(&app, "/api/conversations.rename", a, &format!("channel={ch}&name=taken")).await
+                ["error"],
+            "name_taken"
+        );
+        let renamed =
+            call(&app, "/api/conversations.rename", a, &format!("channel={ch}&name=Platform")).await;
+        assert_eq!(renamed["channel"]["name"], "platform", "names are folded on the way in");
+        assert_eq!(renamed["channel"]["name_normalized"], "platform");
+
+        // archive is a toggle, and says so when it is already where you want it.
+        assert_eq!(
+            call(&app, "/api/conversations.archive", a, &format!("channel={ch}")).await["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.archive", a, &format!("channel={ch}")).await["error"],
+            "already_archived"
+        );
+        let listed = call(&app, "/api/conversations.list", a, "exclude_archived=1").await;
+        let names: Vec<&str> =
+            listed["channels"].as_array().unwrap().iter().map(|c| c["name"].as_str().unwrap()).collect();
+        assert_eq!(names, ["taken"], "the archived channel is filtered out");
+        assert_eq!(
+            call(&app, "/api/conversations.unarchive", a, &format!("channel={ch}")).await["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.unarchive", a, &format!("channel={ch}")).await["error"],
+            "not_archived"
+        );
+
+        // Deleting a channel takes its messages with it. `messages` references
+        // `channels` with no ON DELETE clause, so a missed child is a hard
+        // foreign key failure rather than an orphan row.
+        call(&app, "/api/chat.postMessage", a, &format!("channel={ch}&text=hello")).await;
+        assert_eq!(
+            call(&app, "/api/admin.conversations.delete", a, &format!("channel_id={ch}")).await["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.history", a, &format!("channel={ch}")).await["error"],
+            "channel_not_found"
+        );
+    }
+
+    #[tokio::test]
+    async fn channel_membership() {
+        let app = test_app().await;
+        let astha = account(&app, "astha").await;
+        let bo = account(&app, "bo").await;
+        let (a, b) = (Some(astha.as_str()), Some(bo.as_str()));
+
+        let ch = call(&app, "/api/conversations.create", a, "name=eng").await["channel"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        // Slack reports a partial invite as ok:false WITH the per-user reasons —
+        // the caller needs to know which ids landed, not just that one did not.
+        let inv = call(
+            &app,
+            "/api/conversations.invite",
+            a,
+            &format!("channel={ch}&users=U00000002,U00000001,U00000099"),
+        )
+        .await;
+        assert_eq!(inv["error"], "failed_for_some_users", "{inv}");
+        assert_eq!(inv["errors"][0]["user"], "U00000001");
+        assert_eq!(inv["errors"][0]["error"], "cant_invite_self");
+        assert_eq!(inv["errors"][1]["error"], "user_not_found");
+        assert_eq!(inv["channel"]["num_members"], 2, "the good id still landed");
+
+        assert_eq!(
+            call(&app, "/api/conversations.invite", a, &format!("channel={ch}&users=U00000002"))
+                .await["errors"][0]["error"],
+            "already_in_channel"
+        );
+
+        let members = call(&app, "/api/conversations.members", a, &format!("channel={ch}")).await;
+        assert_eq!(members["members"].as_array().unwrap(), &["U00000001", "U00000002"]);
+
+        // users.conversations is membership-scoped; conversations.list is not.
+        call(&app, "/api/conversations.create", a, "name=random").await;
+        let mine = call(&app, "/api/users.conversations", b, "").await;
+        let bos: Vec<&str> = mine["channels"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(bos, ["eng"], "bo was invited to eng and nothing else");
+        assert_eq!(
+            call(&app, "/api/conversations.list", b, "").await["channels"].as_array().unwrap().len(),
+            2,
+            "every channel is still listable"
+        );
+
+        assert_eq!(
+            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000001")).await
+                ["error"],
+            "cant_kick_self"
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000002")).await
+                ["ok"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.kick", a, &format!("channel={ch}&user=U00000002")).await
+                ["error"],
+            "not_in_channel"
+        );
+
+        // join is idempotent, and open to anyone — membership is metadata here,
+        // not an access control list.
+        assert_eq!(
+            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]
+                ["is_member"],
+            true
+        );
+        assert_eq!(
+            call(&app, "/api/conversations.join", b, &format!("channel={ch}")).await["channel"]
+                ["num_members"],
+            2
+        );
+
+        call(&app, "/api/conversations.leave", b, &format!("channel={ch}")).await;
+        let info = call(&app, "/api/conversations.info", b, &format!("channel={ch}")).await;
+        assert_eq!(info["channel"]["is_member"], false);
+        assert_eq!(info["channel"]["num_members"], 1);
+        assert_eq!(
+            call(&app, "/api/conversations.leave", b, &format!("channel={ch}")).await["ok"],
+            true,
+            "leaving twice is not an error"
+        );
+
+        // Visibility is a flag, so conversion moves no data.
+        let priv_ch = call(
+            &app,
+            "/api/admin.conversations.convertToPrivate",
+            a,
+            &format!("channel_id={ch}"),
+        )
+        .await;
+        assert_eq!(priv_ch["channel"]["is_private"], true);
+        assert_eq!(priv_ch["channel"]["num_members"], 1, "conversion keeps the members");
+        assert_eq!(
+            call(&app, "/api/admin.conversations.convertToPublic", a, &format!("channel_id={ch}"))
+                .await["channel"]["is_private"],
+            false
         );
     }
 

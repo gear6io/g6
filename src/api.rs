@@ -11,6 +11,7 @@ use sqlx::FromRow;
 
 use crate::AppState;
 use crate::auth::{Auth, normalize_email};
+use crate::channels::load_channel;
 use crate::mentions;
 use crate::slack::{
     ApiError, ApiResult, Args, TEAM_ID, TS_MAX, channel_id, decode_cursor, encode_cursor,
@@ -21,164 +22,21 @@ const DEFAULT_LIMIT: u32 = 100;
 const MAX_LIMIT: u32 = 1000;
 const MAX_TEXT: usize = 40_000;
 
-fn clamp_limit(limit: Option<u32>) -> u32 {
+/// Shared with `channels`, which pages the same way.
+pub(crate) fn clamp_limit(limit: Option<u32>) -> u32 {
     limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT)
 }
 
 /// Fetch one extra row to learn whether another page exists, then drop it.
 /// Cheaper and simpler than a second COUNT(*) query.
-fn paginate<T>(mut rows: Vec<T>, limit: u32) -> (Vec<T>, bool) {
+pub(crate) fn paginate<T>(mut rows: Vec<T>, limit: u32) -> (Vec<T>, bool) {
     let has_more = rows.len() > limit as usize;
     rows.truncate(limit as usize);
     (rows, has_more)
 }
 
-fn metadata(next_cursor: Option<String>) -> Value {
+pub(crate) fn metadata(next_cursor: Option<String>) -> Value {
     json!({ "next_cursor": next_cursor.unwrap_or_default() })
-}
-
-// ---------------------------------------------------------------- channels
-
-#[derive(FromRow)]
-struct ChannelRow {
-    id: i64,
-    name: String,
-    creator_id: i64,
-    created: i64,
-    is_private: bool,
-}
-
-impl ChannelRow {
-    fn to_json(&self) -> Value {
-        json!({
-            "id": channel_id(self.id),
-            "name": self.name,
-            "is_channel": true,
-            "is_group": false,
-            "is_im": false,
-            "is_private": self.is_private,
-            "is_archived": false,
-            "is_member": true,
-            "created": self.created,
-            "creator": user_id(self.creator_id),
-        })
-    }
-}
-
-const CHANNEL_COLS: &str = "id, name, creator_id, created, is_private";
-
-async fn load_channel(state: &AppState, id: i64) -> Result<ChannelRow, ApiError> {
-    sqlx::query_as(&format!("SELECT {CHANNEL_COLS} FROM channels WHERE id = ?"))
-        .bind(id)
-        .fetch_optional(&state.db)
-        .await?
-        .ok_or(ApiError("channel_not_found"))
-}
-
-#[derive(Deserialize)]
-pub struct ListArgs {
-    cursor: Option<String>,
-    limit: Option<u32>,
-}
-
-pub async fn conversations_list(
-    State(state): State<AppState>,
-    _auth: Auth,
-    Args(a): Args<ListArgs>,
-) -> ApiResult {
-    list_channels(&state, a).await
-}
-
-/// Shared by `conversations.list` and `users.conversations`: there is no membership
-/// model, so every channel is everyone's and both answer with the same rows.
-async fn list_channels(state: &AppState, a: ListArgs) -> ApiResult {
-    let limit = clamp_limit(a.limit);
-    let after: i64 = match a.cursor.as_deref().filter(|c| !c.is_empty()) {
-        Some(c) => decode_cursor(c)?.parse().map_err(|_| ApiError("invalid_cursor"))?,
-        None => 0,
-    };
-
-    let rows: Vec<ChannelRow> = sqlx::query_as(&format!(
-        "SELECT {CHANNEL_COLS} FROM channels WHERE id > ? ORDER BY id ASC LIMIT ?"
-    ))
-    .bind(after)
-    .bind(limit + 1)
-    .fetch_all(&state.db)
-    .await?;
-
-    let (rows, has_more) = paginate(rows, limit);
-    let next = has_more.then(|| encode_cursor(&rows.last().map_or(0, |r| r.id).to_string()));
-    Ok(Json(json!({
-        "ok": true,
-        "channels": rows.iter().map(ChannelRow::to_json).collect::<Vec<_>>(),
-        "response_metadata": metadata(next),
-    })))
-}
-
-pub async fn users_conversations(
-    State(state): State<AppState>,
-    _auth: Auth,
-    Args(a): Args<ListArgs>,
-) -> ApiResult {
-    // `user`, `types` and `exclude_archived` are accepted and dropped by serde:
-    // without a membership model there is nothing for them to select.
-    list_channels(&state, a).await
-}
-
-#[derive(Deserialize)]
-pub struct CreateArgs {
-    name: Option<String>,
-    #[serde(default, deserialize_with = "lenient_bool")]
-    is_private: Option<bool>,
-}
-
-pub async fn conversations_create(
-    State(state): State<AppState>,
-    auth: Auth,
-    Args(a): Args<CreateArgs>,
-) -> ApiResult {
-    let name = a.name.as_deref().unwrap_or("").trim().to_lowercase();
-    if name.is_empty() || name.len() > 80 {
-        return Err(ApiError("invalid_name"));
-    }
-
-    let res = sqlx::query(
-        "INSERT INTO channels (name, creator_id, created, is_private) VALUES (?, ?, ?, ?)",
-    )
-    .bind(&name)
-    .bind(auth.id)
-    .bind(now_secs())
-    .bind(a.is_private.unwrap_or(false))
-    .execute(&state.db)
-    .await;
-
-    let id = match res {
-        Ok(r) => r.last_insert_rowid(),
-        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
-            return Err(ApiError("name_taken"));
-        }
-        Err(e) => return Err(e.into()),
-    };
-
-    let ch = load_channel(&state, id).await?;
-    Ok(Json(json!({ "ok": true, "channel": ch.to_json() })))
-}
-
-#[derive(Deserialize)]
-pub struct ChannelArg {
-    channel: Option<String>,
-}
-
-/// There is no membership model — every channel is readable by any authenticated
-/// user — but bot flows call this unconditionally, so it answers instead of 404ing.
-pub async fn conversations_join(
-    State(state): State<AppState>,
-    _auth: Auth,
-    Args(a): Args<ChannelArg>,
-) -> ApiResult {
-    let id = parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
-    let ch = load_channel(&state, id).await?;
-    Ok(Json(json!({ "ok": true, "channel": ch.to_json() })))
 }
 
 // ---------------------------------------------------------------- messages
@@ -236,11 +94,13 @@ pub struct HistoryArgs {
 
 pub async fn conversations_history(
     State(state): State<AppState>,
-    _auth: Auth,
+    auth: Auth,
     Args(a): Args<HistoryArgs>,
 ) -> ApiResult {
     let ch_id = parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
-    load_channel(&state, ch_id).await?;
+    // Existence check only. Membership is metadata, not an access control list:
+    // any authenticated user may read any channel's history.
+    load_channel(&state, ch_id, auth.id).await?;
     let limit = clamp_limit(a.limit);
     let inclusive = a.inclusive.unwrap_or(false);
 
@@ -295,11 +155,11 @@ pub struct RepliesArgs {
 
 pub async fn conversations_replies(
     State(state): State<AppState>,
-    _auth: Auth,
+    auth: Auth,
     Args(a): Args<RepliesArgs>,
 ) -> ApiResult {
     let ch_id = parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
-    load_channel(&state, ch_id).await?;
+    load_channel(&state, ch_id, auth.id).await?;
     let limit = clamp_limit(a.limit);
     let ts = a.ts.as_deref().unwrap_or("");
 
@@ -367,7 +227,7 @@ pub async fn chat_post_message(
     }
 
     let ch_id = parse_channel_id(a.channel.as_deref().unwrap_or(""))?;
-    load_channel(&state, ch_id).await?;
+    load_channel(&state, ch_id, auth.id).await?;
 
     // Linkify before the length check: "@astha" is stored as "<@U00000001>", and
     // what is stored is what the limit is about.

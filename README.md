@@ -7,20 +7,24 @@ Snapshot of what is missing or still to be done, mapped 2026-07-23 on branch `fe
 | Part | What it is | Status |
 |---|---|---|
 | `src/` | Gear6 backend: Rust/axum Slack-wire-compatible API + `/rtm` WebSocket, SQLite | Working, minimal surface (18 API handlers) |
-| `frontend/` | Buzz React/Vite app (full Slack-like feature set, originally nostr-relay + Tauri-IPC backed) | Being rewired to gear6 via `VITE_GEAR6=1` — Phase B (boot) done, Phase D (everything else) pending |
+| `frontend/` | Gear6 React/Vite app (full Slack-like feature set, originally nostr-relay + Tauri-IPC backed) | Being rewired to gear6 via `VITE_GEAR6=1` — Phase B (boot) done, Phase D (everything else) pending |
 | `frontend/src-tauri/` | Tauri v2 shell | Thin shell only (`lib.rs`); ~50-file former nostr backend orphaned (uncompiled), deletion pass pending |
-| `admin-web/` | Buzz OSS admin console copy | Not wired to gear6 |
-| `mobile/` | Buzz Flutter app copy | Not wired to gear6 |
+| `admin-web/` | Gear6 OSS admin console copy | Not wired to gear6 |
+| `mobile/` | Gear6 Flutter app copy | Not wired to gear6 |
 | `plans/web-backend-integration.mdx` | Integration plan targeting `web/` | Stale — `web/` was dropped (`cb32f80 chore: drop web`) |
 
 ## 1. Backend (`src/`) — missing API surface
 
-Implemented: `auth.test`, `conversations.{list,create,join,history,replies}`, `chat.postMessage`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
+Implemented: `auth.test`, `conversations.{list,info,members,create,rename,setTopic,setPurpose,setDescription,archive,unarchive,join,leave,invite,kick,history,replies}`, `admin.conversations.{delete,convertToPrivate,convertToPublic}`, `chat.postMessage`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
+
+`conversations.setDescription` is not a Slack method — `description` is a gear6 column the web client edits alongside topic and purpose.
+
+Membership (`channel_members`) is metadata, not an access control list: it answers "who is in this channel" and scopes `users.conversations`, but history and posting stay open to any authenticated user.
 
 Missing (frontend features need them):
 
 - Messaging: `chat.update`, `chat.delete`, `reactions.add/remove`, typing events, pins, saved items
-- Channels: `conversations.open` (DMs), `.leave`, `.archive/.unarchive`, `.setTopic`, `.setPurpose`, `.invite`, `.kick`, `.members`, `.info`, `.rename`
+- Channels: `conversations.open` (DMs), per-channel roles (Slack has none either), canvas, channel TTL
 - Files/media: upload, download, thumbnails (no `files.*` at all)
 - Search: `search.messages`, user search
 - Users: avatar upload, custom status, custom emoji
@@ -42,7 +46,7 @@ Every feature the frontend ships (`frontend/src/features/*`) against what the ge
 | Edit / delete message | `messages/` | ❌ Missing | `chat.update`, `chat.delete` |
 | Reactions | `messages/` | ❌ Missing | `reactions.add/remove` + rtm event |
 | DMs | `messages/`, `home/` | ❌ Missing | `conversations.open`, IM listing |
-| Channel management (topic/purpose/rename/archive/leave/invite/kick/roles) | `channels/`, `sidebar/` | ❌ Missing | `conversations.setTopic/.setPurpose/.rename/.archive/.leave/.invite/.kick/.members` |
+| Channel management (topic/purpose/rename/archive/delete/join/leave/invite/kick/members) | `channels/`, `sidebar/` | ✅ Implemented | Per-channel roles (creator is owner, everyone else member — Slack has no roles either), canvas, channel TTL |
 | File/media upload + download | `messages/` (composer, attachments) | ❌ Missing | `files.*`, storage, thumbnails |
 | Search (messages, users) | `search/` | ❌ Missing | `search.messages`, user search |
 | Typing indicators | `chat/` | ❌ Missing | typing rtm events |
@@ -91,7 +95,7 @@ Decision needed per command: map to gear6 endpoint (needs backend work, §1), ke
 ## 3. Real-time (`/rtm`) — wire-up incomplete
 
 - `frontend/src/shared/lib/rtm-client.ts` connects and pings, but `onmessage` only `console.log`s — no UI consumes events (messages/presence never reach the timeline or query cache)
-- `relayClientSession.ts` in gear6 mode silently drops all outbound frames — no gear6-event → buzz-model translation layer exists yet
+- `relayClientSession.ts` in gear6 mode silently drops all outbound frames — no gear6-event → g6-model translation layer exists yet
 - Backend broadcasts every event to every socket (client-side filtering); no per-socket channel/visibility filtering — private-channel events reach all connected users
 - No replay/backfill on reconnect (intended path: `conversations.history`; not implemented)
 - Scaling markers (`ponytail:` in `src/main.rs`): in-process `broadcast::channel` + presence map → Redis pub/sub needed for >1 node
@@ -122,11 +126,10 @@ Decision needed per command: map to gear6 endpoint (needs backend work, §1), ke
 
 ## 7. Sibling apps — unwired
 
-- `admin-web/`: talks to the old Buzz admin API; no gear6 adapter
+- `admin-web/`: talks to the old Gear6 admin API; no gear6 adapter
 - `mobile/`: Flutter app still nostr-relay-shaped; no gear6 adapter
 - `rtm-client.ts` duplicated between (dropped) `web/` and `frontend/`; extract to a shared package when a third consumer appears
 
 ## 8. Docs/config debt
 
-- `plans/web-backend-integration.mdx` references dropped `web/` — stale, superseded by the `frontend/` (buzz) integration
 - `frontend/.env` untracked, `tauri.conf.json` locally modified for dev launching — dev setup undocumented
