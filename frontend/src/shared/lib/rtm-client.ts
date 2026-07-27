@@ -18,7 +18,11 @@
 import {
   messageToRelayEvent,
   isRtmMessage,
+  isRtmMessageChanged,
+  isRtmMessageDeleted,
   isRtmReaction,
+  messageChangedToRelayEvent,
+  messageDeletedToRelayEvent,
   reactionToRelayEvent,
 } from "@/shared/api/eventAdapter";
 import { relayClient } from "@/shared/api/relayClient";
@@ -94,10 +98,14 @@ export class RtmClient {
       } catch {
         return; // non-JSON (shouldn't happen); ignore.
       }
-      // Only message and reaction frames drive the timeline; hello/pong are
-      // keepalive noise.
+      // Only message, edit/delete and reaction frames drive the timeline;
+      // hello/pong are keepalive noise.
       if (isRtmMessage(frame)) {
         relayClient.dispatchRtmEvent(messageToRelayEvent(frame));
+      } else if (isRtmMessageChanged(frame)) {
+        relayClient.dispatchRtmEvent(messageChangedToRelayEvent(frame));
+      } else if (isRtmMessageDeleted(frame)) {
+        relayClient.dispatchRtmEvent(messageDeletedToRelayEvent(frame));
       } else if (isRtmReaction(frame)) {
         relayClient.dispatchRtmEvent(reactionToRelayEvent(frame));
       }

@@ -9,6 +9,7 @@ import {
   KIND_CHANNEL_WINDOW_BOUNDS,
   KIND_DELETION,
   KIND_REACTION,
+  KIND_STREAM_MESSAGE_EDIT,
   KIND_STREAM_MESSAGE_V2,
 } from "@/shared/constants/kinds";
 
@@ -27,6 +28,9 @@ export function isRtmMessage(v: unknown): v is RtmMessage {
   const o = v as Record<string, unknown>;
   return (
     o.type === "message" &&
+    // Slack overloads `type: "message"` for edits and deletions too, and marks
+    // which by `subtype`. Only a plain frame is a new row.
+    o.subtype === undefined &&
     typeof o.channel === "string" &&
     typeof o.user === "string" &&
     typeof o.text === "string" &&
@@ -78,6 +82,8 @@ export type HistoryMessage = {
   text: string;
   ts: string;
   thread_ts?: string;
+  /** Present only on a message that has been edited, as `chat.update` leaves it. */
+  edited?: { user: string; ts: string };
   /** One entry per emoji, as `reactions::decorate` writes it. `reaction_ts` runs
    * parallel to `users`: one placement token per reactor. */
   reactions?: Array<{
@@ -219,6 +225,115 @@ export function historyMessageToRelayEvent(
   channel: string,
 ): RelayEvent {
   return messageToRelayEvent({ type: "message", channel, ...m });
+}
+
+/**
+ * The kind:40003 overlay for an edited message — one event, or none for a
+ * message nobody has edited.
+ *
+ * gear6 stores one text per message rather than an edit chain, so the row a
+ * fetch returns already carries the final text and this overlay repeats it.
+ * It exists for the "(edited)" marker, which the formatter derives from the
+ * presence of an edit event and nothing else.
+ *
+ * The id is derived from `edited.ts`, so the live `message_changed` echo of an
+ * edit dedups against the copy a later fetch produces, and a second edit
+ * supersedes the first instead of tying with it.
+ */
+export function editEventFor(
+  m: Pick<HistoryMessage, "ts" | "text" | "edited">,
+  channel: string,
+): RelayEvent[] {
+  if (!m.edited) return [];
+  return [
+    {
+      id: `edit:${channel}:${m.ts}:${m.edited.ts}`,
+      pubkey: m.edited.user,
+      created_at: Math.floor(Number(m.edited.ts)),
+      kind: KIND_STREAM_MESSAGE_EDIT,
+      // `h` is what makes a live edit match an open channel subscription; `e`
+      // names the message it overlays.
+      tags: [
+        ["e", `${channel}:${m.ts}`],
+        ["h", channel],
+      ],
+      content: m.text,
+      sig: "",
+    },
+  ];
+}
+
+/** A `message_changed` frame off the /rtm socket — see `chat_update`. */
+export type RtmMessageChanged = {
+  type: string;
+  subtype: string;
+  channel: string;
+  message: HistoryMessage;
+};
+
+/** A `message_deleted` frame off the /rtm socket — see `chat_delete`. */
+export type RtmMessageDeleted = {
+  type: string;
+  subtype: string;
+  channel: string;
+  deleted_ts: string;
+  ts?: string;
+};
+
+export function isRtmMessageChanged(v: unknown): v is RtmMessageChanged {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  const message = o.message as Record<string, unknown> | undefined;
+  const edited = message?.edited as Record<string, unknown> | undefined;
+  return (
+    o.type === "message" &&
+    o.subtype === "message_changed" &&
+    typeof o.channel === "string" &&
+    typeof message?.ts === "string" &&
+    typeof message.text === "string" &&
+    typeof edited?.ts === "string" &&
+    typeof edited.user === "string"
+  );
+}
+
+export function isRtmMessageDeleted(v: unknown): v is RtmMessageDeleted {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    o.type === "message" &&
+    o.subtype === "message_deleted" &&
+    typeof o.channel === "string" &&
+    typeof o.deleted_ts === "string"
+  );
+}
+
+/** A live edit frame → the same overlay a later fetch of that message produces. */
+export function messageChangedToRelayEvent(f: RtmMessageChanged): RelayEvent {
+  // The guard has already established `edited`, so this is never the empty case.
+  return editEventFor(f.message, f.channel)[0];
+}
+
+/**
+ * A live delete frame → the kind:5 that hides the message. The backend sends one
+ * per removed message, so a deleted thread root arrives as a frame for the root
+ * and one for each of its replies.
+ */
+export function messageDeletedToRelayEvent(f: RtmMessageDeleted): RelayEvent {
+  const target = `${f.channel}:${f.deleted_ts}`;
+  return {
+    id: `deletion:${target}`,
+    // The deleter is the author (nobody else may delete), and the formatter
+    // reads only the `e` tag off a kind:5 — this is for provenance.
+    pubkey: "",
+    created_at: Math.floor(Number(f.ts ?? f.deleted_ts)),
+    kind: KIND_DELETION,
+    tags: [
+      ["e", target],
+      ["h", f.channel],
+    ],
+    content: "",
+    sig: "",
+  };
 }
 
 /**

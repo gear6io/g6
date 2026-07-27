@@ -189,6 +189,8 @@ pub fn app(state: AppState) -> Router {
             on(both, messages::conversations_replies),
         )
         .route("/chat.postMessage", on(both, messages::chat_post_message))
+        .route("/chat.update", on(both, messages::chat_update))
+        .route("/chat.delete", on(both, messages::chat_delete))
         // No `reactions.get`/`reactions.list`: history and replies already carry
         // the `reactions` decoration every client reads.
         .route(
@@ -1227,6 +1229,154 @@ mod tests {
             )
             .await["ok"],
             true
+        );
+    }
+
+    #[tokio::test]
+    async fn message_update_and_delete() {
+        let app = test_app().await;
+        let astha = account(&app, "astha").await;
+        let bo = account(&app, "bo").await;
+        let (a, b) = (Some(astha.as_str()), Some(bo.as_str()));
+
+        let ch = call(&app, "/api/conversations.create", a, "name=eng").await["channel"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        async fn post(app: &Router, token: Option<&str>, body: &str) -> String {
+            call(app, "/api/chat.postMessage", token, body).await["ts"]
+                .as_str()
+                .unwrap()
+                .to_owned()
+        }
+        let root = post(&app, a, &format!("channel={ch}&text=ship+it")).await;
+
+        // Editing is the author's alone, and a message that is not there reports
+        // that before anything else about it.
+        assert_eq!(
+            call(
+                &app,
+                "/api/chat.update",
+                b,
+                &format!("channel={ch}&ts={root}&text=nope")
+            )
+            .await["error"],
+            "cant_update_message"
+        );
+        for (body, want) in [
+            (format!("channel={ch}&ts={root}"), "no_text"),
+            (
+                format!("channel={ch}&ts=9999999999.000000&text=hi"),
+                "message_not_found",
+            ),
+            (
+                format!("channel=C99999999&ts={root}&text=hi"),
+                "channel_not_found",
+            ),
+        ] {
+            assert_eq!(
+                call(&app, "/api/chat.update", a, &body).await["error"],
+                want,
+                "{body}"
+            );
+        }
+
+        // The edit's own mentions are linkified, exactly like a fresh post.
+        let up = call(
+            &app,
+            "/api/chat.update",
+            a,
+            &format!("channel={ch}&ts={root}&text=ship+it+%40bo"),
+        )
+        .await;
+        assert_eq!(up["ok"], true, "{up}");
+        assert_eq!(up["ts"], root.as_str(), "an edit never re-keys the message");
+        assert_eq!(up["text"], "ship it <@U00000002>");
+        assert_eq!(up["message"]["edited"]["user"], "U00000001");
+
+        let hist = call(
+            &app,
+            "/api/conversations.history",
+            a,
+            &format!("channel={ch}"),
+        )
+        .await;
+        assert_eq!(hist["messages"][0]["text"], "ship it <@U00000002>");
+        assert_eq!(
+            hist["messages"][0]["edited"]["ts"], up["message"]["edited"]["ts"],
+            "the edit marker survives the round trip"
+        );
+
+        // A reply and a reaction, so the delete has children to take with it.
+        let reply = post(
+            &app,
+            b,
+            &format!("channel={ch}&text=on+it&thread_ts={root}"),
+        )
+        .await;
+        let other = post(&app, a, &format!("channel={ch}&text=unrelated")).await;
+        call(
+            &app,
+            "/api/reactions.add",
+            b,
+            &format!("channel={ch}&timestamp={root}&name=tada"),
+        )
+        .await;
+
+        assert_eq!(
+            call(
+                &app,
+                "/api/chat.delete",
+                b,
+                &format!("channel={ch}&ts={other}")
+            )
+            .await["error"],
+            "cant_delete_message"
+        );
+
+        assert_eq!(
+            call(
+                &app,
+                "/api/chat.delete",
+                a,
+                &format!("channel={ch}&ts={root}")
+            )
+            .await["ok"],
+            true
+        );
+        // Deleting the root takes its replies and its reactions — a surviving
+        // reaction row would have failed the foreign key above, and a surviving
+        // reply would be unreachable.
+        let hist = call(
+            &app,
+            "/api/conversations.history",
+            a,
+            &format!("channel={ch}"),
+        )
+        .await;
+        let left = hist["messages"].as_array().unwrap();
+        assert_eq!(left.len(), 1, "{hist}");
+        assert_eq!(left[0]["ts"], other.as_str());
+        assert_eq!(
+            call(
+                &app,
+                "/api/conversations.replies",
+                a,
+                &format!("channel={ch}&ts={reply}")
+            )
+            .await["error"],
+            "thread_not_found"
+        );
+        assert_eq!(
+            call(
+                &app,
+                "/api/chat.delete",
+                a,
+                &format!("channel={ch}&ts={root}")
+            )
+            .await["error"],
+            "message_not_found",
+            "deleting twice is not idempotent in Slack either"
         );
     }
 

@@ -5,6 +5,7 @@
 // the app reaches an empty homepage without hanging. Phase D fills in the rest.
 import { apiCall, apiGet, apiPost } from "@/shared/api/http";
 import {
+  editEventFor,
   historyMessageToRelayEvent,
   reactionEventsFor,
   windowBoundsEvent,
@@ -250,13 +251,15 @@ export async function apiInvoke<T>(
       );
       const messages = res.messages ?? [];
       const rows = messages.map((m) => historyMessageToRelayEvent(m, channelId));
-      // Reactions ride with their message (there is no relay to backfill them
-      // from) and the window parser routes kind:7 into the page's aux bucket.
-      const reactions = messages.flatMap((m) =>
-        reactionEventsFor(m, channelId),
-      );
+      // Reactions and edit markers ride with their message (there is no relay to
+      // backfill them from) and the window parser routes these aux kinds into
+      // the page's aux bucket.
+      const aux = messages.flatMap((m) => [
+        ...reactionEventsFor(m, channelId),
+        ...editEventFor(m, channelId),
+      ]);
       // The window parser requires exactly one bounds event alongside the rows.
-      return [...rows, ...reactions, windowBoundsEvent(channelId)] as T;
+      return [...rows, ...aux, windowBoundsEvent(channelId)] as T;
     }
 
     // Reply/media send path (plain sends go via relayClient.sendMessage). gear6
@@ -275,6 +278,37 @@ export async function apiInvoke<T>(
         depth: rootTs ? 1 : 0,
         created_at: ev.created_at,
       } as T;
+    }
+
+    // Editing rewrites the message in place — `ts` never changes, so the
+    // timeline row keeps its id. gear6 has no attachments or custom emoji, so
+    // the `mediaTags`/`emojiTags` the composer computed have nowhere to go;
+    // `mentionPubkeys` is dropped too because the backend re-links mentions
+    // from the text itself, exactly like the send path.
+    case "edit_message": {
+      const eventId = String(_args?.eventId ?? "");
+      const ts = tsFromEventId(eventId);
+      if (!ts) throw new Error(`Malformed message id ${eventId}.`);
+      await apiCall("chat.update", {
+        channel: eventId.split(":")[0],
+        ts,
+        text: String(_args?.content ?? ""),
+      });
+      return undefined as T;
+    }
+
+    // Deleting a thread root deletes its replies with it, and the backend sends
+    // one message_deleted frame per removed message, so the timeline drops the
+    // whole thread rather than orphaning the replies.
+    case "delete_message": {
+      const eventId = String(_args?.eventId ?? "");
+      const ts = tsFromEventId(eventId);
+      if (!ts) throw new Error(`Malformed message id ${eventId}.`);
+      await apiCall("chat.delete", {
+        channel: eventId.split(":")[0],
+        ts,
+      });
+      return undefined as T;
     }
 
     // Author name resolution. The FE batch lowercases pubkeys and looks them up
@@ -302,12 +336,13 @@ export async function apiInvoke<T>(
       const events = messages
         .filter((m) => m.ts !== rootTs)
         .map((m) => historyMessageToRelayEvent(m, channelId));
-      // Reaction events are overlays, not rows, so the root's come along too —
-      // they are what puts pills on the thread head.
-      const reactions = messages.flatMap((m) =>
-        reactionEventsFor(m, channelId),
-      );
-      return { events: [...events, ...reactions], next_cursor: null } as T;
+      // Reaction and edit events are overlays, not rows, so the root's come
+      // along too — they are what puts pills and an "(edited)" on the head.
+      const aux = messages.flatMap((m) => [
+        ...reactionEventsFor(m, channelId),
+        ...editEventFor(m, channelId),
+      ]);
+      return { events: [...events, ...aux], next_cursor: null } as T;
     }
 
     case "get_identity": {

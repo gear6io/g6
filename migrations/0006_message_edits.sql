@@ -1,0 +1,11 @@
+-- Editing a message: Slack reports it as an `edited: {user, ts}` object on the
+-- message, so the only new state is *when* the last edit happened.
+--
+-- There is no `edited_by` column because there is no editor other than the
+-- author: `chat.update` refuses anyone else (`cant_update_message`), so the
+-- `user` half of Slack's object is always `messages.user_id`. Add the column the
+-- day an admin-edit path exists, not before.
+--
+-- NULL means never edited, which is exactly the message shape Slack sends for
+-- one: no `edited` key at all.
+ALTER TABLE messages ADD COLUMN edited TEXT;

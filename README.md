@@ -15,7 +15,7 @@ Snapshot of what is missing or still to be done, mapped 2026-07-23 on branch `fe
 
 ## 1. Backend (`src/`) — missing API surface
 
-Implemented: `auth.test`, `conversations.{list,info,members,create,rename,setTopic,setPurpose,setDescription,archive,unarchive,join,leave,invite,kick,history,replies}`, `admin.conversations.{delete,convertToPrivate,convertToPublic}`, `chat.postMessage`, `reactions.{add,remove}`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
+Implemented: `auth.test`, `conversations.{list,info,members,create,rename,setTopic,setPurpose,setDescription,archive,unarchive,join,leave,invite,kick,history,replies}`, `admin.conversations.{delete,convertToPrivate,convertToPublic}`, `chat.{postMessage,update,delete}`, `reactions.{add,remove}`, `users.{list,info,identity,lookupByEmail,conversations,profile.get,profile.set,getPresence,setPresence}`, `rtm.connect`, plus non-Slack `register/login/logout`.
 
 `conversations.setDescription` is not a Slack method — `description` is a gear6 column the web client edits alongside topic and purpose.
 
@@ -23,7 +23,7 @@ Membership (`channel_members`) is metadata, not an access control list: it answe
 
 Missing (frontend features need them):
 
-- Messaging: `chat.update`, `chat.delete`, typing events, pins, saved items
+- Messaging: typing events, pins, saved items
 - Channels: `conversations.open` (DMs), per-channel roles (Slack has none either), canvas, channel TTL
 - Files/media: upload, download, thumbnails (no `files.*` at all)
 - Search: `search.messages`, user search
@@ -43,7 +43,7 @@ Every feature the frontend ships (`frontend/src/features/*`) against what the ge
 | Presence | `presence/` | ✅ Implemented (derived, socket-based) | — |
 | User profiles | `profile/` | ⚠️ Partial (`users.profile.get/set`) | Avatar/image upload |
 | Auth / sessions | `onboarding/`, `settings/` | ⚠️ Partial (register/login/logout exist) | No frontend login flow; dev bypass in use |
-| Edit / delete message | `messages/` | ❌ Missing | `chat.update`, `chat.delete` |
+| Edit / delete message | `messages/` | ✅ Implemented (`chat.update`/`chat.delete`, `message_changed`/`message_deleted` rtm frames, `edited` on every history/replies message) | Author-only (gear6 has no roles, so no admin delete); attachment/custom-emoji edits have nothing to edit |
 | Reactions | `messages/` | ✅ Implemented (`reactions.add/remove`, `reaction_added`/`reaction_removed` rtm frames, `reactions` on every history/replies message) | Custom-emoji images (no custom-emoji backend, so a custom reaction renders as `:name:`) |
 | DMs | `messages/`, `home/` | ❌ Missing | `conversations.open`, IM listing |
 | Channel management (topic/purpose/rename/archive/delete/join/leave/invite/kick/members) | `channels/`, `sidebar/` | ✅ Implemented | Per-channel roles (creator is owner, everyone else member — Slack has no roles either), canvas, channel TTL |

@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  editEventFor,
   eventMatchesFilter,
   messageToRelayEvent,
   isRtmMessage,
+  isRtmMessageChanged,
+  isRtmMessageDeleted,
   isRtmReaction,
+  messageChangedToRelayEvent,
+  messageDeletedToRelayEvent,
   reactionEventsFor,
   reactionToRelayEvent,
 } from "./eventAdapter.ts";
@@ -25,6 +30,12 @@ test("isRtmMessage rejects non-message frames", () => {
   assert.equal(isRtmMessage({ type: "pong" }), false);
   assert.equal(isRtmMessage(MSG), true);
   assert.equal(isRtmMessage({ ...MSG, ts: 123 }), false);
+  // Slack overloads `type: "message"` for edits and deletions; a subtyped frame
+  // is not a new row and appending it would duplicate the message it changes.
+  assert.equal(
+    isRtmMessage({ ...MSG, subtype: "message_changed", message: MSG }),
+    false,
+  );
 });
 
 test("slack decimal ts → whole-seconds created_at, raw ts kept in tag", () => {
@@ -168,6 +179,103 @@ test("live reaction frames: add is a kind:7, remove deletes it by id", () => {
   const filter = { kinds: [...CHANNEL_EVENT_KINDS], "#h": ["C00000001"], limit: 100 };
   assert.equal(eventMatchesFilter(filter, add), true);
   assert.equal(eventMatchesFilter(filter, remove), true);
+});
+
+test("an edited message carries a kind:40003 overlay, an unedited one does not", () => {
+  assert.deepEqual(editEventFor({ ts: "1700000000.123456", text: "hi" }, "C1"), []);
+
+  const [edit] = editEventFor(
+    {
+      ts: "1700000000.123456",
+      text: "hi again",
+      edited: { user: "U00000007", ts: "1700000500.000000" },
+    },
+    "C00000001",
+  );
+  assert.equal(edit.kind, 40003);
+  assert.equal(edit.content, "hi again");
+  assert.equal(edit.pubkey, "U00000007");
+  assert.equal(edit.created_at, 1700000500);
+  // `e` names the message it overlays; `h` is what routes it to an open channel
+  // subscription (the overlay never renders a row of its own).
+  assert.deepEqual(edit.tags, [
+    ["e", "C00000001:1700000000.123456"],
+    ["h", "C00000001"],
+  ]);
+  assert.equal(
+    eventMatchesFilter(
+      { kinds: [...CHANNEL_EVENT_KINDS], "#h": ["C00000001"], limit: 100 },
+      edit,
+    ),
+    true,
+  );
+});
+
+test("live edit frame produces the same event a later fetch would", () => {
+  const frame = {
+    type: "message",
+    subtype: "message_changed",
+    hidden: true,
+    channel: "C00000001",
+    ts: "1700000500.000000",
+    message: {
+      type: "message",
+      user: "U00000007",
+      text: "hi again",
+      ts: "1700000000.123456",
+      edited: { user: "U00000007", ts: "1700000500.000000" },
+    },
+  };
+  assert.equal(isRtmMessageChanged(frame), true);
+  assert.equal(isRtmMessageChanged(MSG), false);
+  // An edit frame without the marker cannot be dated or deduped.
+  const { edited: _e, ...noMarker } = frame.message;
+  assert.equal(isRtmMessageChanged({ ...frame, message: noMarker }), false);
+
+  // Same id both ways, or the echo of an edit and the fetched copy of it would
+  // render as two overlays and the newer one would win only by luck.
+  assert.deepEqual(
+    messageChangedToRelayEvent(frame),
+    editEventFor(frame.message, "C00000001")[0],
+  );
+  // A second edit supersedes the first rather than tying with it.
+  const later = messageChangedToRelayEvent({
+    ...frame,
+    message: { ...frame.message, edited: { user: "U00000007", ts: "1700000900.000000" } },
+  });
+  assert.notEqual(later.id, messageChangedToRelayEvent(frame).id);
+  assert.ok(later.created_at > messageChangedToRelayEvent(frame).created_at);
+});
+
+test("live delete frame is a kind:5 naming the message it hides", () => {
+  const frame = {
+    type: "message",
+    subtype: "message_deleted",
+    hidden: true,
+    channel: "C00000001",
+    deleted_ts: "1700000000.123456",
+    ts: "1700000600.000000",
+  };
+  assert.equal(isRtmMessageDeleted(frame), true);
+  assert.equal(isRtmMessageDeleted(MSG), false);
+
+  const ev = messageDeletedToRelayEvent(frame);
+  assert.equal(ev.kind, 5);
+  assert.equal(ev.created_at, 1700000600);
+  assert.deepEqual(ev.tags, [
+    ["e", "C00000001:1700000000.123456"],
+    ["h", "C00000001"],
+  ]);
+  // The deletion must not collide with the message it deletes, and must reach
+  // an open channel subscription.
+  assert.notEqual(ev.id, "C00000001:1700000000.123456");
+  assert.equal(
+    eventMatchesFilter(
+      { kinds: [...CHANNEL_EVENT_KINDS], "#h": ["C00000001"], limit: 100 },
+      ev,
+    ),
+    true,
+  );
 });
 
 test("a re-added reaction is a different event than the one removed", () => {
