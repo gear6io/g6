@@ -1,21 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { App } from "@/app/App";
-import { NostrBindConsentDialog } from "@/features/profile/ui/NostrBindConsentDialog";
 import "@fontsource-variable/inter/wght.css";
 import "@/shared/styles/globals.css";
-import { UpdaterProvider } from "@/features/settings/hooks/UpdaterProvider";
-import { migrateLegacyCommunityStorageBeforeRender } from "@/features/communities/legacyCommunityStorage";
-import { CommunitiesProvider } from "@/features/communities/useCommunities";
-import { CommunityOnboardingProvider } from "@/features/onboarding/communityOnboarding";
-import { ThemeProvider } from "@/shared/theme/ThemeProvider";
-import { EmojiBurstProvider } from "@/shared/ui/EmojiBurstProvider";
-import { PoofBurstProvider } from "@/shared/ui/PoofBurstProvider";
-import { Toaster } from "@/shared/ui/sonner";
-import { TooltipProvider } from "@/shared/ui/tooltip";
+import { selectRootLoader } from "@/app/rootSurface";
 import { rtm } from "@/shared/lib/rtm-client";
 import { USE_HTTP_API } from "@/shared/api/mode";
-import { getApiIdentity } from "@/shared/api/invoke";
 
 // Boot the backend connection the moment the app loads (fire-and-forget).
 rtm.connect();
@@ -75,30 +64,6 @@ function configureDevE2eBridgeFromUrl() {
   );
 }
 
-function renderApp() {
-  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <React.StrictMode>
-      <CommunitiesProvider>
-        <CommunityOnboardingProvider>
-          <ThemeProvider defaultTheme="g6">
-            <TooltipProvider delayDuration={300}>
-              <EmojiBurstProvider>
-                <PoofBurstProvider>
-                  <UpdaterProvider>
-                    <App />
-                    <NostrBindConsentDialog />
-                  </UpdaterProvider>
-                  <Toaster />
-                </PoofBurstProvider>
-              </EmojiBurstProvider>
-            </TooltipProvider>
-          </ThemeProvider>
-        </CommunityOnboardingProvider>
-      </CommunitiesProvider>
-    </React.StrictMode>,
-  );
-}
-
 async function installE2eBridgeIfConfigured() {
   // The mock bridge is compiled only into dev and explicit E2E builds. A
   // pre-bootstrap global alone must never activate mock IPC in production.
@@ -113,44 +78,21 @@ async function installE2eBridgeIfConfigured() {
   maybeInstallE2eTauriMocks();
 }
 
-// gear6 mode: seed a single community + mark onboarding complete so the
-// nostr-era setup/onboarding gates pass without a nostr identity. The pubkey is
-// the gear6 user id; get_profile/get_identity resolve the app to "ready".
-async function seedApiSession() {
-  if (!USE_HTTP_API) return;
-  const relayUrl = import.meta.env.VITE_RELAY_URL ?? "ws://localhost:3000";
-  const COMMUNITY_ID = "gear6";
-  try {
-    const identity = await getApiIdentity();
-    window.localStorage.setItem(
-      "g6-communities",
-      JSON.stringify([
-        {
-          id: COMMUNITY_ID,
-          name: "gear6",
-          relayUrl,
-          pubkey: identity.pubkey,
-          addedAt: new Date().toISOString(),
-        },
-      ]),
-    );
-    window.localStorage.setItem("g6-active-community-id", COMMUNITY_ID);
-    window.localStorage.setItem(
-      `g6-machine-onboarding-complete.v2:${identity.pubkey}`,
-      "true",
-    );
-  } catch (err) {
-    console.warn("[gear6] seedApiSession failed:", err);
-  }
-}
-
 async function bootstrap() {
   resetDevWebviewStateFromUrl();
   configureDevE2eBridgeFromUrl();
   await installE2eBridgeIfConfigured();
-  await seedApiSession();
-  await migrateLegacyCommunityStorageBeforeRender();
-  renderApp();
+
+  // The render boundary: gear6 builds get their own minimal root, legacy
+  // builds get the pre-gear6 provider stack (and its storage migration).
+  // Neither tree is imported by the other — see `@/app/rootSurface`.
+  const Root = await selectRootLoader(USE_HTTP_API)();
+
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <Root />
+    </React.StrictMode>,
+  );
 }
 
 void bootstrap();

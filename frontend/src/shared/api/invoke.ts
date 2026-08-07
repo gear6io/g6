@@ -49,10 +49,18 @@ export function getApiIdentity(): Promise<{
   display_name: string;
 }> {
   if (!identityPromise) {
-    identityPromise = apiGet<ApiIdentity>("users.identity").then((r) => ({
-      pubkey: r.user.id,
-      display_name: r.user.name,
-    }));
+    identityPromise = apiGet<ApiIdentity>("users.identity")
+      .then((r) => ({
+        pubkey: r.user.id,
+        display_name: r.user.name,
+      }))
+      // Only a success is worth memoizing. Caching the rejection would make
+      // every retry (boot screen, or any later caller) replay the original
+      // failure forever without touching the network again.
+      .catch((err: unknown) => {
+        identityPromise = null;
+        throw err;
+      });
   }
   return identityPromise;
 }
