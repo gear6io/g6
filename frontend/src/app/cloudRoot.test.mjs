@@ -78,7 +78,7 @@ test("every failure state is diagnostic and retryable", () => {
   }
 });
 
-test("cloud mode mounts readiness only, and starts no RTM or legacy shell", () => {
+test("cloud mode mounts the compact inbox, and starts no RTM or legacy shell", () => {
   const rootSource = fs.readFileSync(path.join(appDir, "CloudRoot.tsx"), "utf8");
   assert.ok(
     !/rtm-client|relayClient|@\/app\/(App|AppShell|Gear6Root)/.test(rootSource),
@@ -103,7 +103,18 @@ test("cloud mode mounts readiness only, and starts no RTM or legacy shell", () =
     "RTM stays gated to local mode",
   );
 
-  // This release renders readiness and nothing else.
-  const surface = render({ status: "ready" });
-  assert.doesNotMatch(surface, /decision|constraint|action|overview/i);
+  // The boot surface owns the unresolved and failed states only; a ready
+  // readiness check hands the window to the inbox.
+  assert.match(
+    rootSource,
+    /status === "ready"[\s\S]{0,80}<CloudMiniInbox \/>/,
+    "a ready check mounts the inbox",
+  );
+  for (const status of ["connecting", "unavailable"]) {
+    assert.doesNotMatch(
+      render({ status, message: "why" }),
+      /decision|constraint|action|overview/i,
+      status,
+    );
+  }
 });

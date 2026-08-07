@@ -1,0 +1,139 @@
+# Compact User Inbox - UI Build Specification
+
+## Intent and boundary
+
+Build the 380×520 compact Cloud window as the same small, calm action-inbox shown in the supplied reference: a soft peach/orange workspace behind a centered white panel, compact metadata, pill filters, and a vertically separated work list. This is the mini view only. Do not design or implement a wide dashboard, side navigation, a detail pane, or a second layout.
+
+The result must feel like a lightweight desktop companion, not a resized web dashboard. Use Inter and the existing Gear6 gear mark. Preserve the reference's hierarchy and density while substituting real Cloud data; never invent a resolved count, a source channel, a person, or a message preview that the API does not provide.
+
+## Fixed compact composition
+
+The desktop window remains 380×520. Render this layout at that size:
+
+```text
+┌──────────────────────────────────────┐  380 × 520 window
+│ pale peach / orange abstract backdrop │
+│                                      │
+│    ┌────────────────────────────┐    │  342px panel, centered
+│    │ [gear] Gear6             ⋮ │    │
+│    │ selected user ▾      pin  │    │
+│    │ 12 open · 3 for you  now  │    │
+│    │ [All] [For you] [Team]    │    │
+│    │ ───────────────────────── │    │
+│    │ Handoff · for you   26m   │    │
+│    │ Action subject            │    │
+│    │ Instruction · entity      │    │
+│    │ ───────────────────────── │    │
+│    │ …                          │    │
+│    └────────────────────────────┘    │
+└──────────────────────────────────────┘
+```
+
+### Backdrop
+
+- Full-window background: warm, very light peach at the upper-left (#FFD7BF) to pale apricot at the lower-left (#FFBE76). The right and lower regions carry the stronger orange landscape from the reference (#FF8B37 and #D8662E).
+- Build the landscape from three oversized, absolutely positioned, non-interactive rounded pseudo-elements or inline decorative SVG paths. Their visible edges sweep diagonally upward from the lower-left to the right side. Do not use a photo, texture, glass effect, or animated background.
+- The backdrop is decorative (`aria-hidden="true"`) and must never intercept pointer events.
+- Keep a 54px clear band at the top for the native traffic-light/drag region. The panel starts 54px from the top at the reference window size.
+
+### Inbox panel
+
+- Width: `calc(100% - 36px)` with `max-width: 342px`; centered horizontally.
+- Height: 498px at the reference window, with panel body scrolling only when content exceeds the available space. The header and filter row remain visible; list scrolling must not move the panel itself.
+- Surface: opaque white in light mode. In dark mode, retain the same geometry with a near-black neutral surface, not a translucent or purple card.
+- Corners: 11–12px radius. Border: 1px cool neutral gray at 55% opacity. Shadow: a restrained two-layer drop shadow (approximately `0 2px 5px rgb(0 0 0 / 0.14)` plus `0 12px 28px rgb(107 51 23 / 0.16)`).
+- No nested cards. List rows are plain stacked content sections divided by a 1px horizontal rule.
+
+## Element-by-element build instructions
+
+### Header - 58px total
+
+1. Reserve 16px horizontal padding and 16px top padding.
+2. Left cluster: render the 20px Gear6 mark, then `Gear6` in Inter 18px / 22px, weight 650, tracking -0.02em. Gap: 5px.
+3. Right cluster: a 28×28 icon button for the existing pin affordance (or reserved inactive slot if no pin behavior exists) and a 28×28 overflow button. Icons are 16px, black/foreground at 82% opacity. Both require accessible names and the normal hover/focus states from the shared button vocabulary.
+4. Directly below, render the user selector as the header's secondary line, not a full-width form field:
+   - selected person's display name in 12px/16px medium weight;
+   - `View as` visually muted before it only if there is enough space; otherwise use `aria-label="View actions as user"` and show the selected name alone;
+   - 14px chevron; total hit target is at least 32px high;
+   - native `<select>` is acceptable, but visually remove browser chrome and keep its keyboard behavior. If an existing popover/select primitive is used, it must escape the panel's scroll clipping and support Escape, Arrow keys, Enter, and focus return.
+5. The development-only nature is not represented by a prominent `dev` badge in the reference. Use a subtle `Development` label in the overflow/menu or an `sr-only` qualifier; do not add a visible colored badge that changes the header hierarchy.
+
+### Summary row - 24px
+
+- Align with the header's 16px side padding.
+- Left: `{overview.actions.total} open · {overview.actions.viewer} for you` in 12px/16px, muted gray. This is the API-faithful replacement for the reference's `8 open · 10 resolved`; do not show a resolved number because the API does not supply one.
+- Right: `updated just now` or a relative age derived from `generated_at`, right aligned, same size and color.
+- Baseline align both labels; truncate only the user-side label at narrow widths, never the refresh time.
+
+### Filter chips - 34px plus 12px lower spacing
+
+- Horizontal scroll is allowed without a visible scrollbar. Use 8px gaps and 16px left/right inset.
+- Chips are 22px high, `border-radius: 999px`, 11px Inter medium, 10px horizontal padding.
+- Order and labels are fixed: `All`, `For you`, `Team`.
+- Selected `All`: #F2F2F2 fill, #737373 text, no heavy outline. Unselected chips: transparent white, #D6D6D6 1px border, #8A8A8A text. Hover slightly darkens fill; focus uses the app focus ring.
+- Chips filter the already returned action data client-side by `audience`; no network request or new server parameter is needed. `For you` maps to `viewer`; `Team` maps to `team`.
+- If a filter has zero rows, keep the chips and show the specified empty state below them.
+
+### Action list
+
+- Divider: #E3E3E3, 1px; start it at x=16 and end at x=16 rather than running into the panel corners.
+- Each row: 16px horizontal padding, 14px top, 13px bottom; natural height with a 76px minimum. Rows are not clickable in this release because no action detail or mutation is defined.
+- Metadata line: 12px / 16px, #777. Place action type at left and age at right. Use a 14px semantic icon immediately before the action type:
+  - `act_on_handoff`: violet arrow/turn icon;
+  - `resolve_decision`: blue decision/check icon;
+  - `unblock_constraint`: orange alert/constraint icon.
+- Map API values exactly:
+
+| API field | Visible treatment |
+| --- | --- |
+| `type` | `Handoff`, `Decision`, or `Blocker` in metadata |
+| `audience` | `for you` for `viewer`; `team` for `team` |
+| `signal.age_seconds` | compact relative age (`26 min ago`, `1h ago`, `2d ago`) |
+| `signal.subject` | primary title, 13px / 16px, weight 650, two-line clamp |
+| `instruction` | secondary line, 12px / 16px, #777, two-line clamp |
+| `signal.entity.summary` | append after a centered dot only when present; otherwise omit the dot |
+
+- The final visible list row ends with 12px bottom breathing room. Do not add a `load more` control in v1; the API's first page is the compact surface's bounded list.
+
+## State designs
+
+### Loading
+
+- Before user data: show the fixed header and a 32px muted skeleton line where the selector sits, then three list-row skeletons. Skeletons use the existing app animation only if reduced motion is respected; otherwise static muted fills are acceptable.
+- During a user switch: retain the selected user label and summary/filter structure, replace only the list with three skeleton rows. This makes the selection change feel immediate without showing the previous user's work.
+
+### No selectable users
+
+- Keep header and selector area. Render disabled text `No development users found` plus a one-line explanation: `Cloud has no resolvable accounts in this dataset.` No empty illustration.
+
+### No matching actions
+
+- Preserve the summary and active filter. Show a 13px semibold `Nothing open here` with a 12px muted explanation: `This user has no {filter} actions right now.`
+
+### Request failure
+
+- Preserve the panel and selected user rather than returning to a full-screen error.
+- Show the existing concise Cloud error copy with a small outline `Retry` button. The button retries the failed directory read or selected-user reads as appropriate.
+- Never show raw HTTP codes or an actor/account ID in visible error text.
+
+## Responsive and accessibility acceptance criteria
+
+- At 380px, panel geometry matches the supplied reference: 18px exterior gutters and no horizontal page scroll.
+- At the 320px window minimum, reduce exterior gutters to 12px, retain 16px panel padding, and keep every header control within a 32px hit target. Chip row may scroll horizontally; content rows must not.
+- Use semantic landmarks: one `main`, one level-one `Gear6` heading, labelled selector, buttons, and a list/listitem structure for actions.
+- Contrast: primary text ≥ 4.5:1; muted metadata and controls ≥ 4.5:1 against their immediate surface. Verify both light and dark themes.
+- Keyboard order: overflow/pin, user selector, chips, retry (if present). The selected chip has `aria-pressed`; filtered action count is announced through a polite live region.
+- No entrance animation. Filter changes and skeleton-to-content transitions may use a 150ms opacity transition; `prefers-reduced-motion` makes them instant.
+
+## Builder checklist
+
+1. Create an isolated `CloudMiniInbox` component and scoped styles so legacy/local surfaces cannot inherit this composition.
+2. Add the decorative backdrop and fixed panel geometry before adding real data.
+3. Build header, selector, summary, chips, and a fixture-driven action row using the dimensions above.
+4. Connect user/action/overview state and implement the filter as client-only derived state.
+5. Implement the four state designs before visual polishing.
+6. Capture screenshots at 380×520 and 320×360 in light and dark themes; compare hierarchy, gutters, row density, truncation, and focus states against this specification.
+
+## Non-goals
+
+- No full-size layout, dashboard metrics, detail drawer, actions/mutations, persistent user selection, source-message previews, channel tabs, or auto-refresh loop.

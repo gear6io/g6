@@ -1,0 +1,18 @@
+/*
+ * The compact Cloud window's single surface. It fills the window, so it is the
+ * only thing the transparent NSWindow ever shows and nothing sits behind it.
+ *
+ * There is no backdrop layer: the Gear6 gradient tokens are built for the
+ * legacy shell's full-window canvas, and in an 18px gutter around a 380px
+ * window the dark ramp's olive top read as a coloured border around the app.
+ *
+ * White rather than `--card`, which in this palette is the same value as
+ * `--background`. Dark keeps the token — there the near-black card is right.
+ */
+.g6-cloud-panel {
+  background-color: #fff;
+}
+
+.dark .g6-cloud-panel {
+  background-color: hsl(var(--card));
+}

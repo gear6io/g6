@@ -1,9 +1,12 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "@fontsource-variable/inter/wght.css";
 import "@/shared/styles/globals.css";
 import { selectRootLoader } from "@/app/rootSurface";
 import { APP_MODE } from "@/shared/api/mode";
+import { StartupWindowDragRegion } from "@/shared/ui/StartupWindowDragRegion";
 
 // Boot the backend connection the moment the app loads (fire-and-forget).
 //
@@ -22,6 +25,7 @@ const E2E_DEFAULT_PUBKEY = "deadbeef".repeat(8);
 const E2E_COMMUNITY_ID = "e2e-default-community";
 const ONBOARDING_COMPLETION_STORAGE_KEY_PREFIX = "g6-onboarding-complete.v1:";
 const DEV_STATE_RESET_PARAM = "resetDevState";
+const INITIAL_RENDER_READY_EVENT = "initial-render-ready";
 
 function resetDevWebviewStateFromUrl() {
   if (!import.meta.env.DEV) {
@@ -93,11 +97,24 @@ async function bootstrap() {
   // No tree is imported by another — see `@/app/rootSurface`.
   const Root = await selectRootLoader(APP_MODE)();
 
+  // The cloud and local roots have no title bar and no chrome of their own, so
+  // the drag handle is mounted here rather than inside each of them. The legacy
+  // tree mounts its own instances per screen and must not get a second one.
+  const desktopChrome = APP_MODE !== "legacy";
+
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
+      {desktopChrome ? <StartupWindowDragRegion fullWindow /> : null}
       <Root />
     </React.StrictMode>,
   );
+
+  // Reveals the window (the shell keeps it hidden until first paint). Legacy
+  // emits this itself from `@/app/App`; without it here the cloud and local
+  // windows only appear via the shell's 5s fallback.
+  if (desktopChrome && isTauri()) {
+    requestAnimationFrame(() => void emit(INITIAL_RENDER_READY_EVENT));
+  }
 }
 
 void bootstrap();

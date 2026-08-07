@@ -10,9 +10,13 @@
 import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
 
 import type {
+  ActionListResponse,
   CloudErrorEnvelope,
+  GatewayQuery,
   ListQuery,
+  OverviewResponse,
   SignalListResponse,
+  UserListResponse,
 } from "@/shared/api/cloudGateway/types";
 
 const DEFAULT_RELAY_URL = "ws://localhost:3000";
@@ -39,7 +43,7 @@ export function gatewayOrigin(): string {
   return relayHttpFromWs(env.VITE_RELAY_URL ?? DEFAULT_RELAY_URL);
 }
 
-function gatewayUrl(path: string, query?: ListQuery): string {
+function gatewayUrl(path: string, query?: GatewayQuery): string {
   const url = new URL(`${gatewayOrigin()}/api/cloud/${path}`);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined) {
@@ -50,7 +54,7 @@ function gatewayUrl(path: string, query?: ListQuery): string {
 }
 
 /** `globalThis.fetch` rather than a captured binding so tests can stub it. */
-function gatewayFetch(path: string, query?: ListQuery): Promise<Response> {
+function gatewayFetch(path: string, query?: GatewayQuery): Promise<Response> {
   return globalThis.fetch(gatewayUrl(path, query), {
     signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
   });
@@ -113,10 +117,7 @@ export async function health(): Promise<CloudHealth> {
   return { ready: false, code, message };
 }
 
-async function listSignals(
-  path: string,
-  query?: ListQuery,
-): Promise<SignalListResponse> {
+async function getJson<T>(path: string, query?: GatewayQuery): Promise<T> {
   let res: Response;
   try {
     res = await gatewayFetch(path, query);
@@ -127,15 +128,32 @@ async function listSignals(
     throw await failure(res);
   }
   // Returned as parsed, not remapped: see the note in `./types`.
-  return (await res.json()) as SignalListResponse;
+  return (await res.json()) as T;
 }
 
 export function listOpenDecisions(query?: ListQuery): Promise<SignalListResponse> {
-  return listSignals("v1/open-decisions", query);
+  return getJson("v1/open-decisions", query);
 }
 
 export function listOpenConstraints(
   query?: ListQuery,
 ): Promise<SignalListResponse> {
-  return listSignals("v1/open-constraints", query);
+  return getJson("v1/open-constraints", query);
+}
+
+/**
+ * The development user directory. The route is compiled out of a release
+ * backend, so this rejects with the gateway's 404 there rather than returning
+ * an empty list — callers gate the call on the build, not on the answer.
+ */
+export function listDevUsers(): Promise<UserListResponse> {
+  return getJson("v1/dev/users");
+}
+
+export function listActions(accountId: string): Promise<ActionListResponse> {
+  return getJson("v1/actions", { account_id: accountId });
+}
+
+export function overview(accountId: string): Promise<OverviewResponse> {
+  return getJson("v1/overview", { account_id: accountId });
 }

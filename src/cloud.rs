@@ -2,8 +2,12 @@
 //!
 //! The desktop webview never learns a Cloud origin: it calls this backend, and
 //! this backend calls Cloud. That is the whole point, so there is no generic
-//! proxy route, no dynamic upstream URL, and no route-map DSL here — just three
-//! fixed GETs whose upstream paths are compiled in.
+//! proxy route, no dynamic upstream URL, and no route-map DSL here — just a
+//! handful of fixed GETs whose upstream paths are compiled in.
+//!
+//! The actor-scoped routes take the viewer as a query parameter and this
+//! backend turns it into `X-G6-Actor-ID` on the way out. The browser never
+//! sends that header, so it never has to be in the CORS allowlist.
 //!
 //! Unlike the Slack-compatible surface next door, `/api/cloud` is NOT Slack
 //! shaped: it keeps Cloud's status semantics instead of answering 200 with
@@ -13,7 +17,7 @@
 use std::time::Duration;
 
 use axum::extract::{Query, State};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
@@ -39,6 +43,17 @@ const MAX_BODY: usize = 1024 * 1024;
 const HEALTHZ: &str = "healthz";
 const OPEN_DECISIONS: &str = "v1/open-decisions";
 const OPEN_CONSTRAINTS: &str = "v1/open-constraints";
+const ACTIONS: &str = "v1/actions";
+const OVERVIEW: &str = "v1/overview";
+#[cfg(debug_assertions)]
+const DEV_USERS: &str = "v1/dev/users";
+
+/// The header Cloud reads the viewer from. Written here, from a validated query
+/// value, and never copied from anything the webview sent.
+const ACTOR_HEADER: &str = "X-G6-Actor-ID";
+
+/// Cloud's own `X-G6-Actor-ID` schema is `minLength: 1, maxLength: 128`.
+const MAX_ACTOR_LEN: usize = 128;
 
 #[derive(Clone)]
 pub struct Cloud {
@@ -114,10 +129,20 @@ fn parse_base(raw: &str) -> Result<Url, &'static str> {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
+    let routes = Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/open-decisions", get(open_decisions))
         .route("/v1/open-constraints", get(open_constraints))
+        .route("/v1/actions", get(actions))
+        .route("/v1/overview", get(overview));
+
+    // Compiled out of release builds, exactly as Cloud gates its own copy: the
+    // route enumerates the tenant's people, handles and emails, and a config
+    // flag would still ship the code in the production binary.
+    #[cfg(debug_assertions)]
+    let routes = routes.route("/v1/dev/users", get(dev_users));
+
+    routes
 }
 
 /// The only three query parameters that reach Cloud. `limit` is a string, not a
@@ -166,7 +191,7 @@ async fn healthz(State(state): State<AppState>) -> Response {
 
 async fn relay_healthz(state: &AppState) -> Result<Response, GatewayError> {
     let url = state.cloud.url(HEALTHZ)?;
-    let res = send(state, HEALTHZ, url).await?;
+    let res = send(state, HEALTHZ, url, None).await?;
     let status = res.status();
 
     // Cloud answers readiness in plain text: 200 "ok" or 503 "read model unavailable".
@@ -200,6 +225,76 @@ async fn open_constraints(
     relay_list(state, OPEN_CONSTRAINTS, query).await
 }
 
+/// The viewer, as the webview is allowed to express it: a query value, not a
+/// header. `Option` rather than a required field so a missing parameter is this
+/// module's `400 invalid_actor` instead of Axum's own rejection body.
+#[derive(Deserialize)]
+pub struct ActorQuery {
+    account_id: Option<String>,
+}
+
+impl ActorQuery {
+    /// The one place a browser-supplied string becomes an outbound header.
+    /// Rejecting rather than sanitising: a value that is not a header is not a
+    /// Cloud account id either, so there is nothing to salvage.
+    fn header(&self) -> Result<HeaderValue, GatewayError> {
+        let raw = self.account_id.as_deref().unwrap_or_default();
+        if raw.is_empty() || raw.len() > MAX_ACTOR_LEN {
+            return Err(GatewayError::invalid_actor());
+        }
+        HeaderValue::from_str(raw).map_err(|_| GatewayError::invalid_actor())
+    }
+}
+
+async fn actions(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Query(query): Query<ActorQuery>,
+) -> Response {
+    relay_actor(state, ACTIONS, query).await
+}
+
+async fn overview(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Query(query): Query<ActorQuery>,
+) -> Response {
+    relay_actor(state, OVERVIEW, query).await
+}
+
+async fn relay_actor(state: AppState, path: &'static str, query: ActorQuery) -> Response {
+    match actor_scoped(&state, path, query).await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+async fn actor_scoped(
+    state: &AppState,
+    path: &'static str,
+    query: ActorQuery,
+) -> Result<Response, GatewayError> {
+    // Validated before the URL is built, so an invalid account never reaches
+    // Cloud at all. The rejection names the parameter, never its value.
+    let actor = query.header()?;
+    let url = state.cloud.url(path)?;
+    relay_json(state, path, url, Some(actor)).await
+}
+
+/// Development only, and unparameterised: the list is capped upstream at 1000
+/// rows and does not page.
+#[cfg(debug_assertions)]
+async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
+    let relayed = async {
+        let url = state.cloud.url(DEV_USERS)?;
+        relay_json(&state, DEV_USERS, url, None).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
 async fn relay_list(state: AppState, path: &'static str, query: ListQuery) -> Response {
     match list(&state, path, query).await {
         Ok(res) => res,
@@ -214,8 +309,18 @@ async fn list(
 ) -> Result<Response, GatewayError> {
     let mut url = state.cloud.url(path)?;
     query.apply(&mut url);
+    relay_json(state, path, url, None).await
+}
 
-    let res = send(state, path, url).await?;
+/// The shared JSON pass-through: same accepted statuses, same bodyless 504, same
+/// byte-for-byte relay for every route that answers JSON.
+async fn relay_json(
+    state: &AppState,
+    path: &'static str,
+    url: Url,
+    actor: Option<HeaderValue>,
+) -> Result<Response, GatewayError> {
+    let res = send(state, path, url, actor).await?;
     let status = res.status();
 
     // Cloud emits 504 from middleware above its handlers, so it is the one
@@ -252,14 +357,20 @@ async fn list(
 }
 
 /// The single outbound path. Nothing inbound rides along: no `Authorization`, no
-/// cookies, no request body, no desktop-supplied actor id — only the URL built
-/// from the compiled-in allowlist.
+/// cookies, no request body, no desktop-supplied header — only the URL built
+/// from the compiled-in allowlist, plus the one actor header this gateway
+/// constructs itself from a validated query value.
 async fn send(
     state: &AppState,
     path: &'static str,
     url: Url,
+    actor: Option<HeaderValue>,
 ) -> Result<reqwest::Response, GatewayError> {
-    let res = state.cloud.client.get(url).send().await.map_err(|e| {
+    let mut request = state.cloud.client.get(url);
+    if let Some(actor) = actor {
+        request = request.header(ACTOR_HEADER, actor);
+    }
+    let res = request.send().await.map_err(|e| {
         if e.is_timeout() {
             log(path, "timeout", None);
             GatewayError::timeout()
@@ -367,6 +478,17 @@ impl GatewayError {
         }
     }
 
+    /// The account the webview named cannot become a header. Deliberately says
+    /// nothing about the value: it is user input echoed back into a log or a
+    /// toast otherwise.
+    fn invalid_actor() -> Self {
+        GatewayError {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_actor",
+            message: "account_id must be a non-empty header-safe value of at most 128 bytes",
+        }
+    }
+
     fn invalid_response() -> Self {
         GatewayError {
             status: StatusCode::BAD_GATEWAY,
@@ -463,6 +585,42 @@ mod tests {
         assert_eq!(
             url.query().unwrap(),
             "entity_id=0123456789abcdef0123456789abcdef&limit=1000&cursor=abc%3D%3D"
+        );
+    }
+
+    fn actor(query: &str) -> Result<String, &'static str> {
+        let parsed: ActorQuery = serde_urlencoded::from_str(query).unwrap();
+        parsed
+            .header()
+            .map(|v| v.to_str().unwrap().to_owned())
+            .map_err(|e| e.code)
+    }
+
+    #[test]
+    fn only_a_header_safe_account_becomes_an_actor() {
+        assert_eq!(actor("account_id=U024BE7LH").unwrap(), "U024BE7LH");
+        assert_eq!(
+            actor(&format!("account_id={}", "U".repeat(MAX_ACTOR_LEN))).unwrap(),
+            "U".repeat(MAX_ACTOR_LEN)
+        );
+
+        assert_eq!(actor("").unwrap_err(), "invalid_actor", "missing");
+        assert_eq!(actor("account_id=").unwrap_err(), "invalid_actor", "empty");
+        assert_eq!(
+            actor(&format!("account_id={}", "U".repeat(MAX_ACTOR_LEN + 1))).unwrap_err(),
+            "invalid_actor",
+            "oversized"
+        );
+        // A header split is the reason this is validated rather than trusted.
+        assert_eq!(
+            actor("account_id=U1%0d%0aX-Evil%3A+1").unwrap_err(),
+            "invalid_actor",
+            "crlf"
+        );
+        assert_eq!(
+            actor("account_id=U%00").unwrap_err(),
+            "invalid_actor",
+            "nul"
         );
     }
 
@@ -669,6 +827,99 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_actor_reaches_cloud_as_a_header_and_never_as_a_query() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        for (uri, upstream) in [
+            ("/api/cloud/v1/actions?account_id=U024BE7LH", "/v1/actions"),
+            (
+                "/api/cloud/v1/overview?account_id=U024BE7LH",
+                "/v1/overview",
+            ),
+        ] {
+            let (status, _, _) = get(&app, uri, Some(&token)).await;
+            assert_eq!(status, StatusCode::OK, "{uri}");
+
+            let (seen_uri, headers) = seen.last();
+            assert_eq!(seen_uri, upstream, "the account is not forwarded as query");
+            assert_eq!(headers["x-g6-actor-id"], "U024BE7LH");
+            assert!(
+                headers.get(header::AUTHORIZATION).is_none(),
+                "no inbound auth"
+            );
+            assert!(headers.get(header::COOKIE).is_none(), "no cookies");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_browser_supplied_actor_header_is_not_the_one_forwarded() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let res = app
+            .clone()
+            .oneshot(
+                Request::get("/api/cloud/v1/actions?account_id=U024BE7LH")
+                    .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                    .header(ACTOR_HEADER, "U-SOMEONE-ELSE")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(seen.last().1["x-g6-actor-id"], "U024BE7LH");
+    }
+
+    #[tokio::test]
+    async fn an_unusable_account_is_rejected_before_cloud_is_called() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        for uri in [
+            "/api/cloud/v1/actions",
+            "/api/cloud/v1/actions?account_id=",
+            "/api/cloud/v1/actions?account_id=U1%0d%0aX-Evil%3A%201",
+            "/api/cloud/v1/overview?account_id=",
+        ] {
+            let (status, _, body) = get(&app, uri, Some(&token)).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{uri}");
+            assert!(body.contains("invalid_actor"), "{uri}: {body}");
+            assert!(
+                !body.contains("X-Evil"),
+                "{uri}: the rejected value is not echoed back"
+            );
+        }
+        assert!(seen.0.lock().unwrap().is_empty(), "nothing reached Cloud");
+    }
+
+    #[tokio::test]
+    async fn the_development_user_directory_is_relayed_unparameterised() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let (status, _, got) = get(&app, "/api/cloud/v1/dev/users?limit=5", Some(&token)).await;
+
+        // Present because the test profile is a debug build; a release binary
+        // has no such route and answers 404.
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(got, PAGE);
+
+        let (uri, headers) = seen.last();
+        assert_eq!(uri, "/v1/dev/users", "no paging, no forwarded query");
+        assert!(
+            headers.get("x-g6-actor-id").is_none(),
+            "the directory has no viewer"
+        );
+    }
+
+    #[tokio::test]
     async fn cloud_error_envelopes_keep_their_status_and_code() {
         for (upstream, body) in [
             (
@@ -789,8 +1040,6 @@ mod tests {
         let token = token(&app).await;
 
         for uri in [
-            "/api/cloud/v1/actions",
-            "/api/cloud/v1/overview",
             "/api/cloud/livez",
             "/api/cloud/v1/open-decisions/1",
             "/api/cloud/",

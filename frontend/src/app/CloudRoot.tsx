@@ -1,12 +1,13 @@
-// Root surface for cloud builds. Readiness and nothing else: no actions,
-// overview counts, decisions, constraints, user selection, channels, messages,
-// or legacy app shell. The list routes exist on the backend and in
-// `@/shared/api/cloudGateway`, but the actor-scoped endpoints they would sit
-// next to need a user directory that does not exist yet, so shipping a partial
-// dashboard now would mean shipping it twice.
+// Root surface for cloud builds. Readiness first, and once Cloud answers, the
+// compact action inbox — no decisions or constraints list, no channels, no
+// messages, no legacy app shell.
+//
+// The boot surface stays the whole window only while readiness is unresolved or
+// failed: those are the states where there is nothing to put in a panel.
 import { useCallback, useEffect, useState } from "react";
 
 import { type CloudBootState, runCloudBoot } from "@/app/cloudBoot";
+import { CloudMiniInbox } from "@/features/cloudInbox/CloudMiniInbox";
 import { Button } from "@/shared/ui/button";
 
 const COPY: Record<Exclude<CloudBootState["status"], "connecting">, string> = {
@@ -80,5 +81,8 @@ export function CloudRoot() {
   // in-flight answer so a slow first attempt cannot overwrite a newer one.
   const retry = useCallback(() => setAttempt((count) => count + 1), []);
 
+  if (state.status === "ready") {
+    return <CloudMiniInbox />;
+  }
   return <CloudBootSurface onRetry={retry} state={state} />;
 }

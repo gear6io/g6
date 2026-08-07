@@ -8,7 +8,6 @@
 // so never compiled); it is deleted in a later cleanup pass.
 
 use tauri::{Listener, Manager};
-use tauri_plugin_window_state::StateFlags;
 
 const INITIAL_RENDER_READY_EVENT: &str = "initial-render-ready";
 
@@ -31,14 +30,10 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                // Visibility is excluded: the reveal plugin below shows the
-                // window after saved geometry is restored and the first frame
-                // has rendered, so the config's `visible: false` holds until then.
-                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
-                .build(),
-        )
+        // No window-state plugin: geometry comes from tauri.conf.json alone. It
+        // used to restore the saved size/position, which meant a leftover
+        // maximized 1600x1200 from the pre-cloud shell overrode the configured
+        // panel size on every launch.
         .plugin(
             tauri::plugin::Builder::<_, ()>::new("initial-window-reveal")
                 .on_webview_ready(|webview| {

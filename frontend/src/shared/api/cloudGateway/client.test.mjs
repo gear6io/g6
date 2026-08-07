@@ -8,8 +8,11 @@ import {
   CloudGatewayError,
   gatewayOrigin,
   health,
+  listActions,
+  listDevUsers,
   listOpenConstraints,
   listOpenDecisions,
+  overview,
 } from "./client.ts";
 
 const clientDir = path.dirname(fileURLToPath(import.meta.url));
@@ -186,6 +189,54 @@ test("list responses are returned exactly as received", async () => {
   } finally {
     fetchStub.restore();
   }
+});
+
+test("the actor-scoped routes send the account as a query, never a header", async () => {
+  const fetchStub = stubFetch(
+    () =>
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    await listActions("U024BE7LH");
+    await overview("U024BE7LH");
+    await listDevUsers();
+
+    const paths = fetchStub.calls.map((call) => new URL(call.url).pathname);
+    assert.deepEqual(paths, [
+      "/api/cloud/v1/actions",
+      "/api/cloud/v1/overview",
+      "/api/cloud/v1/dev/users",
+    ]);
+
+    for (const call of fetchStub.calls.slice(0, 2)) {
+      assert.equal(
+        new URL(call.url).searchParams.get("account_id"),
+        "U024BE7LH",
+      );
+    }
+    assert.equal(
+      new URL(fetchStub.calls[2].url).search,
+      "",
+      "the directory takes no parameters",
+    );
+
+    // The backend validates the account and writes the header itself, so the
+    // browser sends none — which is why it is absent from the CORS allowlist.
+    for (const call of fetchStub.calls) {
+      assert.equal(call.init?.headers, undefined, "no browser-set headers");
+    }
+  } finally {
+    fetchStub.restore();
+  }
+
+  const source = fs.readFileSync(path.join(clientDir, "client.ts"), "utf8");
+  assert.ok(
+    !/X-G6-Actor-ID/i.test(source),
+    "the actor header is a backend concern",
+  );
 });
 
 test("a Cloud error on a list route throws with Cloud's own code", async () => {

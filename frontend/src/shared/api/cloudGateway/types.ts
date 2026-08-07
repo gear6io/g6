@@ -49,6 +49,60 @@ export type SignalListResponse = {
   generated_at: string;
 };
 
+export type ActionType =
+  | "act_on_handoff"
+  | "resolve_decision"
+  | "unblock_constraint";
+
+/**
+ * A property of the viewer, not of the signal: the same constraint is `viewer`
+ * for the person Cloud recorded as its owner and `team` for everyone else.
+ */
+export type ActionAudience = "viewer" | "team";
+
+export type Action = {
+  /** `action:v1:{type}:{signal_id}` — derived from the signal, safe as a key. */
+  id: string;
+  type: ActionType;
+  audience: ActionAudience;
+  /** Fixed copy for the action type. Not per-signal and not generated. */
+  instruction: string;
+  signal: Signal;
+};
+
+export type ActionListResponse = {
+  data: Action[];
+  page: Page;
+  generated_at: string;
+};
+
+/** One Slack account worth sending as the viewer. Development only. */
+export type CloudUser = {
+  /** The value the gateway turns into `X-G6-Actor-ID`. */
+  account_id: string;
+  actor_id: string;
+  kind: "human" | "bot" | "app" | "agent";
+  /** Login or username. Changeable upstream; not an identity. */
+  handle: string;
+  /** Empty when unknown. */
+  display_name: string;
+  email: string;
+};
+
+export type UserListResponse = {
+  data: CloudUser[];
+  /** `limit` is the fixed 1000-row cap and `next_cursor` is always null. */
+  page: Page;
+  generated_at: string;
+};
+
+export type OverviewResponse = {
+  open_decisions: number;
+  open_constraints: number;
+  actions: { viewer: number; team: number; total: number };
+  generated_at: string;
+};
+
 /** Cloud's own error shape, relayed unchanged, and the gateway's own failures. */
 export type CloudErrorEnvelope = {
   error: { code: string; message: string };
@@ -60,3 +114,12 @@ export type ListQuery = {
   limit?: number;
   cursor?: string;
 };
+
+/**
+ * The viewer, as a query parameter. It is deliberately not a header: the
+ * backend validates this value and writes `X-G6-Actor-ID` itself, so the
+ * browser never sends that header and it stays out of the CORS allowlist.
+ */
+export type ActorQuery = { account_id: string };
+
+export type GatewayQuery = ListQuery | ActorQuery;
