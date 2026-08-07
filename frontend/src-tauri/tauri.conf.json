@@ -5,21 +5,22 @@
   "identifier": "xyz.block.g6.app",
   "build": {
     "beforeDevCommand": {
-      "script": "exec env VITE_GEAR6=1 ./node_modules/.bin/vite",
+      "script": "exec env VITE_G6_APP_MODE=cloud ./node_modules/.bin/vite",
       "cwd": "..",
       "wait": false
     },
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "VITE_GEAR6=1 pnpm build",
+    "beforeBuildCommand": "VITE_G6_APP_MODE=cloud pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "title": "",
-        "width": 800,
-        "height": 600,
-        "maximized": true,
+        "width": 380,
+        "height": 520,
+        "maximized": false,
+        "alwaysOnTop": true,
         "visible": false,
         "transparent": true,
         "titleBarStyle": "Overlay",
@@ -30,8 +31,8 @@
           "y": 25
         },
         "backgroundThrottling": "disabled",
-        "minWidth": 800,
-        "minHeight": 500
+        "minWidth": 320,
+        "minHeight": 360
       }
     ],
     "macOSPrivateApi": true,

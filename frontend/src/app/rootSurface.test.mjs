@@ -16,8 +16,8 @@ import {
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 
-test("gear6 mode boots the replacement root", async () => {
-  assert.equal(selectRootLoader(true), loadGear6Root);
+test("local mode boots the replacement root", async () => {
+  assert.equal(selectRootLoader("local"), loadGear6Root);
   assert.equal(await loadGear6Root(), Gear6Root);
 });
 
@@ -51,11 +51,11 @@ test("gear6 mode never pulls in the legacy shell", async () => {
   );
 });
 
-test("non-gear6 mode still boots the existing app", () => {
+test("legacy mode still boots the existing app", () => {
   // Compared by identity rather than invoked: calling it would mount the legacy
   // provider stack, which is exactly what this build is supposed to keep doing
   // and what node cannot import.
-  assert.equal(selectRootLoader(false), loadLegacyRoot);
+  assert.equal(selectRootLoader("legacy"), loadLegacyRoot);
 
   const loaderSource = fs.readFileSync(
     path.join(appDir, "rootSurface.ts"),

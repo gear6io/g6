@@ -1,6 +1,7 @@
 mod api;
 mod auth;
 mod channels;
+mod cloud;
 mod messages;
 mod slack;
 
@@ -45,6 +46,9 @@ pub struct AppState {
     ///
     /// ponytail: in-process, exactly like `tx`. A second node needs Redis for both.
     presence: Arc<Mutex<HashMap<i64, (usize, bool)>>>,
+    /// Outbound half of the G6 Cloud gateway. Public so tests can point it at a
+    /// mock upstream; nothing else replaces it after startup.
+    pub cloud: cloud::Cloud,
 }
 
 impl AppState {
@@ -54,6 +58,7 @@ impl AppState {
             tx: broadcast::channel(256).0,
             tickets: Arc::new(Mutex::new(HashMap::new())),
             presence: Arc::new(Mutex::new(HashMap::new())),
+            cloud: cloud::Cloud::from_env(),
         }
     }
 
@@ -213,7 +218,10 @@ pub fn app(state: AppState) -> Router {
         .route("/users.profile.set", on(both, api::users_profile_set))
         .route("/users.getPresence", on(both, api::users_get_presence))
         .route("/users.setPresence", on(both, api::users_set_presence))
-        .route("/rtm.connect", on(both, api::rtm_connect));
+        .route("/rtm.connect", on(both, api::rtm_connect))
+        // Not Slack shaped and deliberately kept apart from everything above it:
+        // read-only GETs relayed to G6 Cloud, keeping Cloud's status semantics.
+        .nest("/cloud", cloud::routes());
 
     Router::new()
         // Not Slack API surface — Slack has no username/password concept.
@@ -359,10 +367,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
+    // Before the bind, so a rejected GEAR6_CLOUD_BASE_URL fails without first
+    // claiming to be listening.
+    let state = AppState::new(db);
+
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".into());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     println!("gear6 listening on {}", listener.local_addr()?);
-    axum::serve(listener, app(AppState::new(db))).await?;
+    axum::serve(listener, app(state)).await?;
     Ok(())
 }
 

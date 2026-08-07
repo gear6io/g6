@@ -3,11 +3,16 @@ import ReactDOM from "react-dom/client";
 import "@fontsource-variable/inter/wght.css";
 import "@/shared/styles/globals.css";
 import { selectRootLoader } from "@/app/rootSurface";
-import { rtm } from "@/shared/lib/rtm-client";
-import { USE_HTTP_API } from "@/shared/api/mode";
+import { APP_MODE } from "@/shared/api/mode";
 
 // Boot the backend connection the moment the app loads (fire-and-forget).
-rtm.connect();
+//
+// Local mode only, and dynamically imported so the RTM client's module graph is
+// never even evaluated elsewhere: cloud mode speaks plain HTTP to `/api/cloud`
+// and must not open a socket, and the legacy shell has its own relay stack.
+if (APP_MODE === "local") {
+  void import("@/shared/lib/rtm-client").then(({ rtm }) => rtm.connect());
+}
 
 type E2eWindow = Window & {
   __GEAR6_E2E__?: unknown;
@@ -83,10 +88,10 @@ async function bootstrap() {
   configureDevE2eBridgeFromUrl();
   await installE2eBridgeIfConfigured();
 
-  // The render boundary: gear6 builds get their own minimal root, legacy
-  // builds get the pre-gear6 provider stack (and its storage migration).
-  // Neither tree is imported by the other — see `@/app/rootSurface`.
-  const Root = await selectRootLoader(USE_HTTP_API)();
+  // The render boundary: cloud and local builds get their own minimal roots,
+  // legacy builds get the pre-gear6 provider stack (and its storage migration).
+  // No tree is imported by another — see `@/app/rootSurface`.
+  const Root = await selectRootLoader(APP_MODE)();
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
