@@ -4,11 +4,11 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { CloudWindowProvider } from "../cloudShell/CloudWindowProvider.tsx";
 import { CloudMiniInbox, InboxBody } from "./CloudMiniInbox.tsx";
 import {
   ACTION_LABEL,
-  emptyActionsCopy,
-  filterActions,
+  EMPTY_ACTIONS_COPY,
   relativeAge,
   summaryLabel,
   updatedLabel,
@@ -19,7 +19,6 @@ function action(overrides = {}) {
   return {
     id: "action:v1:act_on_handoff:9f2c",
     type: "act_on_handoff",
-    audience: "viewer",
     instruction: "Reply to the handoff.",
     signal: {
       id: "9f2c",
@@ -40,7 +39,7 @@ function action(overrides = {}) {
 const OVERVIEW = {
   open_decisions: 4,
   open_constraints: 2,
-  actions: { viewer: 3, team: 9, total: 12 },
+  actions: 3,
   generated_at: "2026-01-01T00:00:00Z",
 };
 
@@ -70,38 +69,24 @@ test("a user falls back from display name to handle to account id", () => {
   assert.equal(userLabel({ ...base, display_name: "", handle: "" }), "U1");
 });
 
-test("chips filter the returned page, never the request", () => {
-  const rows = [
-    action({ id: "a", audience: "viewer" }),
-    action({ id: "b", audience: "team" }),
-    action({ id: "c", audience: "team" }),
-  ];
-  assert.deepEqual(filterActions(rows, "all").length, 3);
-  assert.deepEqual(
-    filterActions(rows, "viewer").map((row) => row.id),
-    ["a"],
-  );
-  assert.deepEqual(
-    filterActions(rows, "team").map((row) => row.id),
-    ["b", "c"],
-  );
-});
-
 test("the summary shows only counts the API supplies", () => {
-  const label = summaryLabel(OVERVIEW);
-  assert.equal(label, "12 open · 3 for you");
-  assert.doesNotMatch(label, /resolved/, "Cloud supplies no resolved count");
+  assert.equal(summaryLabel(OVERVIEW), "3 open actions for you");
+  assert.equal(summaryLabel({ ...OVERVIEW, actions: 1 }), "1 open action for you");
+  assert.equal(summaryLabel({ ...OVERVIEW, actions: 0 }), "0 open actions for you");
+  // Cloud supplies no resolved count and no viewer/team split any more.
+  assert.doesNotMatch(summaryLabel(OVERVIEW), /resolved|team/);
 });
 
-test("each empty filter says which filter emptied it", () => {
-  const copies = ["all", "viewer", "team"].map(emptyActionsCopy);
-  assert.equal(new Set(copies).size, 3);
+test("an action type Cloud no longer serves has no label", () => {
+  assert.deepEqual(Object.keys(ACTION_LABEL).sort(), [
+    "act_on_handoff",
+    "unblock_constraint",
+  ]);
 });
 
 function body(props) {
   return renderToStaticMarkup(
     React.createElement(InboxBody, {
-      filter: "all",
       inbox: { status: "loading" },
       onRetryInbox: () => {},
       onRetryUsers: () => {},
@@ -145,7 +130,6 @@ test("a row shows the API's own strings and nothing invented", () => {
 
   assert.match(markup, /ship the migration/);
   assert.match(markup, new RegExp(ACTION_LABEL.act_on_handoff));
-  assert.match(markup, /for you/);
   assert.match(markup, /26 min ago/);
   assert.match(markup, /Reply to the handoff\. · billing/);
   // Both variable strings are clamped so a long subject cannot widen the panel.
@@ -159,7 +143,15 @@ test("an entity-less row omits the separating dot rather than trailing it", () =
 });
 
 test("the composed panel is one landmark, one heading and a labelled control set", () => {
-  const html = renderToStaticMarkup(React.createElement(CloudMiniInbox));
+  // The panel reads its data and its window controls from the provider above
+  // it — the same one the expanded shell renders under.
+  const html = renderToStaticMarkup(
+    React.createElement(
+      CloudWindowProvider,
+      null,
+      React.createElement(CloudMiniInbox),
+    ),
+  );
 
   assert.equal(html.match(/<main/g).length, 1);
   assert.equal(html.match(/<h1/g).length, 1);
@@ -173,12 +165,12 @@ test("the composed panel is one landmark, one heading and a labelled control set
   assert.match(html, /aria-live="polite"/);
 });
 
-test("an empty filter keeps the chips and explains itself", () => {
+test("an empty inbox explains itself rather than showing an empty list", () => {
   const markup = body({
-    filter: "viewer",
     inbox: { status: "ready", value: { actions: [], overview: OVERVIEW } },
     visible: [],
   });
   assert.match(markup, /Nothing open here/);
-  assert.match(markup, new RegExp(emptyActionsCopy("viewer")));
+  assert.match(markup, new RegExp(EMPTY_ACTIONS_COPY));
+  assert.doesNotMatch(markup, /<ul/, "no list element with nothing in it");
 });

@@ -10,8 +10,10 @@ import {
   health,
   listActions,
   listDevUsers,
+  listMilestones,
   listOpenConstraints,
   listOpenDecisions,
+  milestoneTimeline,
   overview,
 } from "./client.ts";
 
@@ -237,6 +239,68 @@ test("the actor-scoped routes send the account as a query, never a header", asyn
     !/X-G6-Actor-ID/i.test(source),
     "the actor header is a backend concern",
   );
+});
+
+test("the milestone routes carry no account and page on their own key", async () => {
+  const fetchStub = stubFetch(
+    () =>
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  const id = "0123456789abcdef0123456789abcdef";
+  try {
+    await listMilestones({ status: "active", limit: 12 });
+    await milestoneTimeline(id, { from: "2026-07-10", to: "2026-08-08" });
+    await milestoneTimeline(id);
+
+    const [list, timeline, bare] = fetchStub.calls.map(
+      (call) => new URL(call.url),
+    );
+    assert.equal(list.pathname, "/api/cloud/v1/milestones");
+    assert.equal(list.searchParams.get("status"), "active");
+    assert.equal(list.searchParams.get("limit"), "12");
+
+    assert.equal(timeline.pathname, `/api/cloud/v1/milestones/${id}/timeline`);
+    assert.equal(timeline.searchParams.get("from"), "2026-07-10");
+    assert.equal(timeline.searchParams.get("to"), "2026-08-08");
+    assert.equal(bare.search, "", "Cloud supplies its own 30-day default range");
+
+    // A milestone's history is the same for every viewer.
+    for (const url of [list, timeline, bare]) {
+      assert.equal(url.searchParams.get("account_id"), null);
+    }
+  } finally {
+    fetchStub.restore();
+  }
+});
+
+test("a merged milestone keeps Cloud's own 410 code", async () => {
+  const fetchStub = stubFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "milestone_merged",
+            message: "merged into another identity",
+          },
+        }),
+        { status: 410, headers: { "content-type": "application/json" } },
+      ),
+  );
+  try {
+    await assert.rejects(
+      milestoneTimeline("0123456789abcdef0123456789abcdef"),
+      (err) => {
+        assert.ok(err instanceof CloudGatewayError);
+        assert.equal(err.code, "milestone_merged");
+        return true;
+      },
+    );
+  } finally {
+    fetchStub.restore();
+  }
 });
 
 test("a Cloud error on a list route throws with Cloud's own code", async () => {

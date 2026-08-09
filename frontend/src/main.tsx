@@ -97,14 +97,17 @@ async function bootstrap() {
   // No tree is imported by another — see `@/app/rootSurface`.
   const Root = await selectRootLoader(APP_MODE)();
 
-  // The cloud and local roots have no title bar and no chrome of their own, so
-  // the drag handle is mounted here rather than inside each of them. The legacy
-  // tree mounts its own instances per screen and must not get a second one.
+  // The local root has no title bar and no chrome of its own, so its drag
+  // handle is mounted here. The legacy tree mounts its own instances per screen
+  // and must not get a second one. Cloud mounts its own too, because its window
+  // has two shapes: full-window dragging is right for a 380px panel and wrong
+  // for the expanded shell, where a press on a milestone panel would move the
+  // window instead of using it.
   const desktopChrome = APP_MODE !== "legacy";
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
-      {desktopChrome ? <StartupWindowDragRegion fullWindow /> : null}
+      {APP_MODE === "local" ? <StartupWindowDragRegion fullWindow /> : null}
       <Root />
     </React.StrictMode>,
   );

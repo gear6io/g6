@@ -10,16 +10,9 @@
 // Every visible string comes from the API or is fixed chrome copy. There is no
 // resolved count, no source message, no channel and no person invented here,
 // because `/v1/actions` supplies none of those.
-import { isTauri } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ChevronDown, CircleCheck, CornerUpRight, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, CornerUpRight, Maximize2, TriangleAlert } from "lucide-react";
+import { useMemo } from "react";
 
-import {
-  listActions,
-  listDevUsers,
-  overview as fetchOverview,
-} from "@/shared/api/cloudGateway/client";
 import type {
   Action,
   ActionType,
@@ -38,74 +31,63 @@ import { Gear6Mark } from "@/shared/ui/g6-logo/Gear6Mark";
 
 import {
   ACTION_LABEL,
-  AUDIENCE_LABEL,
-  FILTERS,
-  type InboxFilter,
-  emptyActionsCopy,
-  filterActions,
+  EMPTY_ACTIONS_COPY,
   relativeAge,
   summaryLabel,
   updatedLabel,
   userLabel,
 } from "@/features/cloudInbox/inbox";
-
-/**
- * The user directory is a development-only Cloud route, compiled out of a
- * release backend. Gating the call on the build rather than on a 404 keeps the
- * production path free of a request that is known to fail.
- */
-const CAN_LIST_USERS = Boolean((import.meta.env ?? {}).DEV);
-
-type Load<T> =
-  | { status: "loading" }
-  | { status: "ready"; value: T }
-  | { status: "error"; message: string };
-
-type Inbox = { actions: Action[]; overview: OverviewResponse };
+import {
+  CAN_LIST_USERS,
+  type Inbox,
+  type Load,
+} from "@/features/cloudInbox/useCloudInbox";
+import { useCloudWindow } from "@/features/cloudShell/CloudWindowProvider";
 
 const ACTION_ICON: Record<ActionType, typeof CornerUpRight> = {
   act_on_handoff: CornerUpRight,
-  resolve_decision: CircleCheck,
   unblock_constraint: TriangleAlert,
 };
 
 const ACTION_ICON_TINT: Record<ActionType, string> = {
   act_on_handoff: "text-violet-500",
-  resolve_decision: "text-sky-500",
   unblock_constraint: "text-orange-500",
 };
-
-function errorMessage(err: unknown): string {
-  // Never the HTTP status and never the account id: the panel keeps the
-  // selected user visible, so naming it in the failure adds nothing.
-  return err instanceof Error ? err.message : String(err);
-}
 
 /* ---------------------------------------------------------------- chrome -- */
 
 function PinButton() {
-  // The window opens pinned (`alwaysOnTop` in tauri.conf.json), so this starts
-  // pressed and the state lives here rather than being read back.
-  const [pinned, setPinned] = useState(true);
-
-  const toggle = useCallback(() => {
-    const next = !pinned;
-    setPinned(next);
-    if (isTauri()) {
-      void getCurrentWindow().setAlwaysOnTop(next);
-    }
-  }, [pinned]);
+  const { pinned, togglePin } = useCloudWindow();
 
   return (
     <Button
       aria-label={pinned ? "Unpin window" : "Keep window on top"}
       aria-pressed={pinned}
       className="size-7 text-foreground/80"
-      onClick={toggle}
+      onClick={togglePin}
       size="icon"
       variant="ghost"
     >
       <PinGlyph filled={pinned} />
+    </Button>
+  );
+}
+
+/** The one way into the full window. Disabled while a resize is in flight. */
+function ExpandButton() {
+  const { changing, expand } = useCloudWindow();
+
+  return (
+    <Button
+      aria-label="Open Pulse"
+      className="size-7 text-foreground/80"
+      disabled={changing}
+      onClick={expand}
+      size="icon"
+      title="Open Pulse"
+      variant="ghost"
+    >
+      <Maximize2 aria-hidden="true" className="size-3.5" />
     </Button>
   );
 }
@@ -165,7 +147,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
  * behaviour and escapes the panel's scroll clipping for free, which a custom
  * popover in a 342px panel would have to re-earn.
  */
-function UserSelect({
+export function UserSelect({
   onSelect,
   selected,
   users,
@@ -201,36 +183,6 @@ function UserSelect({
   );
 }
 
-function FilterChips({
-  filter,
-  onFilter,
-}: {
-  filter: InboxFilter;
-  onFilter: (next: InboxFilter) => void;
-}) {
-  return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {FILTERS.map(({ id, label }) => (
-        <button
-          aria-pressed={filter === id}
-          className={[
-            "h-[22px] shrink-0 rounded-full px-2.5 text-2xs font-medium transition-colors",
-            "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
-            filter === id
-              ? "bg-muted text-foreground"
-              : "border border-border text-muted-foreground hover:bg-muted/60",
-          ].join(" ")}
-          key={id}
-          onClick={() => onFilter(id)}
-          type="button"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ rows -- */
 
 function ActionRow({ action }: { action: Action }) {
@@ -249,9 +201,7 @@ function ActionRow({ action }: { action: Action }) {
             aria-hidden="true"
             className={`size-3.5 shrink-0 ${ACTION_ICON_TINT[action.type]}`}
           />
-          <span className="truncate">
-            {ACTION_LABEL[action.type]} · {AUDIENCE_LABEL[action.audience]}
-          </span>
+          <span className="truncate">{ACTION_LABEL[action.type]}</span>
         </span>
         <span className="shrink-0">{relativeAge(signal.age_seconds)}</span>
       </div>
@@ -307,72 +257,11 @@ function Notice({
 /* ----------------------------------------------------------------- panel -- */
 
 export function CloudMiniInbox() {
-  const [users, setUsers] = useState<Load<CloudUser[]>>({ status: "loading" });
-  const [selected, setSelected] = useState<string | null>(null);
-  const [inbox, setInbox] = useState<Load<Inbox>>({ status: "loading" });
-  const [filter, setFilter] = useState<InboxFilter>("all");
-  const [usersAttempt, setUsersAttempt] = useState(0);
-  const [inboxAttempt, setInboxAttempt] = useState(0);
+  const { error, inbox: data } = useCloudWindow();
+  const { inbox, refresh, retryInbox, retryUsers, select, selected, users } =
+    data;
 
-  useEffect(() => {
-    if (!CAN_LIST_USERS) {
-      setUsers({ status: "ready", value: [] });
-      return;
-    }
-    let cancelled = false;
-    setUsers({ status: "loading" });
-    listDevUsers()
-      .then((res) => {
-        if (cancelled) {
-          return;
-        }
-        setUsers({ status: "ready", value: res.data });
-        // First returned account, and only ever here: the selection is session
-        // state and is never persisted.
-        setSelected(res.data[0]?.account_id ?? null);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setUsers({ status: "error", message: errorMessage(err) });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [usersAttempt]);
-
-  useEffect(() => {
-    if (!selected) {
-      return;
-    }
-    // ponytail: the effect's cleanup flag IS the request version the LLD asks
-    // for — React re-runs this on every selection change, so a slower prior
-    // read finds `cancelled` set and cannot overwrite the current inbox.
-    let cancelled = false;
-    setInbox({ status: "loading" });
-    Promise.all([listActions(selected), fetchOverview(selected)])
-      .then(([actions, overview]) => {
-        if (!cancelled) {
-          setInbox({ status: "ready", value: { actions: actions.data, overview } });
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setInbox({ status: "error", message: errorMessage(err) });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, inboxAttempt]);
-
-  const refresh = useCallback(() => {
-    setUsersAttempt((count) => count + 1);
-    setInboxAttempt((count) => count + 1);
-  }, []);
-
-  const visible =
-    inbox.status === "ready" ? filterActions(inbox.value.actions, filter) : [];
+  const visible = inbox.status === "ready" ? inbox.value.actions : [];
 
   return (
     // `h-dvh`, not `min-h-dvh`: the panel is `flex-1` over a scrolling list, and
@@ -401,6 +290,7 @@ export function CloudMiniInbox() {
               </h1>
             </span>
             <span className="flex items-center gap-0.5">
+              <ExpandButton />
               <PinButton />
               <OverflowMenu onRefresh={refresh} />
             </span>
@@ -411,30 +301,34 @@ export function CloudMiniInbox() {
           ) : null}
           {users.status === "ready" && selected ? (
             <UserSelect
-              onSelect={setSelected}
+              onSelect={select}
               selected={selected}
               users={users.value}
             />
           ) : null}
         </header>
 
-        {inbox.status === "ready" && selected ? (
-          <div className="flex shrink-0 items-baseline justify-between gap-2 px-4 pb-2 text-xs text-muted-foreground">
-            <span className="truncate">{summaryLabel(inbox.value.overview)}</span>
-            <span className="shrink-0">
-              {updatedLabel(inbox.value.overview.generated_at, Date.now())}
-            </span>
-          </div>
+        {/* A resize that did not happen leaves the window as it was, so this
+            explains the button that appeared to do nothing rather than
+            blocking the panel behind it. */}
+        {error ? (
+          <p
+            className="shrink-0 px-4 pb-2 text-2xs text-muted-foreground"
+            role="status"
+          >
+            Could not open the full window: {error}
+          </p>
         ) : null}
 
-        {selected ? <FilterChips filter={filter} onFilter={setFilter} /> : null}
+        {inbox.status === "ready" && selected ? (
+          <InboxSummary className="px-4 pb-3" overview={inbox.value.overview} />
+        ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto pb-3">
           <InboxBody
-            filter={filter}
             inbox={inbox}
-            onRetryInbox={() => setInboxAttempt((count) => count + 1)}
-            onRetryUsers={() => setUsersAttempt((count) => count + 1)}
+            onRetryInbox={retryInbox}
+            onRetryUsers={retryUsers}
             selected={selected}
             users={users}
             visible={visible}
@@ -451,9 +345,31 @@ export function CloudMiniInbox() {
   );
 }
 
+/**
+ * The counts line. Exported because the expanded shell shows the same inbox and
+ * the same sentence about it, at a different width.
+ */
+export function InboxSummary({
+  className = "",
+  overview,
+}: {
+  className?: string;
+  overview: OverviewResponse;
+}) {
+  return (
+    <div
+      className={`flex shrink-0 items-baseline justify-between gap-2 text-xs text-muted-foreground ${className}`}
+    >
+      <span className="truncate">{summaryLabel(overview)}</span>
+      <span className="shrink-0">
+        {updatedLabel(overview.generated_at, Date.now())}
+      </span>
+    </div>
+  );
+}
+
 /** Exported for the state-by-state render tests; not a second entry point. */
 export function InboxBody({
-  filter,
   inbox,
   onRetryInbox,
   onRetryUsers,
@@ -461,7 +377,6 @@ export function InboxBody({
   users,
   visible,
 }: {
-  filter: InboxFilter;
   inbox: Load<Inbox>;
   onRetryInbox: () => void;
   onRetryUsers: () => void;
@@ -497,7 +412,7 @@ export function InboxBody({
     );
   }
   if (visible.length === 0) {
-    return <Notice title="Nothing open here">{emptyActionsCopy(filter)}</Notice>;
+    return <Notice title="Nothing open here">{EMPTY_ACTIONS_COPY}</Notice>;
   }
 
   return (

@@ -104,11 +104,17 @@ test("cloud mode mounts the compact inbox, and starts no RTM or legacy shell", (
   );
 
   // The boot surface owns the unresolved and failed states only; a ready
-  // readiness check hands the window to the inbox.
+  // readiness check hands the window to the cloud surface, whose compact shape
+  // is the same mini inbox it always was.
   assert.match(
     rootSource,
-    /status === "ready"[\s\S]{0,80}<CloudMiniInbox \/>/,
-    "a ready check mounts the inbox",
+    /status === "ready"[\s\S]{0,160}<CloudWindowProvider>/,
+    "a ready check hands the window over",
+  );
+  assert.match(
+    rootSource,
+    /expanded \? <CloudShell \/> : <CloudMiniInbox \/>/,
+    "compact is the mini inbox and expanded is the cloud shell",
   );
   for (const status of ["connecting", "unavailable"]) {
     assert.doesNotMatch(

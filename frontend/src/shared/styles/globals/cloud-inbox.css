@@ -16,3 +16,28 @@
 .dark .g6-cloud-panel {
   background-color: hsl(var(--card));
 }
+
+/*
+ * Pulse's 30-day rail. Thirty 28px cells need 840px, which the content column
+ * only has in a wide window, so the rail scrolls at the sizes it does not fit.
+ *
+ * The scrollbar stays visible rather than being hidden: at the 960x640 minimum
+ * window every rail on the page is scrollable, and a hidden affordance there
+ * hides the fact that there is more history to the left.
+ */
+.g6-rail-scroll {
+  scrollbar-width: thin;
+}
+
+.g6-rail-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.g6-rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.g6-rail-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 999px;
+}

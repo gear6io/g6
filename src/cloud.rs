@@ -2,8 +2,11 @@
 //!
 //! The desktop webview never learns a Cloud origin: it calls this backend, and
 //! this backend calls Cloud. That is the whole point, so there is no generic
-//! proxy route, no dynamic upstream URL, and no route-map DSL here — just a
-//! handful of fixed GETs whose upstream paths are compiled in.
+//! proxy route and no route-map DSL here — just a handful of fixed GETs whose
+//! upstream paths are compiled in. One path, the milestone timeline, carries an
+//! id in it; that id is checked against Cloud's own 32-hex entity shape before
+//! the URL is built, so the only runtime input to an upstream path is 32
+//! characters from a fixed alphabet.
 //!
 //! The actor-scoped routes take the viewer as a query parameter and this
 //! backend turns it into `X-G6-Actor-ID` on the way out. The browser never
@@ -16,7 +19,7 @@
 
 use std::time::Duration;
 
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -45,6 +48,13 @@ const OPEN_DECISIONS: &str = "v1/open-decisions";
 const OPEN_CONSTRAINTS: &str = "v1/open-constraints";
 const ACTIONS: &str = "v1/actions";
 const OVERVIEW: &str = "v1/overview";
+const MILESTONES: &str = "v1/milestones";
+/// The one upstream path built at runtime rather than compiled in. This constant
+/// is the label the logs and the allowlist reason about; the concrete path is
+/// assembled in `milestone_timeline` from an id validated against
+/// `MILESTONE_ID_LEN` hex characters first, so no request-supplied text can add
+/// a segment, a query, or a traversal to it.
+const MILESTONE_TIMELINE: &str = "v1/milestones/{id}/timeline";
 #[cfg(debug_assertions)]
 const DEV_USERS: &str = "v1/dev/users";
 
@@ -54,6 +64,19 @@ const ACTOR_HEADER: &str = "X-G6-Actor-ID";
 
 /// Cloud's own `X-G6-Actor-ID` schema is `minLength: 1, maxLength: 128`.
 const MAX_ACTOR_LEN: usize = 128;
+
+/// Cloud's entity id: exactly 32 lowercase hex characters.
+const MILESTONE_ID_LEN: usize = 32;
+
+/// The JSON statuses this gateway relays byte-for-byte. 400 and 503 are Cloud's
+/// own error envelopes; anything else is a response the gateway does not accept.
+const JSON_STATUSES: &[u16] = &[200, 400, 503];
+
+/// The milestone routes add the two Cloud uses to say something true about an
+/// id: `404 milestone_not_found`, and `410 milestone_merged` for an identity the
+/// lattice folded into another. Relaying them keeps the client able to tell a
+/// typo from a merge; swallowing them into `cloud_invalid_response` would not.
+const MILESTONE_STATUSES: &[u16] = &[200, 400, 404, 410, 503];
 
 #[derive(Clone)]
 pub struct Cloud {
@@ -134,7 +157,12 @@ pub fn routes() -> Router<AppState> {
         .route("/v1/open-decisions", get(open_decisions))
         .route("/v1/open-constraints", get(open_constraints))
         .route("/v1/actions", get(actions))
-        .route("/v1/overview", get(overview));
+        .route("/v1/overview", get(overview))
+        .route("/v1/milestones", get(milestones))
+        .route(
+            "/v1/milestones/{milestone_id}/timeline",
+            get(milestone_timeline),
+        );
 
     // Compiled out of release builds, exactly as Cloud gates its own copy: the
     // route enumerates the tenant's people, handles and emails, and a config
@@ -158,24 +186,16 @@ pub struct ListQuery {
 
 impl ListQuery {
     fn apply(&self, url: &mut Url) {
-        let pairs = [
-            ("entity_id", &self.entity_id),
-            ("limit", &self.limit),
-            // Opaque by contract: passed back exactly as received, never decoded,
-            // stored, or regenerated.
-            ("cursor", &self.cursor),
-        ];
-        // `query_pairs_mut` leaves a bare `?` behind even when nothing is
-        // appended, so it is only entered when there is something to append.
-        if pairs.iter().all(|(_, value)| value.is_none()) {
-            return;
-        }
-        let mut q = url.query_pairs_mut();
-        for (key, value) in pairs {
-            if let Some(value) = value {
-                q.append_pair(key, value);
-            }
-        }
+        append_pairs(
+            url,
+            &[
+                ("entity_id", &self.entity_id),
+                ("limit", &self.limit),
+                // Opaque by contract: passed back exactly as received, never
+                // decoded, stored, or regenerated.
+                ("cursor", &self.cursor),
+            ],
+        );
     }
 }
 
@@ -223,6 +243,112 @@ async fn open_constraints(
     Query(query): Query<ListQuery>,
 ) -> Response {
     relay_list(state, OPEN_CONSTRAINTS, query).await
+}
+
+/// `/v1/milestones` has its own sort and its own cursor shape, so it gets its
+/// own parameter set rather than sharing `ListQuery`: `entity_id` means nothing
+/// on a list of entities, and forwarding it would be a filter Cloud rejects.
+#[derive(Deserialize)]
+pub struct MilestoneListQuery {
+    status: Option<String>,
+    limit: Option<String>,
+    cursor: Option<String>,
+}
+
+/// The timeline's two date bounds. Strings, deliberately: Cloud answers its own
+/// `400 invalid_date_range` for a loose or impossible date, and a second
+/// validator here would only produce a differently-worded rejection for the same
+/// input — or, worse, accept a date Cloud does not.
+#[derive(Deserialize)]
+pub struct TimelineQuery {
+    from: Option<String>,
+    to: Option<String>,
+}
+
+/// Appends only the named pairs, and only when at least one is present:
+/// `query_pairs_mut` leaves a bare `?` behind otherwise.
+fn append_pairs(url: &mut Url, pairs: &[(&str, &Option<String>)]) {
+    if pairs.iter().all(|(_, value)| value.is_none()) {
+        return;
+    }
+    let mut q = url.query_pairs_mut();
+    for (key, value) in pairs {
+        if let Some(value) = value {
+            q.append_pair(key, value);
+        }
+    }
+}
+
+impl MilestoneListQuery {
+    fn apply(&self, url: &mut Url) {
+        append_pairs(
+            url,
+            &[
+                ("status", &self.status),
+                ("limit", &self.limit),
+                ("cursor", &self.cursor),
+            ],
+        );
+    }
+}
+
+impl TimelineQuery {
+    fn apply(&self, url: &mut Url) {
+        append_pairs(url, &[("from", &self.from), ("to", &self.to)]);
+    }
+}
+
+/// No actor header on either milestone route: the counts are whole-tenant and a
+/// milestone's history is the same history for every viewer.
+async fn milestones(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Query(query): Query<MilestoneListQuery>,
+) -> Response {
+    let relayed = async {
+        let mut url = state.cloud.url(MILESTONES)?;
+        query.apply(&mut url);
+        relay(&state, MILESTONES, url, None, MILESTONE_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+async fn milestone_timeline(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Path(milestone_id): Path<String>,
+    Query(query): Query<TimelineQuery>,
+) -> Response {
+    let relayed = async {
+        // Validated before the path exists, so an id that is not Cloud's own
+        // entity shape never becomes part of an outbound URL.
+        if !is_milestone_id(&milestone_id) {
+            return Err(GatewayError::invalid_milestone_id());
+        }
+        let mut url = state
+            .cloud
+            .url(&format!("v1/milestones/{milestone_id}/timeline"))?;
+        query.apply(&mut url);
+        relay(&state, MILESTONE_TIMELINE, url, None, MILESTONE_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+/// Exactly 32 lowercase hex characters — Cloud's `^[0-9a-f]{32}$`. Uppercase is
+/// rejected rather than lowercased: a client sending it is not reading the same
+/// contract, and normalising input is how a validator starts accepting things
+/// the upstream will not.
+fn is_milestone_id(raw: &str) -> bool {
+    raw.len() == MILESTONE_ID_LEN
+        && raw
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 /// The viewer, as the webview is allowed to express it: a query value, not a
@@ -278,7 +404,7 @@ async fn actor_scoped(
     // Cloud at all. The rejection names the parameter, never its value.
     let actor = query.header()?;
     let url = state.cloud.url(path)?;
-    relay_json(state, path, url, Some(actor)).await
+    relay(state, path, url, Some(actor), JSON_STATUSES).await
 }
 
 /// Development only, and unparameterised: the list is capped upstream at 1000
@@ -287,7 +413,7 @@ async fn actor_scoped(
 async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
     let relayed = async {
         let url = state.cloud.url(DEV_USERS)?;
-        relay_json(&state, DEV_USERS, url, None).await
+        relay(&state, DEV_USERS, url, None, JSON_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -309,16 +435,19 @@ async fn list(
 ) -> Result<Response, GatewayError> {
     let mut url = state.cloud.url(path)?;
     query.apply(&mut url);
-    relay_json(state, path, url, None).await
+    relay(state, path, url, None, JSON_STATUSES).await
 }
 
-/// The shared JSON pass-through: same accepted statuses, same bodyless 504, same
-/// byte-for-byte relay for every route that answers JSON.
-async fn relay_json(
+/// The shared JSON pass-through: same bodyless 504 and the same byte-for-byte
+/// relay for every route that answers JSON. `allowed` is the route's accepted
+/// status set — every one of them is a Cloud answer with a JSON envelope the
+/// client branches on, and anything outside it is `cloud_invalid_response`.
+async fn relay(
     state: &AppState,
     path: &'static str,
     url: Url,
     actor: Option<HeaderValue>,
+    allowed: &[u16],
 ) -> Result<Response, GatewayError> {
     let res = send(state, path, url, actor).await?;
     let status = res.status();
@@ -331,10 +460,10 @@ async fn relay_json(
         return Ok(StatusCode::GATEWAY_TIMEOUT.into_response());
     }
 
-    // 200 bodies and the 400/503 error envelopes are all JSON, and all three are
+    // 200 bodies and Cloud's error envelopes are all JSON, and all of them are
     // relayed byte-for-byte: `error.code` and `error.message` are Cloud's
     // contract with the client, not something to translate on the way through.
-    if !matches!(status.as_u16(), 200 | 400 | 503) || !content_type_is(&res, "application/json") {
+    if !allowed.contains(&status.as_u16()) || !content_type_is(&res, "application/json") {
         log(path, "invalid_response", Some(status));
         return Err(GatewayError::invalid_response());
     }
@@ -349,7 +478,7 @@ async fn relay_json(
     }
 
     Ok((
-        StatusCode::from_u16(status.as_u16()).expect("200, 400 or 503"),
+        StatusCode::from_u16(status.as_u16()).expect("an allowed upstream status"),
         [(header::CONTENT_TYPE, "application/json")],
         body,
     )
@@ -437,7 +566,7 @@ fn log(route: &str, category: &str, status: Option<reqwest::StatusCode>) {
 }
 
 /// A failure of *this* gateway, as opposed to a Cloud response being relayed.
-/// Bounded on purpose: five codes, all safe to show a user.
+/// Bounded on purpose: a handful of codes, all safe to show a user.
 #[derive(Debug)]
 pub struct GatewayError {
     status: StatusCode,
@@ -486,6 +615,16 @@ impl GatewayError {
             status: StatusCode::BAD_REQUEST,
             code: "invalid_actor",
             message: "account_id must be a non-empty header-safe value of at most 128 bytes",
+        }
+    }
+
+    /// The milestone the webview named is not Cloud's entity shape. Says nothing
+    /// about the value, for the same reason `invalid_actor` does not.
+    fn invalid_milestone_id() -> Self {
+        GatewayError {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_milestone_id",
+            message: "milestone_id must be 32 lowercase hexadecimal characters",
         }
     }
 
@@ -819,10 +958,19 @@ mod tests {
         let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
         let app = gateway(Some(&base)).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", None).await;
-        // The `Auth` extractor rejects Slack-style, before this module is reached.
-        assert_eq!(status, StatusCode::OK);
-        assert!(body.contains("not_authed"), "{body}");
+        for uri in [
+            "/api/cloud/v1/open-decisions",
+            "/api/cloud/v1/open-constraints",
+            "/api/cloud/v1/actions?account_id=U024BE7LH",
+            "/api/cloud/v1/overview?account_id=U024BE7LH",
+            "/api/cloud/v1/milestones",
+            "/api/cloud/v1/milestones/0123456789abcdef0123456789abcdef/timeline",
+        ] {
+            let (status, _, body) = get(&app, uri, None).await;
+            // The `Auth` extractor rejects Slack-style, before this module is reached.
+            assert_eq!(status, StatusCode::OK, "{uri}");
+            assert!(body.contains("not_authed"), "{uri}: {body}");
+        }
         assert!(seen.0.lock().unwrap().is_empty(), "nothing reached Cloud");
     }
 
@@ -851,6 +999,150 @@ mod tests {
             );
             assert!(headers.get(header::COOKIE).is_none(), "no cookies");
         }
+    }
+
+    const MILESTONE_ID: &str = "0123456789abcdef0123456789abcdef";
+
+    #[test]
+    fn a_milestone_id_is_only_cloud_s_own_entity_shape() {
+        assert!(is_milestone_id(MILESTONE_ID));
+
+        assert!(!is_milestone_id(""), "empty");
+        assert!(!is_milestone_id(&MILESTONE_ID[1..]), "31 characters");
+        assert!(!is_milestone_id(&format!("{MILESTONE_ID}0")), "33");
+        assert!(
+            !is_milestone_id(&MILESTONE_ID.to_uppercase()),
+            "uppercase is rejected, not normalised"
+        );
+        assert!(!is_milestone_id("g123456789abcdef0123456789abcdef"), "hex");
+        // The reason the check exists: nothing may add a segment or a query.
+        assert!(!is_milestone_id("../../v1/dev/users0123456789abcde"));
+        assert!(!is_milestone_id("0123456789abcdef0123456789abcd?x"));
+    }
+
+    #[test]
+    fn the_milestone_routes_forward_only_their_own_parameters() {
+        let list: MilestoneListQuery = serde_urlencoded::from_str(
+            "status=active&limit=12&cursor=AbC%3D&entity_id=deadbeef&account_id=U1",
+        )
+        .unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
+        list.apply(&mut url);
+        assert_eq!(url.query().unwrap(), "status=active&limit=12&cursor=AbC%3D");
+
+        let timeline: TimelineQuery =
+            serde_urlencoded::from_str("from=2026-07-10&to=2026-08-08&limit=1000").unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones/x/timeline").unwrap();
+        timeline.apply(&mut url);
+        assert_eq!(url.query().unwrap(), "from=2026-07-10&to=2026-08-08");
+
+        let empty: TimelineQuery = serde_urlencoded::from_str("").unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones/x/timeline").unwrap();
+        empty.apply(&mut url);
+        assert_eq!(url.query(), None, "no bare ? when nothing was asked for");
+    }
+
+    #[tokio::test]
+    async fn the_milestone_routes_send_no_viewer_at_all() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        for (uri, upstream) in [
+            (
+                "/api/cloud/v1/milestones?status=active&limit=12&account_id=U024BE7LH",
+                "/v1/milestones?status=active&limit=12",
+            ),
+            (
+                &format!(
+                    "/api/cloud/v1/milestones/{MILESTONE_ID}/timeline?from=2026-07-10&account_id=U1"
+                ),
+                &format!("/v1/milestones/{MILESTONE_ID}/timeline?from=2026-07-10"),
+            ),
+        ] {
+            let (status, _, _) = get(&app, uri, Some(&token)).await;
+            assert_eq!(status, StatusCode::OK, "{uri}");
+
+            let (seen_uri, headers) = seen.last();
+            assert_eq!(seen_uri, upstream);
+            // A milestone's history is the same history for every viewer, so the
+            // account the webview offered is dropped rather than forwarded.
+            assert!(headers.get("x-g6-actor-id").is_none(), "no actor identity");
+            assert!(
+                headers.get(header::AUTHORIZATION).is_none(),
+                "no inbound auth"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_milestone_id_that_is_not_the_entity_shape_never_reaches_cloud() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        for id in [
+            MILESTONE_ID.to_uppercase(),
+            MILESTONE_ID[1..].to_owned(),
+            format!("{MILESTONE_ID}0"),
+            "g123456789abcdef0123456789abcdef".to_owned(),
+            "%2e%2e%2f%2e%2e%2fv1%2fdev%2fusers%2f0123".to_owned(),
+        ] {
+            let (status, _, body) = get(
+                &app,
+                &format!("/api/cloud/v1/milestones/{id}/timeline"),
+                Some(&token),
+            )
+            .await;
+
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{id}");
+            assert!(body.contains("invalid_milestone_id"), "{body}");
+            // Never the value: it is user input echoed into a log or a toast.
+            assert!(!body.contains(&id), "{body}");
+        }
+        assert!(seen.0.lock().unwrap().is_empty(), "nothing reached Cloud");
+    }
+
+    #[tokio::test]
+    async fn a_missing_or_merged_milestone_is_relayed_rather_than_flattened() {
+        for (upstream, envelope) in [
+            (
+                404u16,
+                r#"{"error":{"code":"milestone_not_found","message":"no such milestone"}}"#,
+            ),
+            (
+                410,
+                r#"{"error":{"code":"milestone_merged","message":"merged into another identity"}}"#,
+            ),
+        ] {
+            let (base, _) = mock_cloud(json_body(upstream, envelope)).await;
+            let app = gateway(Some(&base)).await;
+            let token = token(&app).await;
+
+            let (status, content_type, got) = get(
+                &app,
+                &format!("/api/cloud/v1/milestones/{MILESTONE_ID}/timeline"),
+                Some(&token),
+            )
+            .await;
+
+            // The client tells a typo from a merge by these two, so neither may
+            // become `cloud_invalid_response` on the way through.
+            assert_eq!(status.as_u16(), upstream);
+            assert_eq!(content_type, "application/json");
+            assert_eq!(got, envelope);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_signal_route_still_rejects_a_status_only_milestones_may_answer() {
+        let (base, _) = mock_cloud(json_body(410, r#"{"error":{"code":"gone"}}"#)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert!(body.contains("cloud_invalid_response"), "{body}");
     }
 
     #[tokio::test]

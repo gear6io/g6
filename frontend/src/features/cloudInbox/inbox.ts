@@ -5,8 +5,6 @@
 // whole seconds and are formatted, `generated_at` stays the RFC 3339 string it
 // was sent as. See the note at the top of `@/shared/api/cloudGateway/types`.
 import type {
-  Action,
-  ActionAudience,
   ActionType,
   CloudUser,
   OverviewResponse,
@@ -57,61 +55,25 @@ export function userLabel(user: CloudUser): string {
   return user.display_name || user.handle || user.account_id;
 }
 
-export type InboxFilter = "all" | "viewer" | "team";
-
-/** Fixed order and labels; `aria-pressed` marks the active one. */
-export const FILTERS: readonly { id: InboxFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "viewer", label: "For you" },
-  { id: "team", label: "Team" },
-];
-
-/**
- * Client-side only. The action page is already the whole compact surface, so
- * filtering it costs one pass and no second round trip — and `audience` is a
- * property of the response, not a server parameter Cloud accepts.
- */
-export function filterActions(
-  actions: readonly Action[],
-  filter: InboxFilter,
-): Action[] {
-  return filter === "all"
-    ? [...actions]
-    : actions.filter((action) => action.audience === filter);
-}
-
 /** The metadata line's short name for each action type. */
 export const ACTION_LABEL: Record<ActionType, string> = {
   act_on_handoff: "Handoff",
-  resolve_decision: "Decision",
   unblock_constraint: "Blocker",
-};
-
-export const AUDIENCE_LABEL: Record<ActionAudience, string> = {
-  viewer: "for you",
-  team: "team",
 };
 
 /**
  * The API-faithful replacement for the reference's "8 open · 10 resolved":
- * Cloud supplies no resolved count, so none is shown.
+ * Cloud supplies no resolved count, so none is shown. `actions` is already the
+ * viewer's own count — every row `/v1/actions` returns is theirs — so there is
+ * no second number to set it against.
  */
 export function summaryLabel(overview: OverviewResponse): string {
-  return `${overview.actions.total} open · ${overview.actions.viewer} for you`;
+  const { actions } = overview;
+  return `${actions} open ${actions === 1 ? "action" : "actions"} for you`;
 }
 
 /**
- * The empty-state sentence, named by the filter that produced it — so an empty
- * list under `For you` cannot be misread as the user having no work at all.
- * Worded per filter rather than interpolating the chip label, because "no for
- * you actions" is not a sentence.
+ * One sentence, because there is one list. The inbox had audience chips until
+ * Cloud dropped `audience`: every action in it is the viewer's own.
  */
-export function emptyActionsCopy(filter: InboxFilter): string {
-  if (filter === "viewer") {
-    return "Nothing is assigned to this user right now.";
-  }
-  if (filter === "team") {
-    return "This user has no team actions right now.";
-  }
-  return "This user has no open actions right now.";
-}
+export const EMPTY_ACTIONS_COPY = "This user has no open actions right now.";

@@ -14,8 +14,12 @@ import type {
   CloudErrorEnvelope,
   GatewayQuery,
   ListQuery,
+  MilestoneListQuery,
+  MilestoneListResponse,
+  MilestoneTimelineResponse,
   OverviewResponse,
   SignalListResponse,
+  TimelineQuery,
   UserListResponse,
 } from "@/shared/api/cloudGateway/types";
 
@@ -156,4 +160,24 @@ export function listActions(accountId: string): Promise<ActionListResponse> {
 
 export function overview(accountId: string): Promise<OverviewResponse> {
   return getJson("v1/overview", { account_id: accountId });
+}
+
+/** No actor: the counts on a milestone are the tenant's, not the viewer's. */
+export function listMilestones(
+  query?: MilestoneListQuery,
+): Promise<MilestoneListResponse> {
+  return getJson("v1/milestones", query);
+}
+
+/**
+ * The one path with a value in it. The id always comes from a milestone the
+ * list returned, and the backend rejects anything that is not Cloud's 32-hex
+ * entity shape before it builds an upstream URL — so this interpolates without
+ * escaping, and there is nothing here for a caller to smuggle a segment through.
+ */
+export function milestoneTimeline(
+  milestoneId: string,
+  query?: TimelineQuery,
+): Promise<MilestoneTimelineResponse> {
+  return getJson(`v1/milestones/${milestoneId}/timeline`, query);
 }

@@ -8,7 +8,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import { type CloudBootState, runCloudBoot } from "@/app/cloudBoot";
 import { CloudMiniInbox } from "@/features/cloudInbox/CloudMiniInbox";
+import {
+  CloudWindowProvider,
+  useCloudWindow,
+} from "@/features/cloudShell/CloudWindowProvider";
+import { CloudShell } from "@/features/cloudShell/CloudShell";
 import { Button } from "@/shared/ui/button";
+import { StartupWindowDragRegion } from "@/shared/ui/StartupWindowDragRegion";
 
 const COPY: Record<Exclude<CloudBootState["status"], "connecting">, string> = {
   ready: "Gear6 Cloud is ready.",
@@ -82,7 +88,30 @@ export function CloudRoot() {
   const retry = useCallback(() => setAttempt((count) => count + 1), []);
 
   if (state.status === "ready") {
-    return <CloudMiniInbox />;
+    return (
+      <CloudWindowProvider>
+        <CloudSurface />
+      </CloudWindowProvider>
+    );
   }
   return <CloudBootSurface onRetry={retry} state={state} />;
+}
+
+/**
+ * The window's two shapes. One provider above both, so expanding swaps the tree
+ * without dropping the loaded inbox, the selected user, or the pin.
+ */
+function CloudSurface() {
+  const { mode } = useCloudWindow();
+  const expanded = mode === "expanded";
+
+  return (
+    <>
+      {/* Full-window dragging suits a 380px panel with almost no chrome. The
+          expanded shell has a title strip to grab, and a press anywhere else
+          belongs to the content under it. */}
+      <StartupWindowDragRegion fullWindow={!expanded} />
+      {expanded ? <CloudShell /> : <CloudMiniInbox />}
+    </>
+  );
 }
