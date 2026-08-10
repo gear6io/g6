@@ -163,10 +163,13 @@ export function CloudShell() {
         className="flex shrink-0 flex-col overflow-hidden"
         style={{ width }}
       >
-        {/* The traffic lights are overlaid at y=25 over this corner, exactly as
-            in the compact window, so the first row starts below them. */}
-        <div className="flex h-[54px] shrink-0 items-end px-3 pb-1">
-          <span className="flex items-center gap-1.5 pl-[68px]">
+        {/* The close dot is overlaid at y=25 over this corner, exactly as in the
+            compact window, so the first row starts below it. `pl-[40px]` is the
+            whole brand inset, written out rather than summed from a container
+            padding: minimize and zoom are hidden (see `hide_minimize_and_zoom`
+            in src-tauri), so the brand clears one dot, not three. */}
+        <div className="flex h-[54px] shrink-0 items-end pb-1 pl-[40px] pr-3">
+          <span className="flex items-center gap-1.5">
             <Gear6Mark className="size-4 rounded-[4px]" />
             <span className="text-sm font-semibold tracking-tight">Gear6</span>
           </span>

@@ -34,3 +34,16 @@ tauri-plugin-global-shortcut = "2"
 # references updater:*), but the plugin is not registered at runtime — it needs a
 # release-only signing pubkey. Mirrors the original OSS dev build.
 tauri-plugin-updater = "2"
+
+# Already in the tree via tauri's own macOS backend, so this is a direct name for
+# a crate that was being compiled anyway. Used only to hide the minimize and zoom
+# dots (see `hide_minimize_and_zoom`).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSButton",
+  "NSControl",
+  "NSResponder",
+  "NSView",
+  "NSWindow",
+] }

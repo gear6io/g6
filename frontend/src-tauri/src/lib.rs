@@ -11,6 +11,40 @@ use tauri::{Listener, Manager};
 
 const INITIAL_RENDER_READY_EVENT: &str = "initial-render-ready";
 
+/// This window cannot usefully be minimized or zoomed — it is a fixed-size panel
+/// that collapses to a mini inbox instead — so only the close dot is left on the
+/// macOS traffic lights. Hiding is visual: Cmd-M, the Window menu and resizing
+/// all still work, and a failure here is cosmetic, never a reason not to launch.
+#[cfg(target_os = "macos")]
+fn hide_minimize_and_zoom(app: &tauri::AppHandle) {
+    use objc2_app_kit::{NSWindow, NSWindowButton};
+
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let ns_window = match window.ns_window() {
+        Ok(ptr) => ptr.cast::<NSWindow>(),
+        Err(error) => {
+            eprintln!("leaving the native window controls as they are: {error}");
+            return;
+        }
+    };
+    // SAFETY: `ns_window()` returns the live NSWindow backing this webview
+    // window, and `setup` runs on the main thread, where AppKit views belong.
+    let ns_window: &NSWindow = unsafe { &*ns_window };
+    for button in [
+        NSWindowButton::MiniaturizeButton,
+        NSWindowButton::ZoomButton,
+    ] {
+        if let Some(button) = ns_window.standardWindowButton(button) {
+            button.setHidden(true);
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hide_minimize_and_zoom(_app: &tauri::AppHandle) {}
+
 fn reveal_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -55,6 +89,10 @@ pub fn run() {
                 })
                 .build(),
         )
+        .setup(|app| {
+            hide_minimize_and_zoom(app.handle());
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())

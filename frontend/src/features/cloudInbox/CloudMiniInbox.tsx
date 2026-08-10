@@ -276,10 +276,15 @@ export function CloudMiniInbox() {
         className="g6-cloud-panel flex min-h-0 flex-1 flex-col overflow-hidden"
         data-testid="cloud-mini-inbox"
       >
-        {/* The traffic lights are overlaid on the content at y=25, so the
-            header starts below them rather than behind them. */}
+        {/* The close dot is overlaid on the content at y=25, so the header
+            starts below it rather than behind it. */}
         <header className="shrink-0 px-4 pt-[54px]">
-          <div className="flex items-center justify-between gap-2">
+          {/* `-ml-4 pl-[40px]` states the brand inset as the one number that
+              matters — 40px from the window edge, clearing the lone close dot —
+              instead of a remainder left over after the header's own padding.
+              Minimize and zoom are hidden in src-tauri's
+              `hide_minimize_and_zoom`; the right-hand controls keep `px-4`. */}
+          <div className="-ml-4 flex items-center justify-between gap-2 pl-[40px]">
             <span className="flex items-center gap-1.5">
               {/* `rust-gear.avif` has no alpha — its #e6e6e6 matte is a visible
                   square on the white panel. Rounding it reads as a deliberate
