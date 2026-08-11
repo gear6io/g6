@@ -8,16 +8,29 @@
 // window's own rounding and shadow do that job.
 //
 // Every visible string comes from the API or is fixed chrome copy. There is no
-// resolved count, no source message, no channel and no person invented here,
-// because `/v1/actions` supplies none of those.
-import { ChevronDown, CornerUpRight, Maximize2, TriangleAlert } from "lucide-react";
+// resolved count, no channel and no person invented here, because `/v1/actions`
+// supplies none of those. The source record on a row is Cloud's own `referent`,
+// drawn only where Cloud resolved one.
+import {
+  CheckCheck,
+  ChevronDown,
+  CornerUpRight,
+  EllipsisVertical,
+  ExternalLink,
+  GitPullRequestArrow,
+  Maximize2,
+  Pin,
+  Play,
+  Scale,
+  TriangleAlert,
+} from "lucide-react";
 import { useMemo } from "react";
 
 import type {
   Action,
-  ActionType,
   CloudUser,
   OverviewResponse,
+  RequiredAction,
 } from "@/shared/api/cloudGateway/types";
 import { Button } from "@/shared/ui/button";
 import {
@@ -32,6 +45,7 @@ import { Gear6Mark } from "@/shared/ui/g6-logo/Gear6Mark";
 import {
   ACTION_LABEL,
   EMPTY_ACTIONS_COPY,
+  priorityLabel,
   relativeAge,
   summaryLabel,
   updatedLabel,
@@ -44,14 +58,34 @@ import {
 } from "@/features/cloudInbox/useCloudInbox";
 import { useCloudWindow } from "@/features/cloudShell/CloudWindowProvider";
 
-const ACTION_ICON: Record<ActionType, typeof CornerUpRight> = {
-  act_on_handoff: CornerUpRight,
-  unblock_constraint: TriangleAlert,
+const ACTION_ICON: Record<RequiredAction, typeof CornerUpRight> = {
+  review: GitPullRequestArrow,
+  approval: CheckCheck,
+  response: CornerUpRight,
+  decision: Scale,
+  execute: Play,
+  unblock: TriangleAlert,
 };
 
-const ACTION_ICON_TINT: Record<ActionType, string> = {
-  act_on_handoff: "text-violet-500",
-  unblock_constraint: "text-orange-500",
+const ACTION_ICON_TINT: Record<RequiredAction, string> = {
+  review: "text-sky-500",
+  approval: "text-emerald-500",
+  response: "text-violet-500",
+  decision: "text-indigo-500",
+  execute: "text-teal-500",
+  unblock: "text-orange-500",
+};
+
+/**
+ * `p0` and `p1` are tinted because they are the reason a row is at the top;
+ * `p2`/`p3` stay muted so the chip does not compete with the subject on a list
+ * where most rows are one of them.
+ */
+const PRIORITY_TINT: Record<Action["priority"]["level"], string> = {
+  p0: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  p1: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  p2: "border-border text-muted-foreground",
+  p3: "border-border text-muted-foreground",
 };
 
 /* ---------------------------------------------------------------- chrome -- */
@@ -68,7 +102,9 @@ function PinButton() {
       size="icon"
       variant="ghost"
     >
-      <PinGlyph filled={pinned} />
+      {/* Filled head for the pressed state: the outline alone reads the same
+          at 16px whether the window is on top or not. */}
+      <Pin aria-hidden="true" className={pinned ? "fill-current" : undefined} />
     </Button>
   );
 }
@@ -92,27 +128,6 @@ function ExpandButton() {
   );
 }
 
-/** Inline rather than a lucide import so the pressed state can fill the head. */
-function PinGlyph({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.6"
-      viewBox="0 0 24 24"
-    >
-      <path d="M12 17v5" />
-      <path
-        d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"
-        fill={filled ? "currentColor" : "none"}
-      />
-    </svg>
-  );
-}
-
 function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
   return (
     <DropdownMenu>
@@ -123,11 +138,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
           size="icon"
           variant="ghost"
         >
-          <svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="12" cy="19" r="1.6" />
-          </svg>
+          <EllipsisVertical aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
@@ -185,9 +196,48 @@ export function UserSelect({
 
 /* ------------------------------------------------------------------ rows -- */
 
+/**
+ * The source record the obligation arose from. Absent entirely when Cloud could
+ * not resolve the reference, and its own fields are empty strings rather than
+ * nulls where the record had nothing to show — in both cases nothing is drawn,
+ * because a placeholder here would be inventing a label Cloud refused to guess.
+ */
+function ReferentLine({ referent }: { referent: Action["referent"] }) {
+  if (!referent || (!referent.summary && !referent.provider)) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1 flex items-baseline gap-1.5 text-2xs text-muted-foreground">
+      {referent.provider ? (
+        <span className="shrink-0 capitalize" aria-label={referent.provider}>
+          {referent.provider}
+        </span>
+      ) : null}
+      {referent.provider && referent.summary ? (
+        <span aria-hidden="true">·</span>
+      ) : null}
+      <span className="min-w-0 truncate" title={referent.summary}>
+        {referent.summary}
+      </span>
+      {referent.url ? (
+        <a
+          className="inline-flex shrink-0 items-center gap-1 underline-offset-2 hover:text-foreground hover:underline"
+          href={referent.url}
+          rel="noreferrer noopener"
+          target="_blank"
+        >
+          Open
+          <ExternalLink aria-hidden="true" className="size-2.5" />
+        </a>
+      ) : null}
+    </p>
+  );
+}
+
 function ActionRow({ action }: { action: Action }) {
-  const Icon = ACTION_ICON[action.type];
-  const { signal } = action;
+  const Icon = ACTION_ICON[action.required_action];
+  const level = action.priority.level;
 
   // The 1px rule is a border on an inset wrapper rather than a `Separator`
   // element: a `<div>` between two `<li>`s is not a list, and the divider has to
@@ -197,22 +247,30 @@ function ActionRow({ action }: { action: Action }) {
       <div className="border-t border-border pb-3 pt-3.5">
       <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
         <span className="flex min-w-0 items-center gap-1.5">
+          {/* The list is sorted by priority, so the chip is what explains the
+              order. Without it the top row looks arbitrary. */}
+          <span
+            className={`shrink-0 rounded border px-1 text-2xs font-semibold tabular-nums ${PRIORITY_TINT[level]}`}
+          >
+            {priorityLabel(level)}
+          </span>
           <Icon
             aria-hidden="true"
-            className={`size-3.5 shrink-0 ${ACTION_ICON_TINT[action.type]}`}
+            className={`size-3.5 shrink-0 ${ACTION_ICON_TINT[action.required_action]}`}
           />
-          <span className="truncate">{ACTION_LABEL[action.type]}</span>
+          <span className="truncate">{ACTION_LABEL[action.required_action]}</span>
         </span>
-        <span className="shrink-0">{relativeAge(signal.age_seconds)}</span>
+        <span className="shrink-0">{relativeAge(action.age_seconds)}</span>
       </div>
 
       <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
-        {signal.subject}
+        {action.subject}
       </p>
       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
         {action.instruction}
-        {signal.entity ? ` · ${signal.entity.summary}` : ""}
+        {action.entity ? ` · ${action.entity.summary}` : ""}
       </p>
+      <ReferentLine referent={action.referent} />
       </div>
     </li>
   );

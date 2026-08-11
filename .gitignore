@@ -2,3 +2,8 @@
 *.db
 *.db-*
 .venv
+graphify-out/
+graphify-out/
+.codex/
+.claude/
+plans

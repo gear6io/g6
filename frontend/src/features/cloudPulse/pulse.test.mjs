@@ -4,13 +4,25 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { DailyRecord } from "./DailyRecord.tsx";
 import { MilestonePanel } from "./MilestonePanel.tsx";
 import { MilestoneRail } from "./MilestoneRail.tsx";
-import { calendarDays } from "./milestones.ts";
+import { StageRecord } from "./StageRecord.tsx";
+import { railStages } from "./milestones.ts";
 
 const NOW = Date.parse("2026-08-08T12:00:00Z");
-const CALENDAR = calendarDays("2026-07-10", "2026-08-08");
+
+/** Cloud always sends all six keys, so every fixture does too. */
+function counts(overrides = {}) {
+  return {
+    review: 0,
+    approval: 0,
+    response: 0,
+    decision: 0,
+    execute: 0,
+    unblock: 0,
+    ...overrides,
+  };
+}
 
 function day(date, overrides = {}) {
   return {
@@ -18,18 +30,8 @@ function day(date, overrides = {}) {
     status: "progress",
     observed_at: `${date}T14:31:00Z`,
     event_count: 4,
-    snapshot: {
-      open_decisions: 2,
-      open_handoffs: 1,
-      open_constraints: 3,
-      constraint_work_items: 11,
-    },
-    changes: {
-      open_decisions: -1,
-      open_handoffs: 1,
-      open_constraints: 0,
-      constraint_work_items: -2,
-    },
+    snapshot: counts({ decision: 2, response: 1, unblock: 3 }),
+    changes: counts({ decision: -1, response: 1 }),
     status_evidence: [
       {
         classification: "progress",
@@ -39,8 +41,8 @@ function day(date, overrides = {}) {
         confidence: 1,
       },
     ],
-    sources: [],
-    sources_truncated: false,
+    events: [],
+    events_truncated: false,
     ...overrides,
   };
 }
@@ -56,9 +58,7 @@ const MILESTONE = {
     status: "progress",
     observed_at: "2026-08-08T14:31:00Z",
   },
-  open_decisions: 2,
-  open_handoffs: 1,
-  open_constraints: 3,
+  open: counts({ decision: 2, response: 1, unblock: 3 }),
 };
 
 function panel(overrides = {}) {
@@ -74,27 +74,50 @@ function panel(overrides = {}) {
   );
 }
 
-function rail(days) {
+function rail(days, selected = null) {
   return renderToStaticMarkup(
     React.createElement(MilestoneRail, {
-      calendar: CALENDAR,
-      days,
       onSelect: () => {},
-      selected: null,
+      selected,
+      stages: railStages(days),
     }),
   );
 }
 
-test("a panel names the milestone and every open count, zero included", () => {
+/** The record for the first stage the days fold into. */
+function record(days, previousDate = null) {
+  return renderToStaticMarkup(
+    React.createElement(StageRecord, {
+      previousDate,
+      stage: railStages(days)[0],
+    }),
+  );
+}
+
+/** A day nothing was classified on, which is what Cloud calls neutral. */
+function quiet(date, overrides = {}) {
+  return day(date, {
+    status: "neutral",
+    event_count: 1,
+    status_evidence: [],
+    changes: counts(),
+    ...overrides,
+  });
+}
+
+test("a panel names the milestone, its total, and the kinds actually open", () => {
   const markup = panel({
     timeline: { status: "ready", value: { days: [day("2026-08-08")] } },
   });
 
   assert.match(markup, /Product import pipeline/);
   assert.match(markup, /product-import/);
-  assert.match(markup, /2 open decisions/);
-  assert.match(markup, /1 open handoff/);
-  assert.match(markup, /3 open constraints/);
+  assert.match(markup, /6 open action items/);
+  assert.match(markup, /2 decision/);
+  assert.match(markup, /1 response/);
+  assert.match(markup, /3 unblock/);
+  // The four kinds at zero are not printed; the total is what covers them.
+  assert.doesNotMatch(markup, /0 review|0 approval|0 execute/);
   // The lifecycle status is `active` for every row v1 asks for, so it is not
   // printed as a badge that can only ever say one thing.
   assert.doesNotMatch(markup, /Pruned/);
@@ -102,19 +125,12 @@ test("a panel names the milestone and every open count, zero included", () => {
   assert.doesNotMatch(markup, /\d+%/);
 });
 
-test("zero counts stay visible rather than collapsing the row", () => {
+test("a milestone with nothing open says zero rather than showing no counts", () => {
   const markup = panel({
-    milestone: {
-      ...MILESTONE,
-      open_decisions: 0,
-      open_handoffs: 0,
-      open_constraints: 0,
-    },
+    milestone: { ...MILESTONE, open: counts() },
     timeline: { status: "ready", value: { days: [] } },
   });
-  assert.match(markup, /0 open decisions/);
-  assert.match(markup, /0 open handoffs/);
-  assert.match(markup, /0 open constraints/);
+  assert.match(markup, /0 open action items/);
 });
 
 test("a milestone nothing was derived about says so instead of showing neutral", () => {
@@ -122,9 +138,43 @@ test("a milestone nothing was derived about says so instead of showing neutral",
     milestone: { ...MILESTONE, last_activity: null },
     timeline: { status: "ready", value: { days: [] } },
   });
-  assert.match(markup, /No activity yet/);
-  assert.match(markup, /No observed activity in the last 30 days/);
+  assert.match(markup, /Nothing observed yet/);
+  assert.doesNotMatch(markup, /Last observed/);
   assert.doesNotMatch(markup, /Neutral/, "a quiet range is not a neutral day");
+});
+
+const STALE = {
+  ...MILESTONE,
+  last_activity: {
+    date: "2026-05-10",
+    status: "progress",
+    observed_at: "2026-05-10T09:12:00Z",
+  },
+};
+
+test("a milestone last seen before the window renders the window it was seen in", () => {
+  const markup = panel({
+    milestone: STALE,
+    timeline: { status: "ready", value: { days: [day("2026-05-10")] } },
+  });
+
+  // The window asked for is the 30 days ending on the last observed day, so the
+  // rail has the day it was seen on rather than nothing at all.
+  assert.match(markup, /May 10/);
+  assert.doesNotMatch(markup, /Aug 8/);
+  assert.doesNotMatch(markup, /Nothing observed/);
+  assert.match(markup, /Last observed 90 days ago/);
+  // The same sentence twice on one panel is what made it read as a
+  // contradiction; recency belongs under the rail only.
+  assert.equal(markup.match(/Last observed/g).length, 1);
+});
+
+test("a shifted window Cloud still returns nothing for says so", () => {
+  const markup = panel({
+    milestone: STALE,
+    timeline: { status: "ready", value: { days: [] } },
+  });
+  assert.match(markup, /Nothing observed in this window/);
 });
 
 test("a failed timeline keeps the milestone and offers only that retry", () => {
@@ -140,42 +190,78 @@ test("a failed timeline keeps the milestone and offers only that retry", () => {
   assert.match(markup, /Retry timeline/);
   // Identity and counts come from the list response and survive the failure.
   assert.match(markup, /Product import pipeline/);
-  assert.match(markup, /2 open decisions/);
+  assert.match(markup, /6 open action items/);
 });
 
-test("the rail draws a cell per calendar day and a node per observed one", () => {
+test("the rail draws a column per stage and one marker per quiet run", () => {
   const markup = rail([day("2026-07-20"), day("2026-08-08")]);
 
-  assert.equal(markup.match(/h-\[58px\]/g).length, 30, "one cell per day");
   assert.equal(markup.match(/<button/g).length, 2, "only observed days");
+  // Eighteen unobserved days cost one narrow column, not eighteen.
+  assert.equal(markup.match(/h-\[58px\]/g).length, 3);
+  assert.match(markup, />18d</, "the days nobody looked at are still counted");
+  assert.match(markup, /18 days with nothing observed/, "and are named");
   // Colour is never the only cue: the accessible name carries the status.
-  assert.match(markup, /aria-label="Monday, Jul 20, Progress, 4 observed activities"/);
+  assert.match(markup, /aria-label="Monday, Jul 20, Progress, 4 observed events"/);
+
+  // Adjacent days need no marker between them.
+  const adjacent = rail([day("2026-08-07"), day("2026-08-08")]);
+  assert.equal(adjacent.match(/h-\[58px\]/g).length, 2);
+  assert.doesNotMatch(adjacent, /\dd</);
 });
 
-test("a connector is drawn between adjacent days and never across a gap", () => {
-  const connectors = (markup) => (markup.match(/style="left:-50%/g) ?? []).length;
+test("the track runs unbroken: solid between adjacent stages, dashed over a gap", () => {
+  const solid = (markup) => (markup.match(/h-0\.5 bg-/g) ?? []).length;
+  const dashed = (markup) => (markup.match(/border-dashed/g) ?? []).length;
 
-  assert.equal(connectors(rail([day("2026-08-07"), day("2026-08-08")])), 1);
-  assert.equal(
-    connectors(rail([day("2026-08-06"), day("2026-08-08")])),
-    0,
-    "the 7th was never observed, so nothing may join the 6th to the 8th",
+  const joined = rail([day("2026-08-07"), day("2026-08-08")]);
+  assert.equal(solid(joined), 1);
+  assert.equal(dashed(joined), 0);
+
+  // Nothing was observed on the 7th, so the two stages are joined by a dashed
+  // span rather than by a line claiming a status Cloud never derived.
+  const gapped = rail([day("2026-08-06"), day("2026-08-08")]);
+  assert.equal(solid(gapped), 0, "no status is carried across the gap");
+  assert.equal(dashed(gapped), 1, "but the rail is still one timeline");
+  assert.match(gapped, /width:200%/, "centre of one node to centre of the next");
+
+  assert.equal(solid(rail([day("2026-08-08")])), 0, "a lone stage");
+});
+
+test("a run of neutral days is one stage, and a classified day is never folded", () => {
+  const markup = rail([
+    quiet("2026-08-01"),
+    quiet("2026-08-02"),
+    quiet("2026-08-03"),
+    day("2026-08-04"),
+  ]);
+
+  assert.equal(markup.match(/<button/g).length, 2, "three quiet days, one node");
+  assert.match(markup, /Aug 1-3/, "the run names the days it covers");
+  assert.match(
+    markup,
+    /aria-label="Saturday, Aug 1 to Monday, Aug 3, 3 days, Neutral, 3 observed events"/,
   );
-  assert.equal(connectors(rail([day("2026-08-08")])), 0, "a lone day");
+  assert.match(markup, /aria-label="Tuesday, Aug 4, Progress/);
+
+  // A quiet day with a day between it and the next is its own stage: the run
+  // has to be continuous to be one fact.
+  const split = rail([quiet("2026-08-01"), quiet("2026-08-03")]);
+  assert.equal(split.match(/<button/g).length, 2);
 });
 
-test("the rail labels the ends and every seventh day", () => {
-  const markup = rail([day("2026-08-08")]);
-  assert.match(markup, /Jul 10/, "first");
-  assert.match(markup, /Aug 8/, "last");
-  assert.match(markup, /Jul 17/, "seventh");
-  assert.doesNotMatch(markup, /Jul 18/, "not every day");
+test("every node names its own dates, and no unobserved day is named", () => {
+  const markup = rail([day("2026-07-20"), day("2026-08-08")]);
+  assert.match(markup, /Jul 20/);
+  assert.match(markup, /Aug 8/);
+  // The dates between were never observed, so the rail does not print them.
+  assert.doesNotMatch(markup, /Jul 21|Aug 1</);
 });
 
-test("a daily record explains the day without colouring the deltas", () => {
-  const markup = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", {
+test("a record leads with the state and drops the reason that only repeats it", () => {
+  const markup = record(
+    [
+      day("2026-08-08", {
         status_evidence: [
           {
             classification: "progress",
@@ -193,24 +279,31 @@ test("a daily record explains the day without colouring the deltas", () => {
           },
         ],
       }),
-      previousDate: "2026-07-31",
-    }),
+    ],
+    "2026-07-31",
   );
 
   assert.match(markup, /Saturday, Aug 8/);
+  // The state names each entry; the rule that fired is the detail under it.
+  assert.match(markup, /Progress/);
+  assert.match(markup, /Dependency/);
   assert.match(markup, /Decision closed/);
   assert.match(markup, /Workflow fact/);
+  // `model_finding` is "Analysis" said twice, so only the rationale survives.
+  assert.doesNotMatch(markup, /Model finding/i);
+  assert.match(markup, /Analysis \(86% confidence\)/);
+  assert.match(markup, /Deployment completed successfully/);
   // A deterministic entry's confidence is always 1.0 and is never shown as odds.
   assert.doesNotMatch(markup, /100% confidence/);
-  assert.match(markup, /Analysis · 86% confidence/);
-  assert.match(markup, /Deployment completed successfully/);
 
-  assert.match(markup, /Constraint reach/);
-  assert.match(markup, /11 work items/);
+  // The snapshot leads with the total, then only the kinds actually open.
+  assert.match(markup, /Total open/);
+  assert.match(markup, />6</);
   assert.match(markup, /Change since Friday, Jul 31/);
   assert.match(markup, />-1</, "a negative delta is signed");
   assert.match(markup, />\+1</, "a positive delta is signed");
-  assert.match(markup, />0</, "and zero is still printed");
+  // Cloud dropped `constraint_work_items` in 2.0; nothing stands in for it.
+  assert.doesNotMatch(markup, /Constraint reach|work items/);
   // A falling count is not always good and a rising one is not always bad, so
   // every value is foreground and the evidence above is what explains the day.
   for (const value of markup.match(/<dd class="[^"]*"/g)) {
@@ -219,40 +312,60 @@ test("a daily record explains the day without colouring the deltas", () => {
   }
 });
 
-test("the first returned day has no previous day to be measured against", () => {
-  const markup = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-07-10"),
-      previousDate: null,
+test("a compressed stage dates every event and nets its movement", () => {
+  const event = (id, date, hour) => ({
+    id,
+    type: "log",
+    occurred_at: `${date}T${hour}:00:00Z`,
+    summary: `event ${id}`,
+    provider: "slack",
+    url: null,
+  });
+
+  const markup = record([
+    quiet("2026-08-01", {
+      events: [event("a", "2026-08-01", "09")],
+      changes: counts({ review: 2 }),
     }),
-  );
+    quiet("2026-08-02", { events: [], changes: counts({ review: -1 }) }),
+    quiet("2026-08-03", {
+      events: [event("b", "2026-08-03", "16")],
+      changes: counts({ review: 1 }),
+    }),
+  ]);
+
+  assert.match(markup, /Aug 1-3/);
+  assert.match(markup, /3 days/);
+  // Each event is read against the day it landed on, and that day's own state.
+  assert.match(markup, /Saturday, Aug 1/);
+  assert.match(markup, /Monday, Aug 3/);
+  assert.doesNotMatch(markup, /Sunday, Aug 2/, "a day with no events has no group");
+  assert.equal(markup.match(/Neutral/g).length, 3, "the stage and both days");
+  // Movement nets across the run rather than showing the last day's alone.
+  assert.match(markup, />\+2</);
+  // Neutral is Cloud classifying nothing, which the record says outright.
+  assert.match(markup, /classified none of them/);
+});
+
+test("the first returned stage has no previous one to be measured against", () => {
+  const markup = record([day("2026-07-10")]);
   assert.match(markup, /Change at start of range/);
   assert.doesNotMatch(markup, /Change since/);
 });
 
-test("a truncated source list says so and is never mistaken for a quiet day", () => {
-  const cut = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", { sources: [], sources_truncated: true }),
-      previousDate: null,
-    }),
-  );
-  assert.match(cut, /Cloud limited source activities for this date/);
-  assert.match(cut, /No source activities were returned/);
-  assert.match(cut, /4 observed activities/, "the day's own count is complete");
+test("a truncated event list says so and is never mistaken for a quiet stage", () => {
+  const cut = record([day("2026-08-08", { events: [], events_truncated: true })]);
+  assert.match(cut, /Cloud limited events/);
+  assert.match(cut, /No events were returned/);
+  assert.match(cut, /4 observed events/, "the day's own count is complete");
 
-  const quiet = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", { sources: [], event_count: 0 }),
-      previousDate: null,
-    }),
-  );
-  assert.match(quiet, /No source activities were recorded/);
-  assert.doesNotMatch(quiet, /Cloud limited/);
+  const empty = record([day("2026-08-08", { events: [], event_count: 0 })]);
+  assert.match(empty, /No events were recorded/);
+  assert.doesNotMatch(empty, /Cloud limited/);
 });
 
-test("a source with no link gets no link, not a dead one", () => {
-  const source = (url) => ({
+test("an event with no link gets no link, not a dead one", () => {
+  const event = (url) => ({
     id: "s1",
     type: "log",
     occurred_at: "2026-08-08T14:31:00Z",
@@ -261,42 +374,29 @@ test("a source with no link gets no link, not a dead one", () => {
     url,
   });
 
-  const linked = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", { sources: [source("https://example.com/pr/482")] }),
-      previousDate: null,
-    }),
-  );
+  const linked = record([
+    day("2026-08-08", { events: [event("https://example.com/pr/482")] }),
+  ]);
   assert.match(linked, /href="https:\/\/example\.com\/pr\/482"/);
   assert.match(linked, /rel="noreferrer noopener"/);
 
-  const bare = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", { sources: [source(null)] }),
-      previousDate: null,
-    }),
-  );
+  const bare = record([day("2026-08-08", { events: [event(null)] })]);
   assert.match(bare, /PR #482 merged/);
   assert.doesNotMatch(bare, /<a /, "no link and no disabled placeholder");
 });
 
-test("only the first six sources render until they are asked for", () => {
-  const sources = Array.from({ length: 9 }, (_, index) => ({
+test("only the first six events render until they are asked for", () => {
+  const events = Array.from({ length: 9 }, (_, index) => ({
     id: `s${index}`,
     type: "log",
     occurred_at: "2026-08-08T14:31:00Z",
-    summary: `activity ${index}`,
+    summary: `event ${index}`,
     provider: "slack",
     url: null,
   }));
 
-  const markup = renderToStaticMarkup(
-    React.createElement(DailyRecord, {
-      day: day("2026-08-08", { sources }),
-      previousDate: null,
-    }),
-  );
-  assert.match(markup, /activity 5/);
-  assert.doesNotMatch(markup, /activity 6/);
-  assert.match(markup, /Show all 9 source activities/);
+  const markup = record([day("2026-08-08", { events })]);
+  assert.match(markup, /event 5/);
+  assert.doesNotMatch(markup, /event 6/);
+  assert.match(markup, /Show all 9 events/);
 });

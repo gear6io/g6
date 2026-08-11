@@ -13,12 +13,10 @@ import type {
   ActionListResponse,
   CloudErrorEnvelope,
   GatewayQuery,
-  ListQuery,
   MilestoneListQuery,
   MilestoneListResponse,
   MilestoneTimelineResponse,
   OverviewResponse,
-  SignalListResponse,
   TimelineQuery,
   UserListResponse,
 } from "@/shared/api/cloudGateway/types";
@@ -133,16 +131,6 @@ async function getJson<T>(path: string, query?: GatewayQuery): Promise<T> {
   }
   // Returned as parsed, not remapped: see the note in `./types`.
   return (await res.json()) as T;
-}
-
-export function listOpenDecisions(query?: ListQuery): Promise<SignalListResponse> {
-  return getJson("v1/open-decisions", query);
-}
-
-export function listOpenConstraints(
-  query?: ListQuery,
-): Promise<SignalListResponse> {
-  return getJson("v1/open-constraints", query);
 }
 
 /**

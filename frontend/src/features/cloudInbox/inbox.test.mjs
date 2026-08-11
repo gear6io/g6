@@ -9,6 +9,7 @@ import { CloudMiniInbox, InboxBody } from "./CloudMiniInbox.tsx";
 import {
   ACTION_LABEL,
   EMPTY_ACTIONS_COPY,
+  priorityLabel,
   relativeAge,
   summaryLabel,
   updatedLabel,
@@ -17,28 +18,36 @@ import {
 
 function action(overrides = {}) {
   return {
-    id: "action:v1:act_on_handoff:9f2c",
-    type: "act_on_handoff",
+    id: "9f2c1b0e5d4a3f6b8c7e2d1a0b9f8e7d",
+    subject: "ship the migration",
+    required_action: "response",
+    dependency_type: "",
+    dependency_on: "person",
+    priority: { level: "p1", evidence: [] },
     instruction: "Reply to the handoff.",
-    signal: {
-      id: "9f2c",
-      kind: "handoff",
-      subject: "ship the migration",
-      entity: null,
-      work_item_ids: [],
-      work_item_count: 0,
-      opened_at: "2026-01-01T00:00:00Z",
-      updated_at: "2026-01-01T00:00:00Z",
-      age_seconds: 1560,
-      confidence: 0.9,
-    },
+    entity: null,
+    referent: null,
+    work_item_ids: [],
+    work_item_count: 0,
+    opened_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    age_seconds: 1560,
+    confidence: 0.9,
     ...overrides,
   };
 }
 
+const COUNTS = {
+  review: 4,
+  approval: 0,
+  response: 2,
+  decision: 0,
+  execute: 0,
+  unblock: 1,
+};
+
 const OVERVIEW = {
-  open_decisions: 4,
-  open_constraints: 2,
+  open: COUNTS,
   actions: 3,
   generated_at: "2026-01-01T00:00:00Z",
 };
@@ -77,11 +86,22 @@ test("the summary shows only counts the API supplies", () => {
   assert.doesNotMatch(summaryLabel(OVERVIEW), /resolved|team/);
 });
 
-test("an action type Cloud no longer serves has no label", () => {
+test("every required_action Cloud serves has a label, and nothing else does", () => {
   assert.deepEqual(Object.keys(ACTION_LABEL).sort(), [
-    "act_on_handoff",
-    "unblock_constraint",
+    "approval",
+    "decision",
+    "execute",
+    "response",
+    "review",
+    "unblock",
   ]);
+  // The two-class taxonomy is gone; a client branching on it branches on air.
+  assert.equal(ACTION_LABEL.act_on_handoff, undefined);
+});
+
+test("the priority chip is uppercased for display only", () => {
+  assert.equal(priorityLabel("p0"), "P0");
+  assert.equal(priorityLabel("p3"), "P3");
 });
 
 function body(props) {
@@ -123,17 +143,62 @@ test("a row shows the API's own strings and nothing invented", () => {
   const rows = [
     action({
       id: "a",
-      signal: { ...action().signal, entity: { id: "e", slug: "s", summary: "billing", status: "active" } },
+      entity: { id: "e", slug: "s", summary: "billing", status: "active" },
     }),
   ];
   const markup = body({ inbox: { status: "ready", value: { actions: rows, overview: OVERVIEW } }, visible: rows });
 
   assert.match(markup, /ship the migration/);
-  assert.match(markup, new RegExp(ACTION_LABEL.act_on_handoff));
+  assert.match(markup, new RegExp(ACTION_LABEL.response));
   assert.match(markup, /26 min ago/);
   assert.match(markup, /Reply to the handoff\. · billing/);
+  // The list is sorted by priority, so the chip is what explains the order.
+  assert.match(markup, /P1/);
   // Both variable strings are clamped so a long subject cannot widen the panel.
   assert.match(markup, /line-clamp-2/);
+});
+
+test("a referent renders its own record, and its absence renders nothing", () => {
+  const withReferent = [
+    action({
+      id: "a",
+      referent: {
+        summary: "Add retry to importer",
+        provider: "github",
+        url: "https://example.com/pr/482",
+      },
+    }),
+  ];
+  const markup = body({
+    inbox: { status: "ready", value: { actions: withReferent, overview: OVERVIEW } },
+    visible: withReferent,
+  });
+  assert.match(markup, /Add retry to importer/);
+  assert.match(markup, /github/);
+  assert.match(markup, /https:\/\/example\.com\/pr\/482/);
+
+  // Cloud could not resolve the reference: nothing is substituted for it.
+  const unresolved = [action({ id: "a" })];
+  const bare = body({
+    inbox: { status: "ready", value: { actions: unresolved, overview: OVERVIEW } },
+    visible: unresolved,
+  });
+  assert.doesNotMatch(bare, /Open<|target="_blank"/);
+});
+
+test("a referent with a record but no link shows the record and no link", () => {
+  const rows = [
+    action({
+      id: "a",
+      referent: { summary: "Waiting on staging access", provider: "slack", url: null },
+    }),
+  ];
+  const markup = body({
+    inbox: { status: "ready", value: { actions: rows, overview: OVERVIEW } },
+    visible: rows,
+  });
+  assert.match(markup, /Waiting on staging access/);
+  assert.doesNotMatch(markup, /target="_blank"/);
 });
 
 test("an entity-less row omits the separating dot rather than trailing it", () => {

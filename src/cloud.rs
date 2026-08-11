@@ -44,8 +44,6 @@ const MAX_BODY: usize = 1024 * 1024;
 /// The fixed upstream allowlist. Relative (no leading slash) so a base URL with a
 /// path prefix — which a future router in front of Cloud will have — is preserved.
 const HEALTHZ: &str = "healthz";
-const OPEN_DECISIONS: &str = "v1/open-decisions";
-const OPEN_CONSTRAINTS: &str = "v1/open-constraints";
 const ACTIONS: &str = "v1/actions";
 const OVERVIEW: &str = "v1/overview";
 const MILESTONES: &str = "v1/milestones";
@@ -154,8 +152,6 @@ fn parse_base(raw: &str) -> Result<Url, &'static str> {
 pub fn routes() -> Router<AppState> {
     let routes = Router::new()
         .route("/healthz", get(healthz))
-        .route("/v1/open-decisions", get(open_decisions))
-        .route("/v1/open-constraints", get(open_constraints))
         .route("/v1/actions", get(actions))
         .route("/v1/overview", get(overview))
         .route("/v1/milestones", get(milestones))
@@ -171,32 +167,6 @@ pub fn routes() -> Router<AppState> {
     let routes = routes.route("/v1/dev/users", get(dev_users));
 
     routes
-}
-
-/// The only three query parameters that reach Cloud. `limit` is a string, not a
-/// number: forwarding it verbatim lets Cloud answer its own `400 invalid_limit`
-/// instead of this gateway inventing a second, differently-worded rejection.
-/// Anything else the webview sends is dropped by serde and never forwarded.
-#[derive(Deserialize)]
-pub struct ListQuery {
-    entity_id: Option<String>,
-    limit: Option<String>,
-    cursor: Option<String>,
-}
-
-impl ListQuery {
-    fn apply(&self, url: &mut Url) {
-        append_pairs(
-            url,
-            &[
-                ("entity_id", &self.entity_id),
-                ("limit", &self.limit),
-                // Opaque by contract: passed back exactly as received, never
-                // decoded, stored, or regenerated.
-                ("cursor", &self.cursor),
-            ],
-        );
-    }
 }
 
 /// Readiness only, so it stays unauthenticated: it reveals whether a service is
@@ -229,25 +199,9 @@ async fn relay_healthz(state: &AppState) -> Result<Response, GatewayError> {
         .into_response())
 }
 
-async fn open_decisions(
-    State(state): State<AppState>,
-    _auth: Auth,
-    Query(query): Query<ListQuery>,
-) -> Response {
-    relay_list(state, OPEN_DECISIONS, query).await
-}
-
-async fn open_constraints(
-    State(state): State<AppState>,
-    _auth: Auth,
-    Query(query): Query<ListQuery>,
-) -> Response {
-    relay_list(state, OPEN_CONSTRAINTS, query).await
-}
-
 /// `/v1/milestones` has its own sort and its own cursor shape, so it gets its
-/// own parameter set rather than sharing `ListQuery`: `entity_id` means nothing
-/// on a list of entities, and forwarding it would be a filter Cloud rejects.
+/// own parameter set: `entity_id` means nothing on a list of entities, and
+/// forwarding it would be a filter Cloud rejects.
 #[derive(Deserialize)]
 pub struct MilestoneListQuery {
     status: Option<String>,
@@ -419,23 +373,6 @@ async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
         Ok(res) => res,
         Err(e) => e.into_response(),
     }
-}
-
-async fn relay_list(state: AppState, path: &'static str, query: ListQuery) -> Response {
-    match list(&state, path, query).await {
-        Ok(res) => res,
-        Err(e) => e.into_response(),
-    }
-}
-
-async fn list(
-    state: &AppState,
-    path: &'static str,
-    query: ListQuery,
-) -> Result<Response, GatewayError> {
-    let mut url = state.cloud.url(path)?;
-    query.apply(&mut url);
-    relay(state, path, url, None, JSON_STATUSES).await
 }
 
 /// The shared JSON pass-through: same bodyless 504 and the same byte-for-byte
@@ -695,8 +632,8 @@ mod tests {
     fn a_path_prefix_survives_the_join() {
         let cloud = Cloud::new(Some("https://router.example.com/cloud"));
         assert_eq!(
-            cloud.url(OPEN_DECISIONS).unwrap().as_str(),
-            "https://router.example.com/cloud/v1/open-decisions"
+            cloud.url(ACTIONS).unwrap().as_str(),
+            "https://router.example.com/cloud/v1/actions"
         );
     }
 
@@ -714,16 +651,16 @@ mod tests {
 
     #[test]
     fn only_the_three_allowlisted_parameters_are_forwarded() {
-        let query: ListQuery = serde_urlencoded::from_str(
-            "entity_id=0123456789abcdef0123456789abcdef&limit=1000&cursor=abc%3D%3D&token=xoxb-secret&actor=U1",
+        let query: MilestoneListQuery = serde_urlencoded::from_str(
+            "status=active&limit=1000&cursor=abc%3D%3D&token=xoxb-secret&actor=U1",
         )
         .unwrap();
-        let mut url = Url::parse("http://cloud/v1/open-decisions").unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         query.apply(&mut url);
 
         assert_eq!(
             url.query().unwrap(),
-            "entity_id=0123456789abcdef0123456789abcdef&limit=1000&cursor=abc%3D%3D"
+            "status=active&limit=1000&cursor=abc%3D%3D"
         );
     }
 
@@ -765,8 +702,8 @@ mod tests {
 
     #[test]
     fn absent_parameters_are_omitted_rather_than_sent_empty() {
-        let query: ListQuery = serde_urlencoded::from_str("").unwrap();
-        let mut url = Url::parse("http://cloud/v1/open-decisions").unwrap();
+        let query: MilestoneListQuery = serde_urlencoded::from_str("").unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         query.apply(&mut url);
         assert_eq!(url.query(), None);
     }
@@ -921,7 +858,7 @@ mod tests {
 
         let (status, content_type, got) = get(
             &app,
-            "/api/cloud/v1/open-decisions?cursor=AbC%3D&limit=50&nope=1",
+            "/api/cloud/v1/milestones?cursor=AbC%3D&limit=50&nope=1",
             Some(&token),
         )
         .await;
@@ -934,7 +871,7 @@ mod tests {
         );
 
         let (uri, headers) = seen.last();
-        assert_eq!(uri, "/v1/open-decisions?limit=50&cursor=AbC%3D");
+        assert_eq!(uri, "/v1/milestones?limit=50&cursor=AbC%3D");
         assert!(
             headers.get(header::AUTHORIZATION).is_none(),
             "no inbound auth"
@@ -944,23 +881,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn open_constraints_has_its_own_upstream_path() {
-        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
-        let app = gateway(Some(&base)).await;
-        let token = token(&app).await;
-
-        get(&app, "/api/cloud/v1/open-constraints", Some(&token)).await;
-        assert_eq!(seen.last().0, "/v1/open-constraints");
-    }
-
-    #[tokio::test]
     async fn list_routes_require_the_existing_backend_auth() {
         let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
         let app = gateway(Some(&base)).await;
 
         for uri in [
-            "/api/cloud/v1/open-decisions",
-            "/api/cloud/v1/open-constraints",
             "/api/cloud/v1/actions?account_id=U024BE7LH",
             "/api/cloud/v1/overview?account_id=U024BE7LH",
             "/api/cloud/v1/milestones",
@@ -1135,12 +1060,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_signal_route_still_rejects_a_status_only_milestones_may_answer() {
+    async fn an_inbox_route_still_rejects_a_status_only_milestones_may_answer() {
         let (base, _) = mock_cloud(json_body(410, r#"{"error":{"code":"gone"}}"#)).await;
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        let (status, _, body) = get(
+            &app,
+            "/api/cloud/v1/actions?account_id=U024BE7LH",
+            Some(&token),
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert!(body.contains("cloud_invalid_response"), "{body}");
     }
@@ -1227,7 +1157,7 @@ mod tests {
             let app = gateway(Some(&base)).await;
             let token = token(&app).await;
 
-            let (status, _, got) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+            let (status, _, got) = get(&app, "/api/cloud/v1/milestones", Some(&token)).await;
             assert_eq!(status.as_u16(), upstream);
             assert_eq!(got, body);
         }
@@ -1239,7 +1169,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        let (status, _, body) = get(&app, "/api/cloud/v1/milestones", Some(&token)).await;
         assert_eq!(status, StatusCode::GATEWAY_TIMEOUT);
         assert_eq!(body, "", "Cloud's own timeout carries no envelope");
     }
@@ -1251,7 +1181,7 @@ mod tests {
                 StatusCode::FOUND,
                 [(
                     header::LOCATION,
-                    "http://elsewhere.example.com/v1/open-decisions",
+                    "http://elsewhere.example.com/v1/milestones",
                 )],
             )
                 .into_response()
@@ -1260,7 +1190,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        let (status, _, body) = get(&app, "/api/cloud/v1/milestones", Some(&token)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert!(body.contains("cloud_redirect"), "{body}");
     }
@@ -1273,7 +1203,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        let (status, _, body) = get(&app, "/api/cloud/v1/milestones", Some(&token)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY, "{name}");
         assert!(body.contains("cloud_invalid_response"), "{name}: {body}");
     }
@@ -1292,7 +1222,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, body) = get(&app, "/api/cloud/v1/open-decisions", Some(&token)).await;
+        let (status, _, body) = get(&app, "/api/cloud/v1/milestones", Some(&token)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert!(body.contains("cloud_invalid_response"), "{body}");
     }
@@ -1333,8 +1263,12 @@ mod tests {
 
         for uri in [
             "/api/cloud/livez",
-            "/api/cloud/v1/open-decisions/1",
+            "/api/cloud/v1/milestones/1",
             "/api/cloud/",
+            // Cloud 2.0 deleted the two-class routes. They are not relayed to an
+            // upstream that would only answer 404 for them either.
+            "/api/cloud/v1/open-decisions",
+            "/api/cloud/v1/open-constraints",
         ] {
             let (status, _, _) = get(&app, uri, Some(&token)).await;
             assert_eq!(status, StatusCode::NOT_FOUND, "{uri} must not be proxied");

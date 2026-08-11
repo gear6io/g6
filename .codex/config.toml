@@ -1,3 +1,4 @@
-[mcp_servers.code-review-graph]
-command = "/Users/asthajyoti/code/gear6/.venv/bin/code-review-graph"
-args = ["serve"]
+[mcp_servers.graphify]
+command = "/Users/asthajyoti/code/gear6/.venv/bin/python"
+args = ["-m", "graphify.serve", "/Users/asthajyoti/code/gear6/graphify-out/graph.json"]
+cwd = "/Users/asthajyoti/code/gear6"

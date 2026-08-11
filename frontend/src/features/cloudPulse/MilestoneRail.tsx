@@ -1,160 +1,210 @@
-// Thirty UTC days, and a node on each one Cloud observed.
+// One continuous track: a node per stage Cloud observed, a dashed span where it
+// observed nothing.
 //
-// The cells are the calendar, not the data: a day nothing happened on is an
-// empty cell, and the line between two nodes is drawn only when their dates are
-// adjacent. A carried-forward status would say "still blocked" where Cloud only
-// recorded "nobody looked".
-import { useCallback, useRef } from "react";
+// The rail was the calendar once — thirty cells, three of them nodes — which
+// spent the whole panel width on days nobody looked at. Now the observed stages
+// are the columns and a quiet run costs one narrow marker that still says how
+// long it ran. The track never breaks: a gap is drawn dashed and muted rather
+// than left blank, because "nothing was observed between these two" is a fact
+// about one timeline, not two.
+//
+// A run of neutral days is one node, since "observed, nothing classified" for
+// eleven days running is one fact. Anything Cloud did classify keeps its own.
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   STATUS_TOKENS,
   crossesYears,
-  dayLabel,
-  isConsecutive,
-  isLabelled,
-  longDayLabel,
-  nodeLabel,
+  gapLabel,
+  openParts,
+  openTotal,
+  rangeLabel,
+  stageLabel,
 } from "@/features/cloudPulse/milestones";
-import type { TimelineDay } from "@/shared/api/cloudGateway/types";
+import type { Stage } from "@/features/cloudPulse/milestones";
 
-/** Below this the rail scrolls; 30 × 28px is the narrowest it reads at. */
-const MIN_RAIL_WIDTH = 840;
+/** A single day's node and its date label. Columns grow past this to fill. */
+const DAY_MIN = 46;
+/** A compressed run carries a range label, so it starts wider. */
+const RUN_MIN = 84;
+/** A quiet run costs this much and never more, however long it ran. */
+const GAP_WIDTH = 36;
+/** The pill's inset from its cell (`inset-x-1`), where a run's track ends. */
+const RUN_INSET = "4px";
 
-function tooltip(day: TimelineDay): string {
-  const { open_decisions, open_handoffs, open_constraints } = day.snapshot;
+function tooltip(stage: Stage): string {
+  const parts = openParts(stage.snapshot);
   return [
-    longDayLabel(day.date),
-    STATUS_TOKENS[day.status].label,
-    `${day.event_count} observed ${day.event_count === 1 ? "activity" : "activities"}`,
-    `Open decisions ${open_decisions} · handoffs ${open_handoffs} · constraints ${open_constraints}`,
+    stageLabel(stage),
+    [
+      `${openTotal(stage.snapshot)} open`,
+      ...parts.map(({ kind, value }) => `${kind} ${value}`),
+    ].join(" · "),
   ].join("\n");
 }
 
 export function MilestoneRail({
-  calendar,
-  days,
   onSelect,
   selected,
+  stages,
 }: {
-  calendar: readonly string[];
-  days: readonly TimelineDay[];
-  onSelect: (date: string | null) => void;
+  onSelect: (key: string | null) => void;
   selected: string | null;
+  stages: readonly Stage[];
 }) {
   const nodes = useRef(new Map<string, HTMLButtonElement>());
-  const observed = new Map(days.map((day) => [day.date, day]));
-  const withYear = crossesYears(calendar);
-  const selectedIndex = selected ? calendar.indexOf(selected) : -1;
+  const scroller = useRef<HTMLDivElement>(null);
+  const withYear = crossesYears(stages.flatMap((stage) => [stage.from, stage.to]));
 
-  /**
-   * Left and Right walk the observed days, skipping the empty cells between
-   * them: they are the rail's items, and stepping through 23 unfocusable
-   * calendar days to reach the next one is not navigation.
-   */
+  // The newest stage is what the panel is about, so a rail too long for its
+  // panel opens on its right edge rather than on a month-old node.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+    }
+  }, [stages]);
+
+  /** Left and Right walk the stages; the gap markers are not stops. */
   const move = useCallback(
     (from: string, delta: number) => {
-      const order = days.map((day) => day.date);
-      const at = order.indexOf(from);
-      const next = order[at + delta];
+      const at = stages.findIndex((stage) => stage.key === from);
+      const next = stages[at + delta];
       if (!next) {
         return;
       }
-      const node = nodes.current.get(next);
+      const node = nodes.current.get(next.key);
       node?.focus();
       node?.scrollIntoView({ block: "nearest", inline: "center" });
     },
-    [days],
+    [stages],
   );
 
   const jump = useCallback(
     (edge: "first" | "last") => {
-      const date = edge === "first" ? days[0]?.date : days.at(-1)?.date;
-      if (!date) {
+      const stage = edge === "first" ? stages[0] : stages.at(-1);
+      if (!stage) {
         return;
       }
-      const node = nodes.current.get(date);
+      const node = nodes.current.get(stage.key);
       node?.focus();
       node?.scrollIntoView({ block: "nearest", inline: "center" });
     },
-    [days],
+    [stages],
   );
 
+  // A gap takes a narrow fixed column of its own before the stage that follows
+  // it; the stages share whatever width is left, so a short rail fills its
+  // panel and a long one scrolls.
+  const columns = stages.flatMap((stage) => [
+    ...(stage.gapBefore > 0 ? [{ min: GAP_WIDTH, grows: false }] : []),
+    { min: stage.days.length > 1 ? RUN_MIN : DAY_MIN, grows: true },
+  ]);
+
   return (
-    <div className="g6-rail-scroll -mx-1 overflow-x-auto px-1 pb-1">
+    <div className="g6-rail-scroll -mx-1 overflow-x-auto px-1 pb-1" ref={scroller}>
       <div
         className="grid"
         style={{
-          gridTemplateColumns: `repeat(${calendar.length}, minmax(28px, 1fr))`,
-          minWidth: MIN_RAIL_WIDTH,
+          gridTemplateColumns: columns
+            .map(({ grows, min }) => (grows ? `minmax(${min}px, 1fr)` : `${min}px`))
+            .join(" "),
+          minWidth: columns.reduce((total, { min }) => total + min, 0),
         }}
       >
-        {calendar.map((date, index) => {
-          const day = observed.get(date);
-          const previous = index > 0 ? calendar[index - 1] : null;
-          const connected =
-            day && previous && observed.has(previous) && isConsecutive(previous, date);
+        {stages.map((stage, index) => {
+          const token = STATUS_TOKENS[stage.status];
+          const open = selected === stage.key;
+          const run = stage.days.length > 1;
+          // A run is drawn as a bar, not a point, so the track meets its edge
+          // rather than running under it to the centre.
+          const previous = stages[index - 1];
+          const prevRun = (previous?.days.length ?? 0) > 1;
+          const from = prevRun ? `-${RUN_INSET}` : "-50%";
 
-          return (
-            <div className="relative h-[58px]" key={date}>
-              {connected ? (
+          return [
+            stage.gapBefore > 0 ? (
+              <div className="relative h-[58px]" key={`gap-${stage.key}`}>
+                {/* Edge of the previous node to the edge of the next, so the
+                    quiet run joins the stages instead of severing them. */}
                 <span
                   aria-hidden="true"
-                  className={`absolute top-[17px] h-0.5 ${STATUS_TOKENS[day.status].fill} opacity-60`}
-                  // Centre of the previous cell to the centre of this one.
-                  style={{ left: "-50%", width: "100%" }}
+                  className="absolute top-[17px] border-t border-dashed border-border"
+                  style={{ left: from, right: run ? `-${RUN_INSET}` : "-50%" }}
+                />
+                <span className="absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap rounded bg-background px-1 text-[10px] tabular-nums text-muted-foreground/70">
+                  <span aria-hidden="true">{stage.gapBefore}d</span>
+                  <span className="sr-only">{gapLabel(stage.gapBefore)}</span>
+                </span>
+              </div>
+            ) : null,
+
+            <div className="relative h-[58px]" key={stage.key}>
+              {previous && stage.gapBefore === 0 ? (
+                <span
+                  aria-hidden="true"
+                  // The segment leaves the node it starts at, so it carries that
+                  // node's status: an amber day runs amber into whatever follows.
+                  className={`absolute top-[17px] h-0.5 ${STATUS_TOKENS[previous.status].fill} opacity-60`}
+                  // Edge of the previous node to the edge of this one.
+                  style={{ left: from, right: run ? `calc(100% - ${RUN_INSET})` : "50%" }}
                 />
               ) : null}
 
-              {day ? (
-                <button
-                  aria-label={nodeLabel(day)}
-                  aria-pressed={selected === date}
-                  className="absolute left-1/2 top-[2px] flex size-8 -translate-x-1/2 items-center justify-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                  key={date}
-                  onClick={() => onSelect(selected === date ? null : date)}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                      event.preventDefault();
-                      move(date, event.key === "ArrowLeft" ? -1 : 1);
-                    }
-                    if (event.key === "Home" || event.key === "End") {
-                      event.preventDefault();
-                      jump(event.key === "Home" ? "first" : "last");
-                    }
-                    if (event.key === "Escape" && selected === date) {
-                      onSelect(null);
-                    }
-                  }}
-                  ref={(node) => {
-                    if (node) {
-                      nodes.current.set(date, node);
-                    } else {
-                      nodes.current.delete(date);
-                    }
-                  }}
-                  title={tooltip(day)}
-                  type="button"
-                >
-                  <span
-                    aria-hidden="true"
-                    className={[
-                      "rounded-full transition-all duration-[120ms] motion-reduce:transition-none",
-                      STATUS_TOKENS[day.status].fill,
-                      selected === date
-                        ? "size-[11px] ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                        : "size-[9px] hover:size-[11px]",
-                    ].join(" ")}
-                  />
-                </button>
-              ) : null}
+              <button
+                aria-label={stageLabel(stage)}
+                aria-pressed={open}
+                className={`absolute top-[2px] flex h-8 items-center justify-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                  run ? "inset-x-1" : "left-1/2 w-8 -translate-x-1/2"
+                }`}
+                onClick={() => onSelect(open ? null : stage.key)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                    event.preventDefault();
+                    move(stage.key, event.key === "ArrowLeft" ? -1 : 1);
+                  }
+                  if (event.key === "Home" || event.key === "End") {
+                    event.preventDefault();
+                    jump(event.key === "Home" ? "first" : "last");
+                  }
+                  if (event.key === "Escape" && open) {
+                    onSelect(null);
+                  }
+                }}
+                ref={(node) => {
+                  if (node) {
+                    nodes.current.set(stage.key, node);
+                  } else {
+                    nodes.current.delete(stage.key);
+                  }
+                }}
+                title={tooltip(stage)}
+                type="button"
+              >
+                {/* A compressed run is drawn as the span it covers; a single
+                    day stays a point. Both sit on the same track line. */}
+                <span
+                  aria-hidden="true"
+                  className={[
+                    "rounded-full transition-all duration-[120ms] motion-reduce:transition-none",
+                    token.fill,
+                    run ? "w-full" : "",
+                    open
+                      ? `h-[11px] ring-2 ring-foreground ring-offset-2 ring-offset-background ${run ? "" : "w-[11px]"}`
+                      : `h-[9px] hover:h-[11px] ${run ? "" : "w-[9px] hover:w-[11px]"}`,
+                  ].join(" ")}
+                />
+              </button>
 
-              {isLabelled(index, calendar.length, selectedIndex) ? (
-                <span className="absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap text-[10px] text-muted-foreground">
-                  {dayLabel(date, withYear)}
-                </span>
-              ) : null}
-            </div>
-          );
+              <span
+                className={`absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap text-[10px] ${
+                  open ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {rangeLabel(stage.from, stage.to, withYear)}
+              </span>
+            </div>,
+          ];
         })}
       </div>
     </div>

@@ -11,8 +11,6 @@ import {
   listActions,
   listDevUsers,
   listMilestones,
-  listOpenConstraints,
-  listOpenDecisions,
   milestoneTimeline,
   overview,
 } from "./client.ts";
@@ -168,25 +166,26 @@ test("list responses are returned exactly as received", async () => {
       }),
   );
   try {
-    const decisions = await listOpenDecisions({
+    const milestones = await listMilestones({
       cursor: "AbC=",
       limit: 50,
-      entity_id: "0123456789abcdef0123456789abcdef",
+      status: "all",
     });
-    assert.deepEqual(decisions, PAGE, "no dates, ages or ids are remapped");
+    assert.deepEqual(milestones, PAGE, "no dates, ages or ids are remapped");
 
     const url = new URL(fetchStub.calls[0].url);
-    assert.equal(url.pathname, "/api/cloud/v1/open-decisions");
+    assert.equal(url.pathname, "/api/cloud/v1/milestones");
     assert.equal(
       url.searchParams.get("cursor"),
       "AbC=",
       "the opaque cursor survives the round trip",
     );
     assert.equal(url.searchParams.get("limit"), "50");
+    assert.equal(url.searchParams.get("status"), "all");
 
-    await listOpenConstraints();
+    await listMilestones();
     const second = new URL(fetchStub.calls[1].url);
-    assert.equal(second.pathname, "/api/cloud/v1/open-constraints");
+    assert.equal(second.pathname, "/api/cloud/v1/milestones");
     assert.equal(second.search, "", "an empty query stays empty");
   } finally {
     fetchStub.restore();
@@ -314,7 +313,7 @@ test("a Cloud error on a list route throws with Cloud's own code", async () => {
       ),
   );
   try {
-    await assert.rejects(listOpenDecisions({ cursor: "nope" }), (err) => {
+    await assert.rejects(listMilestones({ cursor: "nope" }), (err) => {
       assert.ok(err instanceof CloudGatewayError);
       assert.equal(err.code, "invalid_cursor");
       assert.equal(err.message, "cursor is malformed");

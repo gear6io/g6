@@ -5,9 +5,10 @@
 // whole seconds and are formatted, `generated_at` stays the RFC 3339 string it
 // was sent as. See the note at the top of `@/shared/api/cloudGateway/types`.
 import type {
-  ActionType,
   CloudUser,
   OverviewResponse,
+  PriorityLevel,
+  RequiredAction,
 } from "@/shared/api/cloudGateway/types";
 
 const MINUTE = 60;
@@ -17,7 +18,7 @@ const DAY = 24 * HOUR;
 /**
  * The reference's compact age: minutes, then hours, then days, never a
  * composite. Under a minute reads "just now" rather than "0 min ago", which is
- * both wrong-looking and the most common case right after a signal opens.
+ * both wrong-looking and the most common case right after an obligation opens.
  */
 export function relativeAge(seconds: number): string {
   // Cloud clamps `age_seconds` at zero, but `generated_at` ages are computed
@@ -55,11 +56,27 @@ export function userLabel(user: CloudUser): string {
   return user.display_name || user.handle || user.account_id;
 }
 
-/** The metadata line's short name for each action type. */
-export const ACTION_LABEL: Record<ActionType, string> = {
-  act_on_handoff: "Handoff",
-  unblock_constraint: "Blocker",
+/**
+ * The metadata line's short name for what an Action Item asks. A `Record` over
+ * the union rather than a lookup with a fallback: Cloud adding a seventh
+ * `required_action` should be a type error here, not a blank chip at runtime.
+ */
+export const ACTION_LABEL: Record<RequiredAction, string> = {
+  review: "Review",
+  approval: "Approval",
+  response: "Response",
+  decision: "Decision",
+  execute: "Execute",
+  unblock: "Unblock",
 };
+
+/**
+ * The urgency chip. Uppercased for display only — the wire value is lowercase
+ * and every comparison against it stays exact, per Cloud's "never case-fold".
+ */
+export function priorityLabel(level: PriorityLevel): string {
+  return level.toUpperCase();
+}
 
 /**
  * The API-faithful replacement for the reference's "8 open · 10 resolved":
