@@ -61,3 +61,35 @@ rejects.
 
 Deleting this file means the boundary is gone — either the gear6 UI was
 finished, or the isolation was undone.
+
+## The one crossing: message rendering
+
+The cloud window's Pulse view opens a source Slack thread or GitHub lifecycle
+beside an event, and it renders that with the legacy shell's own
+`MessageThreadPanel` and `MessageRow`. A second message renderer would drift
+from the first within a release, so this is a deliberate exception rather than
+an erosion.
+
+What crosses is **rendering only**. Transport does not: the records come from
+Cloud over `/api/cloud/v1/extractions/resolve` and are adapted in
+`@/features/cloudPulse/thread`, so no relay client, no `/rtm` frame and no
+`@/shared/api/invoke` command is involved.
+
+It is safe to cross because of one change: `MessageRow` takes its profile
+popover as the `authorSlot` prop instead of importing `UserProfilePopover`. That
+import was the whole legacy graph — the router (`useAppNavigation`), huddles,
+presence, and the relay-backed channel, profile and agent hooks. The legacy
+shell passes the popover from `ChannelPane` and `TimelineMessageList`; the cloud
+window passes nothing and gets a plain author, which is the rendering a message
+with no `pubkey` already had.
+
+The remaining react-query hooks inside a row (`useReactionHandler`,
+`useMessageEmoji`, `useKnownAgentPubkeys`) are satisfied by an inert
+`QueryClientProvider` in `CloudThreadPanel` — one attempt, no retry, empty
+result — rather than by making three hooks optional.
+
+`frontend/src/features/cloudShell/shell.test.mjs` holds the line: the ban on
+`@/features/messages/` stands, with a three-module allowlist, and a second test
+fails if `MessageRow` ever imports the popover directly again. Adding anything
+else from `features/messages/` to that allowlist means re-checking its import
+graph first.

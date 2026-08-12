@@ -31,6 +31,7 @@ import {
   type WindowPort,
   applyWindowMode,
 } from "@/features/cloudShell/windowMode";
+import type { TimelineEvent } from "@/shared/api/cloudGateway/types";
 
 export type CloudView = "pulse" | "inbox" | "settings";
 
@@ -49,6 +50,15 @@ export type CloudWindow = {
   togglePin: () => void;
   setView: (view: CloudView) => void;
   setAppearance: (appearance: Appearance) => void;
+  /**
+   * The event whose source conversation is open in the side panel, or null.
+   *
+   * It lives here rather than in `PulseMilestones` because the panel is a
+   * sibling of the content column, not a child of it: a rail row deep inside a
+   * milestone card sets it, and the shell reads it.
+   */
+  selectedEvent: TimelineEvent | null;
+  selectEvent: (event: TimelineEvent | null) => void;
   inbox: CloudInbox;
 };
 
@@ -95,7 +105,15 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
   // The window opens pinned (`alwaysOnTop` in tauri.conf.json), so this starts
   // pressed and the state lives here rather than being read back.
   const [pinned, setPinned] = useState(true);
-  const [view, setView] = useState<CloudView>("pulse");
+  const [view, setViewState] = useState<CloudView>("pulse");
+  const [selectedEvent, selectEvent] = useState<TimelineEvent | null>(null);
+
+  // Leaving Pulse closes the panel. The alternative is a Slack thread still open
+  // beside Settings, pointing at a rail the reader can no longer see.
+  const setView = useCallback((next: CloudView) => {
+    setViewState(next);
+    selectEvent(null);
+  }, []);
   const [appearance, setAppearanceState] = useState<Appearance>(readAppearance);
 
   // Applied here rather than in the settings pane: the choice has to hold on
@@ -136,7 +154,7 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
         .then(() => {
           setMode(next);
           if (next === "expanded") {
-            setView(target);
+            setViewState(target);
           }
         })
         .catch((err: unknown) => {
@@ -178,6 +196,8 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
       togglePin,
       setView,
       setAppearance,
+      selectedEvent,
+      selectEvent,
       inbox,
     }),
     [
@@ -190,7 +210,9 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
       expand,
       collapse,
       togglePin,
+      setView,
       setAppearance,
+      selectedEvent,
       inbox,
     ],
   );

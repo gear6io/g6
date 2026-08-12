@@ -22,7 +22,11 @@ import { MilestoneRail } from "@/features/cloudPulse/MilestoneRail";
 import { StageRecord } from "@/features/cloudPulse/StageRecord";
 import { StatusIcon } from "@/features/cloudPulse/StatusIcon";
 import type { TimelineLoad } from "@/features/cloudPulse/useMilestoneTimelines";
-import type { Milestone, TimelineQuery } from "@/shared/api/cloudGateway/types";
+import type {
+  Milestone,
+  TimelineEvent,
+  TimelineQuery,
+} from "@/shared/api/cloudGateway/types";
 
 /** Ask for a timeline a little before the panel is actually on screen. */
 const PREFETCH_MARGIN = "300px";
@@ -92,12 +96,17 @@ function RailFailure({
 export function MilestonePanel({
   milestone,
   now,
+  onOpenEvent,
+  openEventId,
   onRequest,
   onRetry,
   timeline,
 }: {
   milestone: Milestone;
   now: number;
+  /** Opens an event's source conversation. Passed straight through to the record. */
+  onOpenEvent?: (event: TimelineEvent) => void;
+  openEventId?: string | null;
   onRequest: (milestoneId: string, query?: TimelineQuery) => void;
   onRetry: (milestoneId: string, query?: TimelineQuery) => void;
   timeline: TimelineLoad | undefined;
@@ -252,6 +261,8 @@ export function MilestonePanel({
         {selectedStage ? (
           <StageRecord
             key={selectedStage.key}
+            onOpenEvent={onOpenEvent}
+            openEventId={openEventId}
             previousDate={selectedIndex > 0 ? stages[selectedIndex - 1].to : null}
             stage={selectedStage}
           />

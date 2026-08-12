@@ -83,6 +83,12 @@ export type Referent = {
   provider: string;
   /** The source's own link, or null where it supplied none. Never fabricated. */
   url: string | null;
+  /**
+   * The conversation this record sits in. Pass it to `resolveExtraction` as a
+   * `trace` reference to render what was said in place. Null where the
+   * reference does not resolve.
+   */
+  thread_id: string | null;
 };
 
 /**
@@ -228,6 +234,15 @@ export type TimelineEvent = {
   provider: string;
   /** The source's own link, or null where it supplied none. Never fabricated. */
   url: string | null;
+  /**
+   * The conversation this record sits in. Pass it to `resolveExtraction` as a
+   * `trace` reference to render what was said in place instead of linking out.
+   *
+   * A day's events are collapsed to one row per thread, so this is also how a
+   * collapsed row is expanded back into the records behind it. Null where the
+   * reference does not resolve.
+   */
+  thread_id: string | null;
 };
 
 export type TimelineDay = {
@@ -274,3 +289,73 @@ export type MilestoneListQuery = {
 export type TimelineQuery = { from?: string; to?: string };
 
 export type GatewayQuery = ActorQuery | MilestoneListQuery | TimelineQuery;
+
+/**
+ * The one write-shaped read. A signal reference, a depth and a cursor do not fit
+ * a query string, so this route is a POST — but nothing is written and no source
+ * platform is called; it returns the landed logs already in Cloud.
+ *
+ * Only `slack` and `github` are accepted. A `TimelineEvent.provider` may say
+ * `jira` or `notion`, and those have no resolver: check before offering the
+ * affordance rather than calling and handling the rejection.
+ */
+export type ResolveExtractionRequest = {
+  provider: "slack" | "github";
+  /**
+   * `trace` is the conversation (a `thread_id`); `log` is one immutable record.
+   * `trace` with `depth: "focus"` is rejected.
+   */
+  reference: { type: "log" | "trace"; id: string };
+  /** Defaults to `context` — the whole conversation, chronological. */
+  depth?: "focus" | "context";
+  /** 1..100. */
+  limit?: number;
+  /** From a previous response's `nextCursor`. Bound to its provider and thread. */
+  cursor?: string;
+};
+
+/** One landed log. `body` and `attribute` are the stored cold and promoted JSON, merged. */
+export type RawRow = {
+  /** RFC 3339 UTC. The nanosecond value stays in `data.timestamp`. */
+  timestamp: string;
+  data: {
+    /** Epoch **nanoseconds**, not seconds or milliseconds. */
+    timestamp: number;
+    observed_timestamp: number;
+    id: string;
+    /** The conversation or lifecycle. Empty on a record nothing correlated. */
+    trace_id: string;
+    span_id: string;
+    severity_text: string;
+    severity_number: number;
+    /** `message` is absent rather than empty when the record has no content. */
+    body: Record<string, unknown>;
+    attribute: Record<string, unknown>;
+    resource: Record<string, unknown>;
+    scope: Record<string, unknown>;
+  };
+};
+
+export type RawData = {
+  queryName: "extraction";
+  /** Empty when the result is complete. Pass it back as `cursor`. */
+  nextCursor: string;
+  rows: RawRow[];
+};
+
+/**
+ * The querier's generic raw contract, camelCase where the rest of this file is
+ * snake_case — that is Cloud's shape, not a slip. Replacing Cloud's current
+ * ClickHouse implementation with the querier changes nothing here.
+ */
+export type QueryRangeResponse = {
+  type: "raw";
+  /** Exactly one result, always named `extraction`. */
+  data: { results: [RawData] };
+  meta?: { rowsScanned: number; bytesScanned: number; durationMs?: number };
+  /**
+   * A degraded but useful answer — a record whose conversation could not be
+   * correlated comes back alone, with the reason here. Not an error.
+   */
+  warning?: { message: string };
+};

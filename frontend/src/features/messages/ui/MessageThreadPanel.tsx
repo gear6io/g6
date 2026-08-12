@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowDown } from "lucide-react";
 
-import { useKnownAgentPubkeys } from "@/features/agents/useKnownAgentPubkeys";
+import { useKnownAgentPubkeys } from "@/features/agents/knownAgentPubkeysContext";
 import { orderMentionPubkeysByText } from "@/features/messages/lib/orderMentionPubkeys";
 import { normalizePubkey } from "@/shared/lib/pubkey";
 import { resolveMentionProps } from "@/shared/lib/resolveMentionNames";
@@ -38,9 +38,12 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import type { VideoReviewContext } from "@/shared/ui/VideoPlayer";
-import { MessageComposer } from "./MessageComposer";
 import { ThreadMessageSkeleton } from "./MessageThreadPanelSkeleton";
-import { MessageRow, type ThreadDepthGuideAction } from "./MessageRow";
+import {
+  MessageRow,
+  type MessageAuthorSlot,
+  type ThreadDepthGuideAction,
+} from "./MessageRow";
 import { MessageThreadSummaryRow } from "./MessageThreadSummaryRow";
 import { TypingIndicatorRow } from "./TypingIndicatorRow";
 import { UnreadDivider } from "./UnreadDivider";
@@ -49,6 +52,21 @@ import { useAnchoredScroll } from "./useAnchoredScroll";
 import { selectDeferredListRenderState } from "@/features/messages/lib/timelineSnapshot";
 
 type MessageThreadPanelProps = ThreadPanelLayoutProps & {
+  /**
+   * Passed straight to every row. The legacy shell hands down
+   * `UserProfilePopover`; the cloud window omits it, which is what keeps this
+   * panel importable from a surface with no workspace behind it.
+   */
+  authorSlot?: MessageAuthorSlot;
+  /**
+   * The reply composer. A prop for the same reason `authorSlot` is: it reaches
+   * the router (`useLinkEditor`) and the relay (`useTypingBroadcast`), so a
+   * read-only surface with no workspace behind it passes nothing and gets no
+   * composer — which is the honest rendering when there is nothing to send.
+   */
+  composerSlot?: React.ComponentType<
+    React.ComponentProps<typeof import("./MessageComposer").MessageComposer>
+  >;
   channel: Channel | null;
   channelId: string | null;
   channelName: string;
@@ -178,6 +196,8 @@ function getActiveContinuationDepths({
 }
 
 export function MessageThreadPanel({
+  authorSlot,
+  composerSlot: MessageComposer,
   channel,
   channelId,
   channelName,
@@ -542,6 +562,7 @@ export function MessageThreadPanel({
           <div className="rounded-2xl">
             <MessageRow
               actionBarPlacement="inside"
+              authorSlot={authorSlot}
               channelId={channelId}
               huddleMemberPubkeys={huddleMemberPubkeys}
               huddleMemberPubkeysPending={huddleMemberPubkeysPending}
@@ -668,6 +689,7 @@ export function MessageThreadPanel({
                     >
                       {showUnreadDivider ? <UnreadDivider /> : null}
                       <MessageRow
+                        authorSlot={authorSlot}
                         channelId={channelId}
                         collapseDepthGuideActions={collapseDepthGuideActions}
                         collapseDescendantsLabel="Collapse replies"
@@ -823,6 +845,7 @@ export function MessageThreadPanel({
             hasConstrainedColumn ? { maxWidth: columnMaxWidthPx } : undefined
           }
         >
+          {MessageComposer ? (
           <MessageComposer
             audienceContext={{
               type: "thread",
@@ -851,6 +874,7 @@ export function MessageThreadPanel({
             typingParentEventId={threadHead.id}
             typingRootEventId={threadHead.rootId}
           />
+          ) : null}
           <div
             className={cn(
               "min-h-8 bg-background pb-1.5 pt-0",

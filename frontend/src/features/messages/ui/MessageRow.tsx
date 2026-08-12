@@ -7,12 +7,11 @@ import {
   tagsEqual,
 } from "@/features/messages/lib/messageRowEquality";
 import type { TimelineMessage } from "@/features/messages/types";
-import { useKnownAgentPubkeys } from "@/features/agents/useKnownAgentPubkeys";
+import { useKnownAgentPubkeys } from "@/features/agents/knownAgentPubkeysContext";
 import { HuddleAttachment } from "@/features/huddle/components/HuddleAttachment";
 import { MessageReactions } from "@/features/messages/ui/MessageReactions";
 import { useReactionHandler } from "@/features/messages/ui/useReactionHandler";
 import type { UserProfileLookup } from "@/features/profile/lib/identity";
-import { UserProfilePopover } from "@/features/profile/ui/UserProfilePopover";
 import { useRemindLater } from "@/features/reminders/ui/RemindMeLaterProvider";
 import {
   getThreadReplyAvatarCenterRem,
@@ -56,8 +55,29 @@ export type ThreadDepthGuideAction = {
   message: TimelineMessage;
 };
 
+/**
+ * What wraps an author's avatar and name and makes them openable.
+ *
+ * In the legacy shell this is `UserProfilePopover`, passed down from
+ * `ChannelPane`. It is a prop rather than an import because that component
+ * reaches the whole app — the router, huddles, presence, the relay-backed
+ * profile and agent hooks — and importing it here would drag all of it into any
+ * surface that renders a message. The cloud window renders the same rows without
+ * a workspace behind them, so it passes nothing and gets a plain author.
+ *
+ * Omitted is the same rendering as a message with no `pubkey`, which is a shape
+ * this row already handled.
+ */
+export type MessageAuthorSlot = React.ComponentType<{
+  botIdenticonValue?: string;
+  children: React.ReactNode;
+  pubkey: string;
+  role?: string;
+}>;
+
 export const MessageRow = React.memo(
   function MessageRow({
+    authorSlot: AuthorSlot,
     channelId = null,
     collapseDepthGuideActions,
     connectDescendants = false,
@@ -95,6 +115,7 @@ export const MessageRow = React.memo(
     showDepthGuides = true,
     videoReviewContext,
   }: {
+    authorSlot?: MessageAuthorSlot;
     channelId?: string | null;
     collapseDepthGuideActions?: ReadonlyArray<ThreadDepthGuideAction>;
     connectDescendants?: boolean;
@@ -435,8 +456,8 @@ export const MessageRow = React.memo(
 
     const avatarGutterNode = isContinuation ? (
       continuationTimestampGutter
-    ) : message.pubkey ? (
-      <UserProfilePopover
+    ) : message.pubkey && AuthorSlot ? (
+      <AuthorSlot
         pubkey={message.pubkey}
         role={profilePopoverRole}
         botIdenticonValue={message.author}
@@ -450,7 +471,7 @@ export const MessageRow = React.memo(
         >
           {avatarNode}
         </button>
-      </UserProfilePopover>
+      </AuthorSlot>
     ) : (
       <div className="flex shrink-0 items-start">{avatarNode}</div>
     );
@@ -536,8 +557,8 @@ export const MessageRow = React.memo(
 
     const headerNode = isContinuation ? null : (
       <MessageHeaderRow>
-        {message.pubkey ? (
-          <UserProfilePopover
+        {message.pubkey && AuthorSlot ? (
+          <AuthorSlot
             pubkey={message.pubkey}
             role={profilePopoverRole}
             botIdenticonValue={message.author}
@@ -548,7 +569,7 @@ export const MessageRow = React.memo(
             >
               {authorNode}
             </button>
-          </UserProfilePopover>
+          </AuthorSlot>
         ) : (
           authorNode
         )}
@@ -815,6 +836,10 @@ export const MessageRow = React.memo(
     // from parent create new refs every render — including them defeats memo.
   },
   (prev, next) =>
+    // A module-level component reference in practice, so this compares equal on
+    // every render — but it decides whether the author is openable at all, and a
+    // silently stale one would be a row that stopped responding to clicks.
+    prev.authorSlot === next.authorSlot &&
     prev.message.id === next.message.id &&
     prev.message.pubkey === next.message.pubkey &&
     prev.message.body === next.message.body &&

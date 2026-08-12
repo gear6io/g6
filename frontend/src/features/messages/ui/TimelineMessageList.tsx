@@ -33,6 +33,7 @@ import type { UserProfileLookup } from "@/features/profile/lib/identity";
 import type { ChannelType } from "@/shared/api/types";
 import { cn } from "@/shared/lib/cn";
 import { DayDivider } from "./DayDivider";
+import { UserProfilePopover } from "@/features/profile/ui/UserProfilePopover";
 import { MessageRow } from "./MessageRow";
 import { MessageThreadSummaryRow } from "./MessageThreadSummaryRow";
 import { SystemMessageRow } from "./SystemMessageRow";
@@ -901,6 +902,7 @@ function MessageRowItem({
         )}
       >
         <MessageRow
+          authorSlot={UserProfilePopover}
           channelId={channelId}
           highlighted={false}
           hoverBackground={false}
@@ -959,6 +961,7 @@ function MessageRowItem({
       )}
     >
       <MessageRow
+        authorSlot={UserProfilePopover}
         channelId={channelId}
         highlighted={message.id === highlightedMessageId || isSearchActive}
         huddleMemberPubkeys={huddleMemberPubkeys}

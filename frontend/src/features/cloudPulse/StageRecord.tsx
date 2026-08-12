@@ -33,6 +33,7 @@ import type {
   MilestoneStatus,
   TimelineEvent,
 } from "@/shared/api/cloudGateway/types";
+import { canOpenThread } from "@/features/cloudPulse/CloudThreadPanel";
 import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
 
 /** Rendered immediately; the rest are behind one press. */
@@ -143,7 +144,24 @@ const EVENT_KINDS: Record<string, string> = {
   "wait.open": "wait opened",
 };
 
-function EventLine({ event }: { event: TimelineEvent }) {
+/**
+ * Cloud leaves `provider` empty on most timeline events, and "Open in " is not
+ * an accessible name.
+ */
+function openLabel(event: TimelineEvent): string {
+  return event.provider ? `Open in ${event.provider}` : "Open the source";
+}
+
+function EventLine({
+  event,
+  onOpen,
+  open,
+}: {
+  event: TimelineEvent;
+  /** Absent where there is no panel to open into, which is every SSR test. */
+  onOpen?: (event: TimelineEvent) => void;
+  open?: boolean;
+}) {
   const at = new Date(event.occurred_at);
   const time = Number.isNaN(at.getTime())
     ? ""
@@ -166,7 +184,10 @@ function EventLine({ event }: { event: TimelineEvent }) {
         title={event.provider}
       >
         {hasProviderIcon(event.provider) ? (
-          <ProviderIcon className="size-4" provider={event.provider} />
+          <ProviderIcon
+            className="size-4 translate-y-1"
+            provider={event.provider}
+          />
         ) : (
           <span aria-hidden="true" className="text-pulse-eyebrow font-bold uppercase">
             {event.provider.slice(0, 2)}
@@ -181,6 +202,40 @@ function EventLine({ event }: { event: TimelineEvent }) {
       </span>
     </>
   );
+
+  // The conversation, in place. Offered only where Cloud can actually serve it:
+  // the row needs a thread id, a provider with a resolver, and a panel to open
+  // into. Any of those missing and the row keeps the behavior it always had.
+  if (onOpen && canOpenThread(event)) {
+    return (
+      <li className="flex items-baseline">
+        <button
+          aria-pressed={open}
+          className={`group flex min-w-0 flex-1 items-baseline gap-3 rounded-md px-2 py-1.5 text-left transition-colors active:bg-pulse-surface hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink ${
+            open ? "bg-pulse-surface-alt" : ""
+          }`}
+          onClick={() => onOpen(event)}
+          type="button"
+        >
+          {body}
+          <span className="sr-only">Show conversation</span>
+        </button>
+        {/* The link out survives alongside it: reading here and acting at the
+            source are two different errands. */}
+        {event.url ? (
+          <a
+            className="shrink-0 rounded p-1.5 text-pulse-link opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink group-hover:opacity-100 hover:opacity-100 motion-reduce:transition-none"
+            href={event.url}
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            <ExternalLink aria-hidden="true" className="size-3.5 translate-y-1" />
+            <span className="sr-only">{openLabel(event)}</span>
+          </a>
+        ) : null}
+      </li>
+    );
+  }
 
   if (!event.url) {
     return <li className="flex items-baseline gap-3 px-2 py-1.5">{body}</li>;
@@ -200,18 +255,24 @@ function EventLine({ event }: { event: TimelineEvent }) {
         {body}
         <ExternalLink
           aria-hidden="true"
-          className="size-3.5 shrink-0 text-pulse-link opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+          className="size-3.5 shrink-0 translate-y-1 text-pulse-link opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
         />
-        <span className="sr-only">{`Open in ${event.provider}`}</span>
+        <span className="sr-only">{openLabel(event)}</span>
       </a>
     </li>
   );
 }
 
 export function StageRecord({
+  onOpenEvent,
+  openEventId,
   previousDate,
   stage,
 }: {
+  /** Opens an event's source conversation. Omitted where no panel exists. */
+  onOpenEvent?: (event: TimelineEvent) => void;
+  /** The event currently open in the panel, so its row can say so. */
+  openEventId?: string | null;
   /** The last date of the previous *returned* stage: what `changes` measures from. */
   previousDate: string | null;
   stage: Stage;
@@ -311,7 +372,12 @@ export function StageRecord({
                 </p>
                 <ul className="mt-1.5">
                   {group.rows.map(({ event }) => (
-                    <EventLine event={event} key={event.id} />
+<EventLine
+                      event={event}
+                      key={event.id}
+                      onOpen={onOpenEvent}
+                      open={event.id === openEventId}
+                    />
                   ))}
                 </ul>
               </div>
@@ -320,7 +386,12 @@ export function StageRecord({
         ) : (
           <ul>
             {shown.map(({ event }) => (
-              <EventLine event={event} key={event.id} />
+<EventLine
+                event={event}
+                key={event.id}
+                onOpen={onOpenEvent}
+                open={event.id === openEventId}
+              />
             ))}
           </ul>
         )}

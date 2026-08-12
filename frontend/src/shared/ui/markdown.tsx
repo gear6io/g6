@@ -12,7 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toast } from "sonner";
 
-import { useAppNavigation } from "@/app/navigation/useAppNavigation";
+import { useMarkdownNavigation } from "@/shared/ui/markdown/navigationContext";
 import { requestOpenSnapshotImport } from "@/features/agents/openSnapshotImportFromUrlEvent";
 import {
   parseMessageLink,
@@ -1845,7 +1845,9 @@ function MarkdownInner({
 }: MarkdownProps) {
   const { channels: rawChannels } = useChannelNavigation();
   const channels = useStableArray(rawChannels);
-  const { goChannel, goAgents } = useAppNavigation();
+  // Injected, not imported: the real one is the router, and a message body is
+  // rendered on surfaces that have none. See `markdown/navigationContext`.
+  const { goChannel, goAgents } = useMarkdownNavigation();
   const onOpenChannel = React.useCallback(
     (channelId: string) => {
       void goChannel(channelId);

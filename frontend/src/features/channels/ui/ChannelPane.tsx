@@ -9,6 +9,7 @@ import { useTimeoutState } from "@/features/moderation/lib/timeoutStore";
 import { isModerationDm } from "@/features/moderation/lib/moderationDm";
 import { useRelaySelfQuery } from "@/features/moderation/hooks";
 import { DropZoneOverlay } from "@/features/messages/ui/ComposerAttachments";
+import { UserProfilePopover } from "@/features/profile/ui/UserProfilePopover";
 import { MessageThreadPanel } from "@/features/messages/ui/MessageThreadPanel";
 import { MessageThreadPanelSkeleton } from "@/features/messages/ui/MessageThreadPanelSkeleton";
 import {
@@ -853,6 +854,8 @@ export const ChannelPane = React.memo(function ChannelPane({
           (() => {
             const panel = (
               <MessageThreadPanel
+                authorSlot={UserProfilePopover}
+                composerSlot={MessageComposer}
                 channel={activeChannel}
                 channelId={activeChannel?.id ?? null}
                 channelName={activeChannel?.name ?? "channel"}

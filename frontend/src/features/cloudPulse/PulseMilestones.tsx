@@ -12,6 +12,7 @@ import { RefreshCw, Signal, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { MilestonePanel } from "@/features/cloudPulse/MilestonePanel";
+import { useCloudWindow } from "@/features/cloudShell/CloudWindowProvider";
 import { useMilestoneTimelines } from "@/features/cloudPulse/useMilestoneTimelines";
 import { generatedAge } from "@/features/cloudInbox/inbox";
 import { listMilestones } from "@/shared/api/cloudGateway/client";
@@ -93,6 +94,9 @@ function Notice({
 }
 
 export function PulseMilestones() {
+  // The panel is the shell's, not this view's — a rail row opens it and the
+  // shell renders it beside the content column.
+  const { selectEvent, selectedEvent } = useCloudWindow();
   const [state, setState] = useState<State>({ status: "loading" });
   const [refreshKey, setRefreshKey] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -242,6 +246,8 @@ export function PulseMilestones() {
                 key={milestone.id}
                 milestone={milestone}
                 now={now}
+                onOpenEvent={selectEvent}
+                openEventId={selectedEvent?.id ?? null}
                 onRequest={timelines.request}
                 onRetry={timelines.retry}
                 timeline={timelines.get(milestone.id)}

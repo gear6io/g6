@@ -11,9 +11,19 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { CloudWindowProvider } from "../cloudShell/CloudWindowProvider.tsx";
 import { PulseMilestones, milestoneSummary } from "./PulseMilestones.tsx";
 
-const page = () => renderToStaticMarkup(React.createElement(PulseMilestones));
+// The page reads the window's selected event, so it renders inside the window —
+// which is where it always mounts in the product too.
+const page = () =>
+  renderToStaticMarkup(
+    React.createElement(
+      CloudWindowProvider,
+      null,
+      React.createElement(PulseMilestones),
+    ),
+  );
 
 test("the masthead does not invent milestone lifecycle filters", () => {
   const markup = page();

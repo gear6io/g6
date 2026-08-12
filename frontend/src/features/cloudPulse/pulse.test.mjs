@@ -95,6 +95,18 @@ function record(days, previousDate = null) {
   );
 }
 
+/** The same record, but mounted where there is a panel to open into. */
+function openableRecord(days, openEventId = null) {
+  return renderToStaticMarkup(
+    React.createElement(StageRecord, {
+      onOpenEvent: () => {},
+      openEventId,
+      previousDate: null,
+      stage: railStages(days)[0],
+    }),
+  );
+}
+
 /** A day nothing was classified on, which is what Cloud calls neutral. */
 function quiet(date, overrides = {}) {
   return day(date, {
@@ -407,4 +419,103 @@ test("only the first six events render until they are asked for", () => {
   assert.match(markup, /event 5/);
   assert.doesNotMatch(markup, /event 6/);
   assert.match(markup, /Show all 9 events/);
+});
+
+test("a resolvable event opens in place, and still offers the way out", () => {
+  const event = {
+    id: "s1",
+    type: "log",
+    occurred_at: "2026-08-08T14:31:00Z",
+    summary: "shipping the rail today",
+    provider: "slack",
+    thread_id: "0123456789abcdef0123456789abcdef",
+    url: "https://slack.example.com/archives/C1/p1",
+  };
+
+  const markup = openableRecord([day("2026-08-08", { events: [event] })]);
+
+  assert.match(markup, /<button[^>]*aria-pressed="false"/);
+  assert.match(markup, /Show conversation/);
+  // Reading here and acting at the source are two errands, so the link stays.
+  assert.match(markup, /href="https:\/\/slack\.example\.com\/archives\/C1\/p1"/);
+  assert.match(markup, /Open in slack/);
+});
+
+test("the open event says so, and the others do not", () => {
+  const event = (id) => ({
+    id,
+    type: "log",
+    occurred_at: "2026-08-08T14:31:00Z",
+    summary: `event ${id}`,
+    provider: "slack",
+    thread_id: "0123456789abcdef0123456789abcdef",
+    url: null,
+  });
+
+  const markup = openableRecord(
+    [day("2026-08-08", { events: [event("s1"), event("s2")] })],
+    "s2",
+  );
+
+  assert.equal(markup.match(/aria-pressed="true"/g).length, 1);
+  assert.equal(markup.match(/aria-pressed="false"/g).length, 1);
+});
+
+test("a source with no resolver at all keeps the link it always had", () => {
+  // Only jira and notion are ruled out. They are named rather than inferred
+  // from an allowlist because Cloud leaves `provider` empty on records that
+  // resolve perfectly well, and an allowlist would refuse every one of them.
+  for (const provider of ["jira", "notion"]) {
+    const event = {
+      id: `x-${provider}`,
+      type: "log",
+      occurred_at: "2026-08-08T14:31:00Z",
+      summary: "PROJ-12 moved to review",
+      provider,
+      thread_id: "0123456789abcdef0123456789abcdef",
+      url: "https://example.com/PROJ-12",
+    };
+
+    const markup = openableRecord([day("2026-08-08", { events: [event] })]);
+
+    assert.doesNotMatch(markup, /Show conversation/, provider);
+    assert.match(markup, /href="https:\/\/example\.com\/PROJ-12"/, provider);
+  }
+});
+
+test("an event Cloud named no provider for still opens its conversation", () => {
+  // The live dataset is entirely this shape: a real thread id, an empty
+  // provider. Gating on the provider hid every row behind a link.
+  const event = {
+    id: "u1",
+    type: "log",
+    occurred_at: "2026-08-08T14:31:00Z",
+    summary: "<@U096KD0NMHP>, first review and understand the overlap",
+    provider: "",
+    thread_id: "d08ee9f6b4d3dffe50e5fe3f5be5d0c3",
+    url: null,
+  };
+
+  const markup = openableRecord([day("2026-08-08", { events: [event] })]);
+
+  assert.match(markup, /Show conversation/);
+  // And no "Open in " with nothing after it.
+  assert.doesNotMatch(markup, /Open in </);
+});
+
+test("an unresolved thread is a link, not a button that opens nothing", () => {
+  const event = {
+    id: "s3",
+    type: "log",
+    occurred_at: "2026-08-08T14:31:00Z",
+    summary: "someone said something",
+    provider: "slack",
+    thread_id: null,
+    url: "https://slack.example.com/archives/C1/p2",
+  };
+
+  const markup = openableRecord([day("2026-08-08", { events: [event] })]);
+
+  assert.doesNotMatch(markup, /Show conversation/);
+  assert.match(markup, /Open in slack/);
 });

@@ -13,6 +13,7 @@ import {
   listMilestones,
   milestoneTimeline,
   overview,
+  resolveExtraction,
 } from "./client.ts";
 
 const clientDir = path.dirname(fileURLToPath(import.meta.url));
@@ -316,6 +317,70 @@ test("a Cloud error on a list route throws with Cloud's own code", async () => {
       assert.equal(err.message, "cursor is malformed");
       return true;
     });
+  } finally {
+    fetchStub.restore();
+  }
+});
+
+test("resolve posts the request as written and adds no query string", async () => {
+  const reply = {
+    type: "raw",
+    data: { results: [{ queryName: "extraction", nextCursor: "", rows: [] }] },
+  };
+  const fetchStub = stubFetch(
+    () =>
+      new Response(JSON.stringify(reply), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const request = {
+      provider: "slack",
+      reference: { type: "trace", id: "0123456789abcdef0123456789abcdef" },
+      depth: "context",
+      limit: 50,
+    };
+    const got = await resolveExtraction(request);
+    assert.deepEqual(got, reply);
+
+    const [call] = fetchStub.calls;
+    // The reference travels in the body, not the URL: a thread id is not a
+    // filter and must not end up in a log line as one.
+    assert.equal(
+      call.url,
+      "http://localhost:3000/api/cloud/v1/extractions/resolve",
+    );
+    assert.equal(call.init.method, "POST");
+    assert.equal(call.init.headers["content-type"], "application/json");
+    assert.deepEqual(JSON.parse(call.init.body), request);
+  } finally {
+    fetchStub.restore();
+  }
+});
+
+test("a resolve failure throws with Cloud's own code, like every other route", async () => {
+  const fetchStub = stubFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "signal_not_found", message: "no such reference" },
+        }),
+        { status: 404, headers: { "content-type": "application/json" } },
+      ),
+  );
+  try {
+    await assert.rejects(
+      resolveExtraction({
+        provider: "github",
+        reference: { type: "trace", id: "0123456789abcdef0123456789abcdef" },
+      }),
+      (err) => {
+        assert.ok(err instanceof CloudGatewayError);
+        assert.equal(err.code, "signal_not_found");
+        return true;
+      },
+    );
   } finally {
     fetchStub.restore();
   }

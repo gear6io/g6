@@ -14,50 +14,73 @@ import {
   type CloudView,
   useCloudWindow,
 } from "@/features/cloudShell/CloudWindowProvider";
+import { CloudThreadPanel } from "@/features/cloudPulse/CloudThreadPanel";
 import { PulseMilestones } from "@/features/cloudPulse/PulseMilestones";
 import { Button } from "@/shared/ui/button";
 import { Gear6Mark } from "@/shared/ui/g6-logo/Gear6Mark";
 
-const SIDEBAR_STORAGE_KEY = "g6.cloud.sidebarWidth";
-const SIDEBAR_DEFAULT = 300;
-const SIDEBAR_MIN = 220;
-const SIDEBAR_MAX = 420;
-/** One keypress on the separator. Enough to feel, small enough to aim with. */
+const SIDEBAR = {
+  key: "g6.cloud.sidebarWidth",
+  default: 300,
+  min: 220,
+  max: 420,
+};
+
+/**
+ * The conversation panel is wider than the nav: it holds message rows, and a
+ * 300px column wraps every one of them into a ragged stack.
+ */
+const THREAD = {
+  key: "g6.cloud.threadWidth",
+  default: 420,
+  min: 320,
+  max: 640,
+};
+
+/** One keypress on a separator. Enough to feel, small enough to aim with. */
 const SIDEBAR_STEP = 16;
+
+type WidthBounds = typeof SIDEBAR;
 
 const NAV: readonly { id: CloudView; label: string; icon: typeof Signal }[] = [
   { id: "pulse", label: "Pulse", icon: Signal },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
 ];
 
-function clampWidth(width: number): number {
-  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(width)));
+function clampWidth(bounds: WidthBounds, width: number): number {
+  return Math.min(bounds.max, Math.max(bounds.min, Math.round(width)));
 }
 
-function readStoredWidth(): number {
+function readStoredWidth(bounds: WidthBounds): number {
   try {
     if (typeof window === "undefined") {
-      return SIDEBAR_DEFAULT;
+      return bounds.default;
     }
-    const raw = Number(window.localStorage.getItem(SIDEBAR_STORAGE_KEY));
-    return Number.isFinite(raw) && raw > 0 ? clampWidth(raw) : SIDEBAR_DEFAULT;
+    const raw = Number(window.localStorage.getItem(bounds.key));
+    return Number.isFinite(raw) && raw > 0
+      ? clampWidth(bounds, raw)
+      : bounds.default;
   } catch {
-    return SIDEBAR_DEFAULT;
+    return bounds.default;
   }
 }
 
-function useSidebarWidth() {
-  const [width, setWidth] = useState(readStoredWidth);
+/** Shared by both resizable columns: same persistence, different key and bounds. */
+function usePanelWidth(bounds: WidthBounds) {
+  const [width, setWidth] = useState(() => readStoredWidth(bounds));
 
-  const resize = useCallback((next: number) => {
-    const clamped = clampWidth(next);
-    setWidth(clamped);
-    try {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
-    } catch {
-      // An unremembered width is not worth failing a drag over.
-    }
-  }, []);
+  const resize = useCallback(
+    (next: number) => {
+      const clamped = clampWidth(bounds, next);
+      setWidth(clamped);
+      try {
+        window.localStorage.setItem(bounds.key, String(clamped));
+      } catch {
+        // An unremembered width is not worth failing a drag over.
+      }
+    },
+    [bounds],
+  );
 
   return [width, resize] as const;
 }
@@ -67,11 +90,18 @@ function useSidebarWidth() {
  * keys move it too — a mouse-only resize is a control a keyboard user can see
  * and cannot reach.
  */
-function SidebarSeparator({
+function PanelSeparator({
+  bounds,
+  label,
   onResize,
+  /** Which edge the panel is anchored to; a right panel grows as the pointer moves left. */
+  side = "left",
   width,
 }: {
+  bounds: WidthBounds;
+  label: string;
   onResize: (next: number) => void;
+  side?: "left" | "right";
   width: number;
 }) {
   const dragging = useRef(false);
@@ -79,7 +109,9 @@ function SidebarSeparator({
   useEffect(() => {
     function move(event: PointerEvent) {
       if (dragging.current) {
-        onResize(event.clientX);
+        onResize(
+          side === "left" ? event.clientX : window.innerWidth - event.clientX,
+        );
       }
     }
     function end() {
@@ -93,24 +125,27 @@ function SidebarSeparator({
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
     };
-  }, [onResize]);
+  }, [onResize, side]);
 
   return (
     <div
-      aria-label="Resize sidebar"
+      aria-label={label}
       aria-orientation="vertical"
-      aria-valuemax={SIDEBAR_MAX}
-      aria-valuemin={SIDEBAR_MIN}
+      aria-valuemax={bounds.max}
+      aria-valuemin={bounds.min}
       aria-valuenow={width}
       className="w-1 shrink-0 cursor-col-resize bg-pulse-hairline transition-colors hover:bg-pulse-tint focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
       onKeyDown={(event) => {
+        // Left always narrows the column left of the handle, which is what the
+        // key looks like it should do from either side.
+        const grow = side === "left" ? SIDEBAR_STEP : -SIDEBAR_STEP;
         if (event.key === "ArrowLeft") {
           event.preventDefault();
-          onResize(width - SIDEBAR_STEP);
+          onResize(width - grow);
         }
         if (event.key === "ArrowRight") {
           event.preventDefault();
-          onResize(width + SIDEBAR_STEP);
+          onResize(width + grow);
         }
       }}
       onPointerDown={(event) => {
@@ -159,8 +194,11 @@ function NavButton({
 }
 
 export function CloudShell() {
-  const { collapse, error, setView, view } = useCloudWindow();
-  const [width, resize] = useSidebarWidth();
+  const { collapse, error, selectEvent, selectedEvent, setView, view } =
+    useCloudWindow();
+  const [width, resize] = usePanelWidth(SIDEBAR);
+  const [threadWidth, resizeThread] = usePanelWidth(THREAD);
+  const closeThread = useCallback(() => selectEvent(null), [selectEvent]);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-pulse-canvas text-pulse-ink">
@@ -205,7 +243,12 @@ export function CloudShell() {
         </div>
       </aside>
 
-      <SidebarSeparator onResize={resize} width={width} />
+      <PanelSeparator
+        bounds={SIDEBAR}
+        label="Resize sidebar"
+        onResize={resize}
+        width={width}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[54px] shrink-0 items-center justify-end gap-2 px-4">
@@ -232,6 +275,30 @@ export function CloudShell() {
           {view === "settings" ? <CloudSettingsPane /> : null}
         </main>
       </div>
+
+      {/* The source conversation, beside the reading rather than instead of it.
+          A sibling of the content column, not a child: the row that opens it
+          sits several levels down inside a milestone card, and a panel nested
+          there would scroll away with the rail it belongs to. Keyed on the
+          event so switching rows remounts rather than showing the previous
+          thread while the next one loads. */}
+      {selectedEvent ? (
+        <>
+          <PanelSeparator
+            bounds={THREAD}
+            label="Resize conversation"
+            onResize={resizeThread}
+            side="right"
+            width={threadWidth}
+          />
+          <CloudThreadPanel
+            event={selectedEvent}
+            key={selectedEvent.id}
+            onClose={closeThread}
+            widthPx={threadWidth}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -17,6 +17,8 @@ import type {
   MilestoneListResponse,
   MilestoneTimelineResponse,
   OverviewResponse,
+  QueryRangeResponse,
+  ResolveExtractionRequest,
   TimelineQuery,
   UserListResponse,
 } from "@/shared/api/cloudGateway/types";
@@ -168,4 +170,31 @@ export function milestoneTimeline(
   query?: TimelineQuery,
 ): Promise<MilestoneTimelineResponse> {
   return getJson(`v1/milestones/${milestoneId}/timeline`, query);
+}
+
+/**
+ * The conversation behind an event, in place of a link out.
+ *
+ * The only POST, and it is still a read — a signal reference, a depth and a
+ * cursor do not fit a query string. The request is sent as written: the backend
+ * caps its size and forwards the bytes, and Cloud's schema is the validator.
+ */
+export async function resolveExtraction(
+  request: ResolveExtractionRequest,
+): Promise<QueryRangeResponse> {
+  let res: Response;
+  try {
+    res = await globalThis.fetch(gatewayUrl("v1/extractions/resolve"), {
+      body: JSON.stringify(request),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
+    });
+  } catch (err) {
+    throw transportFailure(err);
+  }
+  if (!res.ok) {
+    throw await failure(res);
+  }
+  return (await res.json()) as QueryRangeResponse;
 }

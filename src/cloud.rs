@@ -2,11 +2,16 @@
 //!
 //! The desktop webview never learns a Cloud origin: it calls this backend, and
 //! this backend calls Cloud. That is the whole point, so there is no generic
-//! proxy route and no route-map DSL here — just a handful of fixed GETs whose
+//! proxy route and no route-map DSL here — just a handful of fixed routes whose
 //! upstream paths are compiled in. One path, the milestone timeline, carries an
 //! id in it; that id is checked against Cloud's own 32-hex entity shape before
 //! the URL is built, so the only runtime input to an upstream path is 32
 //! characters from a fixed alphabet.
+//!
+//! One route is a POST, and it is still a read: `v1/extractions/resolve` takes a
+//! signal reference, a depth and a cursor, which do not fit a query string. It is
+//! the only route whose request body crosses this gateway, and it crosses capped
+//! and otherwise untouched — see `resolve_extraction`.
 //!
 //! The actor-scoped routes take the viewer as a query parameter and this
 //! backend turns it into `X-G6-Actor-ID` on the way out. The browser never
@@ -19,10 +24,11 @@
 
 use std::time::Duration;
 
+use axum::body::Bytes;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use reqwest::Url;
 use serde::Deserialize;
@@ -53,8 +59,14 @@ const MILESTONES: &str = "v1/milestones";
 /// `MILESTONE_ID_LEN` hex characters first, so no request-supplied text can add
 /// a segment, a query, or a traversal to it.
 const MILESTONE_TIMELINE: &str = "v1/milestones/{id}/timeline";
+const EXTRACTIONS_RESOLVE: &str = "v1/extractions/resolve";
 #[cfg(debug_assertions)]
 const DEV_USERS: &str = "v1/dev/users";
+
+/// The resolve request is `{provider, reference, depth, limit, cursor}` — a few
+/// hundred bytes at most. The cap is enforced here rather than upstream so a
+/// large body is refused before it becomes an outbound request.
+const MAX_RESOLVE_BODY: usize = 4 * 1024;
 
 /// The header Cloud reads the viewer from. Written here, from a validated query
 /// value, and never copied from anything the webview sent.
@@ -75,6 +87,11 @@ const JSON_STATUSES: &[u16] = &[200, 400, 503];
 /// lattice folded into another. Relaying them keeps the client able to tell a
 /// typo from a merge; swallowing them into `cloud_invalid_response` would not.
 const MILESTONE_STATUSES: &[u16] = &[200, 400, 404, 410, 503];
+
+/// Resolve answers `404 signal_not_found` for a reference that names nothing (or
+/// names it under the wrong provider), and `500 extraction_failed` for a read
+/// that broke. Both are envelopes the client branches on, so both are relayed.
+const RESOLVE_STATUSES: &[u16] = &[200, 400, 404, 500, 503];
 
 #[derive(Clone)]
 pub struct Cloud {
@@ -158,7 +175,8 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/v1/milestones/{milestone_id}/timeline",
             get(milestone_timeline),
-        );
+        )
+        .route("/v1/extractions/resolve", post(resolve_extraction));
 
     // Compiled out of release builds, exactly as Cloud gates its own copy: the
     // route enumerates the tenant's people, handles and emails, and a config
@@ -181,7 +199,7 @@ async fn healthz(State(state): State<AppState>) -> Response {
 
 async fn relay_healthz(state: &AppState) -> Result<Response, GatewayError> {
     let url = state.cloud.url(HEALTHZ)?;
-    let res = send(state, HEALTHZ, url, None).await?;
+    let res = send(state, HEALTHZ, url, None, None).await?;
     let status = res.status();
 
     // Cloud answers readiness in plain text: 200 "ok" or 503 "read model unavailable".
@@ -254,7 +272,7 @@ async fn milestones(
     let relayed = async {
         let mut url = state.cloud.url(MILESTONES)?;
         query.apply(&mut url);
-        relay(&state, MILESTONES, url, None, MILESTONE_STATUSES).await
+        relay(&state, MILESTONES, url, None, None, MILESTONE_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -278,7 +296,42 @@ async fn milestone_timeline(
             .cloud
             .url(&format!("v1/milestones/{milestone_id}/timeline"))?;
         query.apply(&mut url);
-        relay(&state, MILESTONE_TIMELINE, url, None, MILESTONE_STATUSES).await
+        relay(&state, MILESTONE_TIMELINE, url, None, None, MILESTONE_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+/// The one route that carries a request body, and the body is forwarded
+/// byte-for-byte rather than parsed and re-serialised.
+///
+/// Deliberately not validated here. Cloud's schema is `deny_unknown_fields` and
+/// it answers its own `400 invalid_body`, `400 invalid_depth_for_reference` and
+/// `400 invalid_cursor`; a second validator on this side could only produce a
+/// differently-worded rejection for the same input — or, worse, accept a shape
+/// Cloud will not. Same reasoning as `TimelineQuery` above.
+///
+/// What *is* enforced here is the size, before any outbound request exists: this
+/// gateway will not turn an unbounded webview upload into an unbounded upstream
+/// POST. No actor header — a landed record reads the same for every viewer.
+async fn resolve_extraction(State(state): State<AppState>, _auth: Auth, body: Bytes) -> Response {
+    let relayed = async {
+        if body.len() > MAX_RESOLVE_BODY {
+            log(EXTRACTIONS_RESOLVE, "oversized_request", None);
+            return Err(GatewayError::request_too_large());
+        }
+        let url = state.cloud.url(EXTRACTIONS_RESOLVE)?;
+        relay(
+            &state,
+            EXTRACTIONS_RESOLVE,
+            url,
+            None,
+            Some(body),
+            RESOLVE_STATUSES,
+        )
+        .await
     };
     match relayed.await {
         Ok(res) => res,
@@ -350,7 +403,7 @@ async fn actor_scoped(
     // Cloud at all. The rejection names the parameter, never its value.
     let actor = query.header()?;
     let url = state.cloud.url(path)?;
-    relay(state, path, url, Some(actor), JSON_STATUSES).await
+    relay(state, path, url, Some(actor), None, JSON_STATUSES).await
 }
 
 /// Development only, and unparameterised: the list is capped upstream at 1000
@@ -359,7 +412,7 @@ async fn actor_scoped(
 async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
     let relayed = async {
         let url = state.cloud.url(DEV_USERS)?;
-        relay(&state, DEV_USERS, url, None, JSON_STATUSES).await
+        relay(&state, DEV_USERS, url, None, None, JSON_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -376,9 +429,10 @@ async fn relay(
     path: &'static str,
     url: Url,
     actor: Option<HeaderValue>,
+    body: Option<Bytes>,
     allowed: &[u16],
 ) -> Result<Response, GatewayError> {
-    let res = send(state, path, url, actor).await?;
+    let res = send(state, path, url, actor, body).await?;
     let status = res.status();
 
     // Cloud emits 504 from middleware above its handlers, so it is the one
@@ -414,17 +468,30 @@ async fn relay(
         .into_response())
 }
 
-/// The single outbound path. Nothing inbound rides along: no `Authorization`, no
-/// cookies, no request body, no desktop-supplied header — only the URL built
+/// The single outbound path. Almost nothing inbound rides along: no
+/// `Authorization`, no cookies, no desktop-supplied header — only the URL built
 /// from the compiled-in allowlist, plus the one actor header this gateway
 /// constructs itself from a validated query value.
+///
+/// `body` is the one exception, and it is an exception by route rather than by
+/// request: only `v1/extractions/resolve` passes `Some`, and only after capping
+/// it. `None` sends a GET with no body at all, which is every other route.
 async fn send(
     state: &AppState,
     path: &'static str,
     url: Url,
     actor: Option<HeaderValue>,
+    body: Option<Bytes>,
 ) -> Result<reqwest::Response, GatewayError> {
-    let mut request = state.cloud.client.get(url);
+    let mut request = match body {
+        Some(body) => state
+            .cloud
+            .client
+            .post(url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body),
+        None => state.cloud.client.get(url),
+    };
     if let Some(actor) = actor {
         request = request.header(ACTOR_HEADER, actor);
     }
@@ -554,6 +621,17 @@ impl GatewayError {
             status: StatusCode::BAD_REQUEST,
             code: "invalid_milestone_id",
             message: "milestone_id must be 32 lowercase hexadecimal characters",
+        }
+    }
+
+    /// The webview sent a resolve body larger than any valid one. Refused before
+    /// an outbound request exists, so this gateway never forwards an upload it
+    /// has not bounded.
+    fn request_too_large() -> Self {
+        GatewayError {
+            status: StatusCode::PAYLOAD_TOO_LARGE,
+            code: "request_too_large",
+            message: "the request body exceeds the gateway's limit for this route",
         }
     }
 
@@ -702,11 +780,22 @@ mod tests {
     /// What the mock upstream saw. Assertions about what is *not* forwarded need
     /// the received request, not just the relayed response.
     #[derive(Clone, Default)]
-    struct Seen(Arc<Mutex<Vec<(String, HeaderMap)>>>);
+    struct Seen(Arc<Mutex<Vec<(String, HeaderMap, Vec<u8>)>>>);
 
     impl Seen {
         fn last(&self) -> (String, HeaderMap) {
-            self.0.lock().unwrap().last().cloned().expect("a request")
+            let (uri, headers, _) = self.0.lock().unwrap().last().cloned().expect("a request");
+            (uri, headers)
+        }
+
+        /// The bytes the upstream received. Only `v1/extractions/resolve` sends
+        /// any; on every other route this asserts the absence.
+        fn last_body(&self) -> Vec<u8> {
+            self.0.lock().unwrap().last().cloned().expect("a request").2
+        }
+
+        fn count(&self) -> usize {
+            self.0.lock().unwrap().len()
         }
     }
 
@@ -722,11 +811,12 @@ mod tests {
             let recorder = recorder.clone();
             async move {
                 let uri = req.uri().to_string();
-                recorder
-                    .0
-                    .lock()
-                    .unwrap()
-                    .push((uri, req.headers().clone()));
+                let headers = req.headers().clone();
+                let body = axum::body::to_bytes(req.into_body(), usize::MAX)
+                    .await
+                    .unwrap_or_default()
+                    .to_vec();
+                recorder.0.lock().unwrap().push((uri, headers, body));
                 reply()
             }
         });
@@ -783,6 +873,38 @@ mod tests {
         let res = app
             .clone()
             .oneshot(req.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let status = res.status();
+        let content_type = res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_owned();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (
+            status,
+            content_type,
+            String::from_utf8_lossy(&bytes).into_owned(),
+        )
+    }
+
+    async fn post_json(
+        app: &Router,
+        uri: &str,
+        token: Option<&str>,
+        body: &str,
+    ) -> (StatusCode, String, String) {
+        let mut req = Request::post(uri).header(header::CONTENT_TYPE, "application/json");
+        if let Some(t) = token {
+            req = req.header(header::AUTHORIZATION, format!("Bearer {t}"));
+        }
+        let res = app
+            .clone()
+            .oneshot(req.body(Body::from(body.to_owned())).unwrap())
             .await
             .unwrap();
         let status = res.status();
@@ -1128,6 +1250,95 @@ mod tests {
             headers.get("x-g6-actor-id").is_none(),
             "the directory has no viewer"
         );
+    }
+
+    const RESOLVE_REQUEST: &str = r#"{"provider":"slack","reference":{"type":"trace","id":"0123456789abcdef0123456789abcdef"},"depth":"context","limit":50}"#;
+    const RESOLVE_REPLY: &str = r#"{"type":"raw","data":{"results":[{"queryName":"extraction","nextCursor":"","rows":[]}]}}"#;
+
+    #[tokio::test]
+    async fn the_resolve_body_reaches_cloud_byte_for_byte() {
+        let (base, seen) = mock_cloud(json_body(200, RESOLVE_REPLY)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let (status, content_type, got) = post_json(
+            &app,
+            "/api/cloud/v1/extractions/resolve",
+            Some(&token),
+            RESOLVE_REQUEST,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert!(content_type.starts_with("application/json"), "{content_type}");
+        assert_eq!(got, RESOLVE_REPLY);
+
+        let (uri, headers) = seen.last();
+        assert_eq!(uri, "/v1/extractions/resolve", "no query string is added");
+        // Not re-serialised: Cloud's schema is `deny_unknown_fields` and its own
+        // 400 is the contract, so a round trip through serde here could only
+        // change what Cloud sees.
+        assert_eq!(
+            String::from_utf8(seen.last_body()).unwrap(),
+            RESOLVE_REQUEST
+        );
+        assert!(
+            headers.get("x-g6-actor-id").is_none(),
+            "a landed record reads the same for every viewer"
+        );
+        assert!(
+            headers.get(header::AUTHORIZATION).is_none(),
+            "the desktop's own bearer token does not ride along"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_oversized_resolve_body_never_becomes_an_outbound_request() {
+        let (base, seen) = mock_cloud(json_body(200, RESOLVE_REPLY)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let huge = format!(r#"{{"cursor":"{}"}}"#, "A".repeat(MAX_RESOLVE_BODY));
+        let (status, _, body) = post_json(
+            &app,
+            "/api/cloud/v1/extractions/resolve",
+            Some(&token),
+            &huge,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        assert!(body.contains("request_too_large"), "{body}");
+        assert_eq!(seen.count(), 0, "nothing reached Cloud");
+    }
+
+    #[tokio::test]
+    async fn resolve_relays_the_statuses_only_it_can_answer() {
+        // `404 signal_not_found` is how Cloud says a reference names nothing, or
+        // names it under the other provider. It is not this gateway's failure.
+        for (upstream, code) in [
+            (404u16, "signal_not_found"),
+            (500, "extraction_failed"),
+            (400, "unsupported_reference_type"),
+        ] {
+            let body: &'static str = Box::leak(
+                format!(r#"{{"error":{{"code":"{code}","message":"no"}}}}"#).into_boxed_str(),
+            );
+            let (base, _) = mock_cloud(json_body(upstream, body)).await;
+            let app = gateway(Some(&base)).await;
+            let token = token(&app).await;
+
+            let (status, _, got) = post_json(
+                &app,
+                "/api/cloud/v1/extractions/resolve",
+                Some(&token),
+                RESOLVE_REQUEST,
+            )
+            .await;
+
+            assert_eq!(status.as_u16(), upstream, "{code}");
+            assert!(got.contains(code), "{code}: {got}");
+        }
     }
 
     #[tokio::test]
