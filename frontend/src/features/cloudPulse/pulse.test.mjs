@@ -49,9 +49,10 @@ function day(date, overrides = {}) {
 
 const MILESTONE = {
   id: "0123456789abcdef0123456789abcdef",
+  subject: "Product import pipeline",
   slug: "product-import",
-  summary: "Product import pipeline",
-  status: "active",
+  description: "Blocked on vendor staging credentials",
+  keywords: ["importer", "vendor"],
   updated_at: "2026-08-08T14:31:00Z",
   last_activity: {
     date: "2026-08-08",
@@ -111,7 +112,9 @@ test("a panel names the milestone, its total, and the kinds actually open", () =
   });
 
   assert.match(markup, /Product import pipeline/);
-  assert.match(markup, /product-import/);
+  // The slug is a machine key and is no longer drawn; the state line is.
+  assert.doesNotMatch(markup, /product-import/);
+  assert.match(markup, /Blocked on vendor staging credentials/);
   assert.match(markup, /6 open action items/);
   assert.match(markup, /2 decision/);
   assert.match(markup, /1 response/);
@@ -223,7 +226,11 @@ test("the track runs unbroken: solid between adjacent stages, dashed over a gap"
   const gapped = rail([day("2026-08-06"), day("2026-08-08")]);
   assert.equal(solid(gapped), 0, "no status is carried across the gap");
   assert.equal(dashed(gapped), 1, "but the rail is still one timeline");
-  assert.match(gapped, /width:200%/, "centre of one node to centre of the next");
+  assert.match(
+    gapped,
+    /left:-50%;right:-50%/,
+    "centre of one node to centre of the next",
+  );
 
   assert.equal(solid(rail([day("2026-08-08")])), 0, "a lone stage");
 });
@@ -258,7 +265,7 @@ test("every node names its own dates, and no unobserved day is named", () => {
   assert.doesNotMatch(markup, /Jul 21|Aug 1</);
 });
 
-test("a record leads with the state and drops the reason that only repeats it", () => {
+test("a record states the reading and never argues for it", () => {
   const markup = record(
     [
       day("2026-08-08", {
@@ -284,17 +291,15 @@ test("a record leads with the state and drops the reason that only repeats it", 
   );
 
   assert.match(markup, /Saturday, Aug 8/);
-  // The state names each entry; the rule that fired is the detail under it.
+  // The day's own classification, once.
   assert.match(markup, /Progress/);
-  assert.match(markup, /Dependency/);
-  assert.match(markup, /Decision closed/);
-  assert.match(markup, /Workflow fact/);
-  // `model_finding` is "Analysis" said twice, so only the rationale survives.
-  assert.doesNotMatch(markup, /Model finding/i);
-  assert.match(markup, /Analysis \(86% confidence\)/);
-  assert.match(markup, /Deployment completed successfully/);
-  // A deterministic entry's confidence is always 1.0 and is never shown as odds.
-  assert.doesNotMatch(markup, /100% confidence/);
+  // Cloud's evidence is not drawn: no rationale, no rule name, no provenance
+  // and no confidence anywhere in the record.
+  assert.doesNotMatch(markup, /Deployment completed successfully/);
+  assert.doesNotMatch(markup, /Decision closed/);
+  assert.doesNotMatch(markup, /Workflow fact|Analysis/);
+  assert.doesNotMatch(markup, /Dependency/, "a second classification is evidence");
+  assert.doesNotMatch(markup, /\d+% confidence/);
 
   // The snapshot leads with the total, then only the kinds actually open.
   assert.match(markup, /Total open/);
@@ -305,9 +310,11 @@ test("a record leads with the state and drops the reason that only repeats it", 
   // Cloud dropped `constraint_work_items` in 2.0; nothing stands in for it.
   assert.doesNotMatch(markup, /Constraint reach|work items/);
   // A falling count is not always good and a rising one is not always bad, so
-  // every value is foreground and the evidence above is what explains the day.
+  // no value is coloured by the direction it moved.
   for (const value of markup.match(/<dd class="[^"]*"/g)) {
-    assert.match(value, /text-foreground/);
+    // The strip sits on the brand band, so the neutral colour is the band's
+    // own foreground; the rule it enforces is unchanged.
+    assert.match(value, /text-pulse-brand-fg/);
     assert.doesNotMatch(value, /emerald|rose|amber/);
   }
 });
@@ -343,8 +350,6 @@ test("a compressed stage dates every event and nets its movement", () => {
   assert.equal(markup.match(/Neutral/g).length, 3, "the stage and both days");
   // Movement nets across the run rather than showing the last day's alone.
   assert.match(markup, />\+2</);
-  // Neutral is Cloud classifying nothing, which the record says outright.
-  assert.match(markup, /classified none of them/);
 });
 
 test("the first returned stage has no previous one to be measured against", () => {
@@ -379,6 +384,9 @@ test("an event with no link gets no link, not a dead one", () => {
   ]);
   assert.match(linked, /href="https:\/\/example\.com\/pr\/482"/);
   assert.match(linked, /rel="noreferrer noopener"/);
+  // The row is the link, so the affordance the per-row "Open" used to carry
+  // has to survive in the accessible name.
+  assert.match(linked, /Open in github/);
 
   const bare = record([day("2026-08-08", { events: [event(null)] })]);
   assert.match(bare, /PR #482 merged/);

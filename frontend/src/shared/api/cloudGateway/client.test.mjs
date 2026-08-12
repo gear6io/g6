@@ -169,7 +169,6 @@ test("list responses are returned exactly as received", async () => {
     const milestones = await listMilestones({
       cursor: "AbC=",
       limit: 50,
-      status: "all",
     });
     assert.deepEqual(milestones, PAGE, "no dates, ages or ids are remapped");
 
@@ -181,7 +180,6 @@ test("list responses are returned exactly as received", async () => {
       "the opaque cursor survives the round trip",
     );
     assert.equal(url.searchParams.get("limit"), "50");
-    assert.equal(url.searchParams.get("status"), "all");
 
     await listMilestones();
     const second = new URL(fetchStub.calls[1].url);
@@ -250,7 +248,7 @@ test("the milestone routes carry no account and page on their own key", async ()
   );
   const id = "0123456789abcdef0123456789abcdef";
   try {
-    await listMilestones({ status: "active", limit: 12 });
+    await listMilestones({ limit: 12 });
     await milestoneTimeline(id, { from: "2026-07-10", to: "2026-08-08" });
     await milestoneTimeline(id);
 
@@ -258,7 +256,6 @@ test("the milestone routes carry no account and page on their own key", async ()
       (call) => new URL(call.url),
     );
     assert.equal(list.pathname, "/api/cloud/v1/milestones");
-    assert.equal(list.searchParams.get("status"), "active");
     assert.equal(list.searchParams.get("limit"), "12");
 
     assert.equal(timeline.pathname, `/api/cloud/v1/milestones/${id}/timeline`);

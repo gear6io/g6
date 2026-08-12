@@ -15,6 +15,22 @@ export default {
         title: ["2.5rem", { lineHeight: "1.15", letterSpacing: "-0.02em" }],
         // 36px — the backup-step private key, shown large in monospace
         "nsec-key": ["2.25rem", { lineHeight: "1.3" }],
+        // Cloud Pulse brand ramp (Design.md). Tracking is baked in because the
+        // brand's whole typographic character is the tracking: negative on
+        // display, positive on the all-caps tiers. A size without its tracking
+        // is off-brand, so they are not separable utilities.
+        // Tracking runs negative on display and turns positive by the caps
+        // tiers — the ramp is monotonic in size and in tracking, which is the
+        // whole point: one fixed letter-spacing would be wrong at both ends.
+        "pulse-display": ["2rem", { lineHeight: "1.25", letterSpacing: "-0.256px" }],
+        "pulse-heading": ["1.5rem", { lineHeight: "1.33", letterSpacing: "-0.096px" }],
+        "pulse-title": ["1.125rem", { lineHeight: "1.56", letterSpacing: "-0.0216px" }],
+        // 1.55 leading, not Tailwind's stock 1.5. Design.md states body leading
+        // explicitly, so `text-base` is off-brand by a hair everywhere it lands.
+        "pulse-body": ["1rem", { lineHeight: "1.55", letterSpacing: "0" }],
+        "pulse-caption": ["0.875rem", { lineHeight: "1.43", letterSpacing: "0.1px" }],
+        "pulse-cap": ["0.9rem", { lineHeight: "1", letterSpacing: "0.144px" }],
+        "pulse-eyebrow": ["0.75rem", { lineHeight: "1", letterSpacing: "0.96px" }],
       },
       boxShadow: {
         "content-edge": "-1px -1px 0 0 hsl(var(--sidebar-border) / 0.45)",
@@ -100,6 +116,33 @@ export default {
         warning: {
           DEFAULT: "var(--ui-warning)",
           bg: "var(--ui-warning-bg)",
+        },
+        // The Cloud window runs its own brand palette (Design.md) rather than
+        // the Catppuccin tokens above, which the theme picker rewrites at
+        // runtime across 64 Shiki themes. Cloud is deliberately outside that:
+        // the brand is fixed, so the window does not recolour per theme.
+        // Scoped to the cloud* features on purpose; the legacy app keeps the
+        // tokens above.
+        //
+        // `brand` is a fill. `brand-ink` is text/border/ring. They are the same
+        // hex in light and diverge sharply in dark — see theme.css for why.
+        pulse: {
+          brand: "var(--g6-pulse-brand)",
+          "brand-ink": "var(--g6-pulse-brand-ink)",
+          press: "var(--g6-pulse-brand-press)",
+          "brand-fg": "var(--g6-pulse-brand-fg)",
+          "brand-mute": "var(--g6-pulse-brand-mute)",
+          tint: "var(--g6-pulse-brand-tint)",
+          surface: "var(--g6-pulse-surface)",
+          "surface-alt": "var(--g6-pulse-surface-alt)",
+          canvas: "var(--g6-pulse-canvas)",
+          ink: "var(--g6-pulse-ink)",
+          "ink-mute": "var(--g6-pulse-ink-mute)",
+          hairline: "var(--g6-pulse-hairline)",
+          link: "var(--g6-pulse-link)",
+          error: "var(--g6-pulse-error)",
+          warning: "var(--g6-pulse-warning)",
+          success: "var(--g6-pulse-success)",
         },
       },
     },

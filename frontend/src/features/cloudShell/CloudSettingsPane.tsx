@@ -13,11 +13,11 @@ export function CloudSettingsPane() {
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pb-10 pt-7 sm:px-7">
-      <h1 className="text-[22px] font-semibold text-foreground">Settings</h1>
+      <h1 className="text-pulse-display font-bold text-pulse-ink">Settings</h1>
 
-      <section className="mt-6 rounded-[14px] border border-border p-5">
-        <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
+      <section className="mt-6 rounded-2xl border border-pulse-hairline p-5">
+        <h2 className="text-pulse-title font-semibold text-pulse-ink">Appearance</h2>
+        <p className="mt-1 text-pulse-caption text-pulse-ink-mute">
           System follows the operating system's light and dark setting.
         </p>
 
@@ -51,12 +51,14 @@ function AppearanceOption({
   return (
     <button
       aria-checked={selected}
+      // Same selected language as the sidebar nav and the Pulse scope pills:
+      // one filled aubergine means "this is the one you are on".
       className={[
-        "h-8 rounded-md px-3 text-xs font-medium transition-colors",
-        "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+        "h-8 rounded-full px-5 text-xs font-medium transition-colors",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink",
         selected
-          ? "bg-muted text-foreground"
-          : "border border-border text-muted-foreground hover:bg-muted/60",
+          ? "bg-pulse-brand text-pulse-brand-fg"
+          : "border border-pulse-hairline text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink",
       ].join(" ")}
       onClick={() => onSelect(id)}
       role="radio"

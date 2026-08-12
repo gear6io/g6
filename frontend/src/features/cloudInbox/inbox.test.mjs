@@ -143,7 +143,14 @@ test("a row shows the API's own strings and nothing invented", () => {
   const rows = [
     action({
       id: "a",
-      entity: { id: "e", slug: "s", summary: "billing", status: "active" },
+      entity: {
+        id: "e",
+        subject: "billing",
+        slug: "s",
+        description: "importer is waiting on staging",
+        keywords: ["billing"],
+        status: "active",
+      },
     }),
   ];
   const markup = body({ inbox: { status: "ready", value: { actions: rows, overview: OVERVIEW } }, visible: rows });
@@ -174,7 +181,8 @@ test("a referent renders its own record, and its absence renders nothing", () =>
     visible: withReferent,
   });
   assert.match(markup, /Add retry to importer/);
-  assert.match(markup, /github/);
+  // The provider is its brand mark now, not the word.
+  assert.match(markup, /data-provider="github"/);
   assert.match(markup, /https:\/\/example\.com\/pr\/482/);
 
   // Cloud could not resolve the reference: nothing is substituted for it.
@@ -184,6 +192,55 @@ test("a referent renders its own record, and its absence renders nothing", () =>
     visible: unresolved,
   });
   assert.doesNotMatch(bare, /Open<|target="_blank"/);
+});
+
+test("a provider with no mark of its own still names itself", () => {
+  const rows = [
+    action({
+      id: "a",
+      referent: { summary: "Ticket moved", provider: "jira", url: null },
+    }),
+  ];
+  const markup = body({
+    inbox: { status: "ready", value: { actions: rows, overview: OVERVIEW } },
+    visible: rows,
+  });
+  assert.doesNotMatch(markup, /data-provider=/);
+  assert.match(markup, /jira/);
+});
+
+test("clicking a row is the action on it, and which action follows the source", () => {
+  function rowMarkup(referent) {
+    const rows = [action({ id: "a", referent })];
+    return body({
+      inbox: { status: "ready", value: { actions: rows, overview: OVERVIEW } },
+      onOpenThread: () => {},
+      visible: rows,
+    });
+  }
+
+  // Slack: the window expands to where the thread will be read, so the row is a
+  // button and not a link out.
+  const slack = rowMarkup({
+    summary: "Waiting on staging access",
+    provider: "slack",
+    url: "https://example.com/archives/C1/p1",
+  });
+  assert.match(slack, /<button/);
+  assert.doesNotMatch(slack, /target="_blank"/);
+
+  // Anything else has only a URL to offer, and hands it to the browser.
+  const github = rowMarkup({
+    summary: "Add retry to importer",
+    provider: "github",
+    url: "https://example.com/pr/482",
+  });
+  assert.match(github, /<a [^>]*href="https:\/\/example\.com\/pr\/482"/);
+  assert.doesNotMatch(github, /<button/);
+
+  // No resolved record: nothing to open, so nothing pretends to be clickable.
+  const none = rowMarkup(null);
+  assert.doesNotMatch(none, /<button|<a /);
 });
 
 test("a referent with a record but no link shows the record and no link", () => {

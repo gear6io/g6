@@ -204,7 +204,6 @@ async fn relay_healthz(state: &AppState) -> Result<Response, GatewayError> {
 /// forwarding it would be a filter Cloud rejects.
 #[derive(Deserialize)]
 pub struct MilestoneListQuery {
-    status: Option<String>,
     limit: Option<String>,
     cursor: Option<String>,
 }
@@ -235,14 +234,7 @@ fn append_pairs(url: &mut Url, pairs: &[(&str, &Option<String>)]) {
 
 impl MilestoneListQuery {
     fn apply(&self, url: &mut Url) {
-        append_pairs(
-            url,
-            &[
-                ("status", &self.status),
-                ("limit", &self.limit),
-                ("cursor", &self.cursor),
-            ],
-        );
+        append_pairs(url, &[("limit", &self.limit), ("cursor", &self.cursor)]);
     }
 }
 
@@ -650,7 +642,7 @@ mod tests {
     }
 
     #[test]
-    fn only_the_three_allowlisted_parameters_are_forwarded() {
+    fn only_the_two_allowlisted_parameters_are_forwarded() {
         let query: MilestoneListQuery = serde_urlencoded::from_str(
             "status=active&limit=1000&cursor=abc%3D%3D&token=xoxb-secret&actor=U1",
         )
@@ -658,10 +650,7 @@ mod tests {
         let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         query.apply(&mut url);
 
-        assert_eq!(
-            url.query().unwrap(),
-            "status=active&limit=1000&cursor=abc%3D%3D"
-        );
+        assert_eq!(url.query().unwrap(), "limit=1000&cursor=abc%3D%3D");
     }
 
     fn actor(query: &str) -> Result<String, &'static str> {
@@ -953,7 +942,7 @@ mod tests {
         .unwrap();
         let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         list.apply(&mut url);
-        assert_eq!(url.query().unwrap(), "status=active&limit=12&cursor=AbC%3D");
+        assert_eq!(url.query().unwrap(), "limit=12&cursor=AbC%3D");
 
         let timeline: TimelineQuery =
             serde_urlencoded::from_str("from=2026-07-10&to=2026-08-08&limit=1000").unwrap();
@@ -976,7 +965,7 @@ mod tests {
         for (uri, upstream) in [
             (
                 "/api/cloud/v1/milestones?status=active&limit=12&account_id=U024BE7LH",
-                "/v1/milestones?status=active&limit=12",
+                "/v1/milestones?limit=12",
             ),
             (
                 &format!(

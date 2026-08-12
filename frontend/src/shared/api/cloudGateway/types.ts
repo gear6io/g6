@@ -22,10 +22,13 @@ export type Page = {
 
 export type Entity = {
   id: string;
+  /** The human title. `slug` is the machine key beside it, not a substitute. */
+  subject: string;
   slug: string;
-  summary: string;
-  /** Lattice status of the milestone identity: active, merged, pruned. */
-  status: string;
+  /** The state across all the evidence, not whatever thread touched it last. */
+  description: string;
+  /** The discriminating terms the lattice accreted onto this identity. */
+  keywords: string[];
 };
 
 /* -------------------------------------------------------- action items -- */
@@ -173,10 +176,12 @@ export type MilestoneLastActivity = {
 
 export type Milestone = {
   id: string;
+  /** The human title the lattice settled on. Rewritten only by a confident finding. */
+  subject: string;
   slug: string;
-  summary: string;
-  /** Never `merged`: those are served under the milestone they merged into. */
-  status: "active" | "pruned";
+  /** The milestone's state across all its evidence, not its latest thread. */
+  description: string;
+  keywords: string[];
   updated_at: string;
   last_activity: MilestoneLastActivity | null;
   /**
@@ -261,7 +266,6 @@ export type ActorQuery = { account_id: string };
 
 /** `/v1/milestones` pages on its own sort key and rejects an actions cursor. */
 export type MilestoneListQuery = {
-  status?: "active" | "pruned" | "all";
   limit?: number;
   cursor?: string;
 };

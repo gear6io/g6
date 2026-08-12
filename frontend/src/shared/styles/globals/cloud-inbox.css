@@ -6,15 +6,64 @@
  * legacy shell's full-window canvas, and in an 18px gutter around a 380px
  * window the dark ramp's olive top read as a coloured border around the app.
  *
- * White rather than `--card`, which in this palette is the same value as
- * `--background`. Dark keeps the token — there the near-black card is right.
+ * The canvas token rather than `--card`: the whole Cloud window runs the fixed
+ * Design.md palette, so this surface must not follow the theme picker while the
+ * Pulse pane beside it does not. One declaration covers both themes because the
+ * token itself carries them.
  */
 .g6-cloud-panel {
-  background-color: #fff;
+  background-color: var(--g6-pulse-canvas);
 }
 
-.dark .g6-cloud-panel {
-  background-color: hsl(var(--card));
+/*
+ * Design.md's pastel-mesh backdrop: three stops blurred at large radii, as a
+ * radial-gradient stack rather than an image. The brand doc puts this behind
+ * every hero band; here it is scoped to the Pulse masthead and the page's
+ * empty/failed card, which are the only two full-width moments Pulse has. It
+ * is deliberately absent behind the milestone list — thirty rows of timeline
+ * over a gradient is a legibility cost with no reading benefit.
+ *
+ * `background-position` is pinned to the top so the wash reads as light
+ * entering the page rather than a texture tiled across it.
+ */
+.g6-pulse-mesh {
+  background-image:
+    radial-gradient(62% 130% at 10% 0%, var(--g6-pulse-mesh-a) 0%, transparent 62%),
+    radial-gradient(52% 110% at 58% 0%, var(--g6-pulse-mesh-b) 0%, transparent 58%),
+    radial-gradient(48% 100% at 100% 8%, var(--g6-pulse-mesh-c) 0%, transparent 62%);
+  background-repeat: no-repeat;
+}
+
+/*
+ * The wash is decoration. When the reader has asked for less of it, drop it and
+ * let the flat canvas carry the band.
+ */
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .g6-pulse-mesh {
+    background-image: none;
+  }
+}
+
+/*
+ * Floating chrome: the sticky masthead the milestone list scrolls underneath.
+ * Translucent so the content stays visible as it passes behind, which is the
+ * whole reason there is no rule under it.
+ */
+.g6-pulse-chrome {
+  background-color: color-mix(in srgb, var(--g6-pulse-canvas) 85%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+/*
+ * Two different requests, one answer: make the surface solid. Translucency is
+ * the thing being asked about in both cases, and a blurred bar is exactly the
+ * low-contrast, see-through chrome these settings exist to remove.
+ */
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .g6-pulse-chrome {
+    background-color: var(--g6-pulse-canvas);
+    backdrop-filter: none;
+  }
 }
 
 /*
@@ -38,6 +87,6 @@
 }
 
 .g6-rail-scroll::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--border));
+  background-color: var(--g6-pulse-hairline);
   border-radius: 999px;
 }

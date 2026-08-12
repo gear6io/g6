@@ -36,15 +36,23 @@ export function relativeAge(seconds: number): string {
   return `${Math.floor(age / DAY)}d ago`;
 }
 
-/** "updated just now" / "updated 3 min ago", from Cloud's own generation time. */
-export function updatedLabel(generatedAt: string, now: number): string {
+/**
+ * "just now" / "3 min ago", from Cloud's own generation time — the age alone,
+ * for callers that supply their own verb.
+ */
+export function generatedAge(generatedAt: string, now: number): string {
   const at = Date.parse(generatedAt);
   if (Number.isNaN(at)) {
     // An unparseable timestamp is not worth a visible error: the label is
     // ambient, and the counts beside it are still true.
-    return "updated just now";
+    return "just now";
   }
-  return `updated ${relativeAge((now - at) / 1000)}`;
+  return relativeAge((now - at) / 1000);
+}
+
+/** "updated just now" / "updated 3 min ago", for callers that do not. */
+export function updatedLabel(generatedAt: string, now: number): string {
+  return `updated ${generatedAge(generatedAt, now)}`;
 }
 
 /**

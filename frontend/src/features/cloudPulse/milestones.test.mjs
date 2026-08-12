@@ -2,13 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  confidenceLabel,
   countLabel,
   crossesYears,
   dayGap,
   dayLabel,
   defaultRange,
-  evidenceDetail,
   gapLabel,
   humanizeReason,
   isConsecutive,
@@ -159,7 +157,6 @@ test("a reason is humanized rather than mapped, since Cloud adds rules", () => {
   // A rule this build has never heard of still reads as a sentence.
   assert.equal(humanizeReason("some_future_rule"), "Some future rule");
   assert.equal(humanizeReason(""), "Classified");
-  assert.equal(confidenceLabel(0.86), "86%");
 });
 
 /** Cloud always sends all six keys, so every fixture does too. */
@@ -221,7 +218,8 @@ test("adjacent neutral days fold into one stage; nothing else folds", () => {
   assert.equal(run.eventCount, 6, "the run's events are the days' events");
   assert.equal(run.snapshot.review, 4, "the snapshot is where the run ended");
   assert.equal(run.changes.review, 2, "movement nets across the run");
-  assert.deepEqual(run.evidence, []);
+  // A stage no longer carries Cloud's evidence: nothing draws it.
+  assert.equal(run.evidence, undefined);
 
   // A quiet day the next quiet day does not run into stays its own stage.
   const split = railStages([timelineDay("2026-08-01"), timelineDay("2026-08-03")]);
@@ -255,35 +253,6 @@ test("a stage's label shortens a range that stays inside one month", () => {
   assert.equal(
     rangeLabel("2025-12-30", "2026-01-02", true),
     "Dec 30, 2025-Jan 2, 2026",
-  );
-});
-
-test("an evidence entry says what it adds, and nothing that repeats its state", () => {
-  const evidence = (overrides) => ({
-    classification: "progress",
-    provenance: "synthesis",
-    reason: "model_finding",
-    rationale: null,
-    confidence: 0.86,
-    ...overrides,
-  });
-
-  // The line already reads "Progress · Analysis"; `model_finding` is that again.
-  assert.equal(evidenceDetail(evidence({})), "");
-  assert.equal(
-    evidenceDetail(evidence({ rationale: "Deployment completed" })),
-    "Deployment completed",
-  );
-  // A rule that names something keeps its place, rationale or not.
-  assert.equal(
-    evidenceDetail(
-      evidence({ provenance: "deterministic", reason: "decision_closed", confidence: 1 }),
-    ),
-    "Decision closed",
-  );
-  assert.equal(
-    evidenceDetail(evidence({ reason: "wait_failed", rationale: "Vendor never replied" })),
-    "Wait failed · Vendor never replied",
   );
 });
 

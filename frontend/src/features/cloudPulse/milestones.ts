@@ -9,7 +9,6 @@ import type {
   ActionCounts,
   MilestoneStatus,
   RequiredAction,
-  StatusEvidence,
   TimelineDay,
   TimelineEvent,
 } from "@/shared/api/cloudGateway/types";
@@ -118,7 +117,6 @@ export type Stage = {
   snapshot: ActionCounts;
   /** Movement across the whole stage, so a compressed run nets out. */
   changes: ActionCounts;
-  evidence: readonly StatusEvidence[];
   eventsTruncated: boolean;
 };
 
@@ -144,7 +142,6 @@ function toStage(days: readonly TimelineDay[], gapBefore: number): Stage {
     eventCount: days.reduce((sum, day) => sum + day.event_count, 0),
     snapshot: last.snapshot,
     changes: sumCounts(days.map((day) => day.changes)),
-    evidence: days.flatMap((day) => day.status_evidence),
     eventsTruncated: days.some((day) => day.events_truncated),
   };
 }
@@ -172,24 +169,6 @@ export function railStages(days: readonly TimelineDay[]): Stage[] {
   }
 
   return runs.map((run) => toStage(run.days, run.gapBefore));
-}
-
-/** Reasons that only restate the provenance. Cloud adds rules; this is a floor. */
-const GENERIC_REASONS = new Set(["model_finding", "synthesis", "model_output"]);
-
-/**
- * What an evidence entry says beyond its own classification, which is rendered
- * beside it. `model_finding` is dropped: on a line that already reads
- * "Dependency · Analysis", it is the word "analysis" again, and it pushes the
- * rationale — the only part that explains anything — into second place.
- */
-export function evidenceDetail(evidence: StatusEvidence): string {
-  return [
-    GENERIC_REASONS.has(evidence.reason) ? "" : humanizeReason(evidence.reason),
-    evidence.rationale ?? "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 /** Every event in the stage, oldest first, with the day each was observed on. */
@@ -315,39 +294,50 @@ export function humanizeReason(reason: string): string {
   return words[0].toUpperCase() + words.slice(1);
 }
 
-/** `86%`, from Cloud's 0..1. Deterministic entries never show one. */
-export function confidenceLabel(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
+// `confidenceLabel` and `provenanceLabel` lived here. Nothing draws Cloud's
+// evidence any more, so nothing needs to phrase it.
 
 export type StatusToken = {
   label: string;
   /** Node fill and connector colour. */
   fill: string;
   /** Icon and text colour. */
-  text: string;
+  ink: string;
 };
 
+/**
+ * Design.md names exactly two semantics, error and success, and forbids a third
+ * accent — the aubergine and the link blue are the whole chromatic system. So
+ * status runs on the semantic tokens rather than four families out of stock
+ * Tailwind, and `dependency` borrows the one colour Design.md does not define
+ * (`--g6-pulse-warning`, declared in theme.css alongside the rest).
+ *
+ * There used to be a third slot here, a separate value for text on the cream
+ * surface, because an emerald-600 landed near 3:1 on cream and had to drop two
+ * steps while the canvas kept -600. That was a missing-token workaround: one
+ * semantic token now clears AA on both backgrounds in both themes (the tightest
+ * pair is success on cream at 4.6:1), so the slot is gone rather than ported.
+ */
 export const STATUS_TOKENS: Record<MilestoneStatus, StatusToken> = {
   progress: {
     label: "Progress",
-    fill: "bg-emerald-600 dark:bg-emerald-400",
-    text: "text-emerald-600 dark:text-emerald-400",
+    fill: "bg-pulse-success",
+    ink: "text-pulse-success",
   },
   dependency: {
     label: "Dependency",
-    fill: "bg-amber-600 dark:bg-amber-400",
-    text: "text-amber-600 dark:text-amber-400",
+    fill: "bg-pulse-warning",
+    ink: "text-pulse-warning",
   },
   regression: {
     label: "Regression",
-    fill: "bg-rose-600 dark:bg-rose-400",
-    text: "text-rose-600 dark:text-rose-400",
+    fill: "bg-pulse-error",
+    ink: "text-pulse-error",
   },
   neutral: {
     label: "Neutral",
-    fill: "bg-slate-500 dark:bg-slate-400",
-    text: "text-slate-500 dark:text-slate-400",
+    fill: "bg-pulse-ink-mute",
+    ink: "text-pulse-ink-mute",
   },
 };
 

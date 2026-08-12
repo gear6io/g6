@@ -129,10 +129,10 @@ export function MilestoneRail({
                     quiet run joins the stages instead of severing them. */}
                 <span
                   aria-hidden="true"
-                  className="absolute top-[17px] border-t border-dashed border-border"
+                  className="absolute top-[17px] border-t border-dashed border-pulse-tint"
                   style={{ left: from, right: run ? `-${RUN_INSET}` : "-50%" }}
                 />
-                <span className="absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap rounded bg-background px-1 text-[10px] tabular-nums text-muted-foreground/70">
+                <span className="absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap rounded bg-pulse-canvas px-1 text-badge tabular-nums text-pulse-ink-mute">
                   <span aria-hidden="true">{stage.gapBefore}d</span>
                   <span className="sr-only">{gapLabel(stage.gapBefore)}</span>
                 </span>
@@ -154,7 +154,7 @@ export function MilestoneRail({
               <button
                 aria-label={stageLabel(stage)}
                 aria-pressed={open}
-                className={`absolute top-[2px] flex h-8 items-center justify-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`group absolute top-[2px] flex h-8 items-center justify-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink ${
                   run ? "inset-x-1" : "left-1/2 w-8 -translate-x-1/2"
                 }`}
                 onClick={() => onSelect(open ? null : stage.key)}
@@ -182,23 +182,31 @@ export function MilestoneRail({
                 type="button"
               >
                 {/* A compressed run is drawn as the span it covers; a single
-                    day stays a point. Both sit on the same track line. */}
+                    day stays a point. Both sit on the same track line.
+                    The grow is a transform, not a height: animating `h`/`w`
+                    relaid out the whole 30-column grid every frame. It also
+                    hangs off `group-*`, so the trigger is the button's full
+                    32px hit area rather than the 9px dot the pointer had to
+                    find before. A run only scales on Y — it already spans its
+                    cell, and scaling X would push it past the neighbours. */}
                 <span
                   aria-hidden="true"
                   className={[
-                    "rounded-full transition-all duration-[120ms] motion-reduce:transition-none",
+                    "rounded-full transition-transform duration-[120ms] ease-out motion-reduce:transition-none",
                     token.fill,
-                    run ? "w-full" : "",
+                    run ? "h-[9px] w-full origin-center" : "size-[9px]",
                     open
-                      ? `h-[11px] ring-2 ring-foreground ring-offset-2 ring-offset-background ${run ? "" : "w-[11px]"}`
-                      : `h-[9px] hover:h-[11px] ${run ? "" : "w-[9px] hover:w-[11px]"}`,
+                      ? `ring-2 ring-pulse-brand-ink ring-offset-2 ring-offset-pulse-canvas ${run ? "scale-y-125" : "scale-125"}`
+                      : run
+                        ? "group-hover:scale-y-125 group-active:scale-y-110"
+                        : "group-hover:scale-125 group-active:scale-110",
                   ].join(" ")}
                 />
               </button>
 
               <span
-                className={`absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap text-[10px] ${
-                  open ? "text-foreground" : "text-muted-foreground"
+                className={`absolute left-1/2 top-[38px] -translate-x-1/2 whitespace-nowrap text-badge ${
+                  open ? "font-semibold text-pulse-brand-ink" : "text-pulse-ink-mute"
                 }`}
               >
                 {rangeLabel(stage.from, stage.to, withYear)}

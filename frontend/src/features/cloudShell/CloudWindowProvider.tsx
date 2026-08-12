@@ -43,7 +43,8 @@ export type CloudWindow = {
   pinned: boolean;
   view: CloudView;
   appearance: Appearance;
-  expand: () => void;
+  /** Expands the window, landing on `view` — Pulse unless a caller says otherwise. */
+  expand: (view?: CloudView) => void;
   collapse: () => void;
   togglePin: () => void;
   setView: (view: CloudView) => void;
@@ -116,7 +117,11 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const change = useCallback(
-    (next: WindowMode) => {
+    (next: WindowMode, target: CloudView = "pulse") => {
+      // The re-entrancy guard lives here rather than on the controls. A second
+      // press mid-resize is dropped either way, but disabling the button made
+      // the control dead for the length of the transition, which reads as a
+      // broken button rather than a busy one.
       if (changing || next === mode) {
         return;
       }
@@ -131,7 +136,7 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
         .then(() => {
           setMode(next);
           if (next === "expanded") {
-            setView("pulse");
+            setView(target);
           }
         })
         .catch((err: unknown) => {
@@ -144,7 +149,10 @@ export function CloudWindowProvider({ children }: { children: ReactNode }) {
     [changing, mode, pinned],
   );
 
-  const expand = useCallback(() => change("expanded"), [change]);
+  const expand = useCallback(
+    (target?: CloudView) => change("expanded", target),
+    [change],
+  );
   const collapse = useCallback(() => change("compact"), [change]);
 
   const togglePin = useCallback(() => {

@@ -16,7 +16,6 @@ import {
   ChevronDown,
   CornerUpRight,
   EllipsisVertical,
-  ExternalLink,
   GitPullRequestArrow,
   Maximize2,
   Pin,
@@ -41,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Gear6Mark } from "@/shared/ui/g6-logo/Gear6Mark";
+import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
 
 import {
   ACTION_LABEL,
@@ -67,25 +67,28 @@ const ACTION_ICON: Record<RequiredAction, typeof CornerUpRight> = {
   unblock: TriangleAlert,
 };
 
-const ACTION_ICON_TINT: Record<RequiredAction, string> = {
-  review: "text-sky-500",
-  approval: "text-emerald-500",
-  response: "text-violet-500",
-  decision: "text-indigo-500",
-  execute: "text-teal-500",
-  unblock: "text-orange-500",
-};
+/**
+ * Only `unblock` is tinted. The other five icons sit immediately left of
+ * `ACTION_LABEL`, which names the action in words, so a per-kind hue was
+ * decorating a label rather than carrying anything — six accents that Design.md
+ * does not have and that no reader had to decode. `unblock` keeps its colour
+ * because it is a state, not a category: it is the one row that is stuck.
+ */
+function actionIconTint(action: RequiredAction): string {
+  return action === "unblock" ? "text-pulse-warning" : "";
+}
 
 /**
  * `p0` and `p1` are tinted because they are the reason a row is at the top;
  * `p2`/`p3` stay muted so the chip does not compete with the subject on a list
- * where most rows are one of them.
+ * where most rows are one of them. The tint is the semantic pair rather than
+ * rose/amber — same two meanings, stated in the palette that owns them.
  */
 const PRIORITY_TINT: Record<Action["priority"]["level"], string> = {
-  p0: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  p1: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  p2: "border-border text-muted-foreground",
-  p3: "border-border text-muted-foreground",
+  p0: "border-pulse-error/40 bg-pulse-error/10 text-pulse-error",
+  p1: "border-pulse-warning/40 bg-pulse-warning/10 text-pulse-warning",
+  p2: "border-pulse-hairline text-pulse-ink-mute",
+  p3: "border-pulse-hairline text-pulse-ink-mute",
 };
 
 /* ---------------------------------------------------------------- chrome -- */
@@ -97,7 +100,7 @@ function PinButton() {
     <Button
       aria-label={pinned ? "Unpin window" : "Keep window on top"}
       aria-pressed={pinned}
-      className="size-7 text-foreground/80"
+      className="size-7 text-pulse-ink-mute"
       onClick={togglePin}
       size="icon"
       variant="ghost"
@@ -109,16 +112,17 @@ function PinButton() {
   );
 }
 
-/** The one way into the full window. Disabled while a resize is in flight. */
+/** The one way into the full window. Stays live during the resize; a second
+ * press is dropped by the provider rather than by a disabled attribute. */
 function ExpandButton() {
-  const { changing, expand } = useCloudWindow();
+  const { expand } = useCloudWindow();
 
   return (
     <Button
       aria-label="Open Pulse"
-      className="size-7 text-foreground/80"
-      disabled={changing}
-      onClick={expand}
+      className="size-7 text-pulse-ink-mute"
+      // Not `onClick={expand}`: that hands the click event over as the view.
+      onClick={() => expand()}
       size="icon"
       title="Open Pulse"
       variant="ghost"
@@ -134,7 +138,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Inbox options"
-          className="size-7 text-foreground/80"
+          className="size-7 text-pulse-ink-mute"
           size="icon"
           variant="ghost"
         >
@@ -143,7 +147,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
         {CAN_LIST_USERS ? (
-          <DropdownMenuLabel className="text-2xs font-normal text-muted-foreground">
+          <DropdownMenuLabel className="text-2xs font-normal text-pulse-ink-mute">
             Development build
           </DropdownMenuLabel>
         ) : null}
@@ -174,10 +178,10 @@ export function UserSelect({
 
   return (
     <div className="relative flex h-8 items-center gap-1">
-      <span className="truncate text-xs font-medium text-foreground">
+      <span className="truncate text-xs font-medium text-pulse-ink">
         {label}
       </span>
-      <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+      <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-pulse-ink-mute" />
       <select
         aria-label="View actions as user"
         className="absolute inset-0 cursor-pointer appearance-none opacity-0"
@@ -207,9 +211,16 @@ function ReferentLine({ referent }: { referent: Action["referent"] }) {
     return null;
   }
 
+  const icon = hasProviderIcon(referent.provider);
+
   return (
-    <p className="mt-1 flex items-baseline gap-1.5 text-2xs text-muted-foreground">
-      {referent.provider ? (
+    <p className="mt-1 flex items-center gap-1.5 text-2xs text-pulse-ink-mute">
+      {icon ? (
+        <ProviderIcon
+          className="size-3 shrink-0"
+          provider={referent.provider}
+        />
+      ) : referent.provider ? (
         <span className="shrink-0 capitalize" aria-label={referent.provider}>
           {referent.provider}
         </span>
@@ -220,32 +231,40 @@ function ReferentLine({ referent }: { referent: Action["referent"] }) {
       <span className="min-w-0 truncate" title={referent.summary}>
         {referent.summary}
       </span>
-      {referent.url ? (
-        <a
-          className="inline-flex shrink-0 items-center gap-1 underline-offset-2 hover:text-foreground hover:underline"
-          href={referent.url}
-          rel="noreferrer noopener"
-          target="_blank"
-        >
-          Open
-          <ExternalLink aria-hidden="true" className="size-2.5" />
-        </a>
-      ) : null}
     </p>
   );
 }
 
-function ActionRow({ action }: { action: Action }) {
+/**
+ * Clicking a row *is* the action on it: there is no separate "Open" affordance,
+ * because a row whose whole purpose is to point at one record should not make
+ * you aim at four characters of it.
+ *
+ * Which action depends on where the record lives. A Slack referent expands the
+ * window to the inbox, because that is where the thread will be read; anything
+ * else has only a URL to offer and hands it to the browser. A referent with
+ * neither is not interactive at all — Cloud resolved no record, so there is
+ * nothing to open and a dead button would say otherwise.
+ */
+function ActionRow({
+  action,
+  onOpenThread,
+}: {
+  action: Action;
+  onOpenThread?: () => void;
+}) {
   const Icon = ACTION_ICON[action.required_action];
   const level = action.priority.level;
+  const referent = action.referent;
+  const slack = referent?.provider.toLowerCase() === "slack";
+  const url = referent?.url ?? null;
 
-  // The 1px rule is a border on an inset wrapper rather than a `Separator`
-  // element: a `<div>` between two `<li>`s is not a list, and the divider has to
-  // start and end 16px in rather than running into the panel's corners.
-  return (
-    <li className="px-4 first:[&>div]:border-t-0">
-      <div className="border-t border-border pb-3 pt-3.5">
-      <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+  const interactive =
+    "-mx-1 block w-full rounded-sm px-1 text-left focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink";
+
+  const body = (
+    <>
+      <div className="flex items-baseline justify-between gap-2 text-xs text-pulse-ink-mute">
         <span className="flex min-w-0 items-center gap-1.5">
           {/* The list is sorted by priority, so the chip is what explains the
               order. Without it the top row looks arbitrary. */}
@@ -256,21 +275,53 @@ function ActionRow({ action }: { action: Action }) {
           </span>
           <Icon
             aria-hidden="true"
-            className={`size-3.5 shrink-0 ${ACTION_ICON_TINT[action.required_action]}`}
+            className={`size-3.5 shrink-0 ${actionIconTint(action.required_action)}`}
           />
           <span className="truncate">{ACTION_LABEL[action.required_action]}</span>
         </span>
         <span className="shrink-0">{relativeAge(action.age_seconds)}</span>
       </div>
 
-      <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
+      <p className="mt-1 line-clamp-2 text-sm font-semibold text-pulse-ink group-hover:underline group-hover:underline-offset-2">
         {action.subject}
       </p>
-      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+      <p className="mt-0.5 line-clamp-2 text-xs text-pulse-ink-mute">
         {action.instruction}
-        {action.entity ? ` · ${action.entity.summary}` : ""}
+        {action.entity ? ` · ${action.entity.subject}` : ""}
       </p>
-      <ReferentLine referent={action.referent} />
+      <ReferentLine referent={referent} />
+    </>
+  );
+
+  // The 1px rule is a border on an inset wrapper rather than a `Separator`
+  // element: a `<div>` between two `<li>`s is not a list, and the divider has to
+  // start and end 16px in rather than running into the panel's corners.
+  return (
+    <li className="px-4 first:[&>div]:border-t-0">
+      <div className="border-t border-pulse-hairline pb-3 pt-3.5">
+        {slack && onOpenThread ? (
+          // ponytail: expanding is all this can do today. Cloud's referent
+          // carries no channel id and no thread ts, so there is nothing to
+          // render a thread from; when it does, the panel mounts here.
+          <button
+            className={`group ${interactive}`}
+            onClick={onOpenThread}
+            type="button"
+          >
+            {body}
+          </button>
+        ) : url ? (
+          <a
+            className={`group ${interactive}`}
+            href={url}
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            {body}
+          </a>
+        ) : (
+          body
+        )}
       </div>
     </li>
   );
@@ -281,9 +332,9 @@ function SkeletonRows() {
     <div aria-hidden="true" className="space-y-4 px-4 pt-3.5">
       {[0, 1, 2].map((row) => (
         <div className="space-y-2" key={row}>
-          <div className="h-3 w-24 rounded bg-muted" />
-          <div className="h-3.5 w-full rounded bg-muted" />
-          <div className="h-3 w-2/3 rounded bg-muted" />
+          <div className="h-3 w-24 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
+          <div className="h-3.5 w-full rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
+          <div className="h-3 w-2/3 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
         </div>
       ))}
     </div>
@@ -301,8 +352,8 @@ function Notice({
 }) {
   return (
     <div className="px-4 py-6 text-center">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{children}</p>
+      <p className="text-sm font-semibold text-pulse-ink">{title}</p>
+      <p className="mt-1 text-xs text-pulse-ink-mute">{children}</p>
       {onRetry ? (
         <Button className="mt-3" onClick={onRetry} size="sm" variant="outline">
           Retry
@@ -315,7 +366,7 @@ function Notice({
 /* ----------------------------------------------------------------- panel -- */
 
 export function CloudMiniInbox() {
-  const { error, inbox: data } = useCloudWindow();
+  const { error, expand, inbox: data } = useCloudWindow();
   const { inbox, refresh, retryInbox, retryUsers, select, selected, users } =
     data;
 
@@ -348,7 +399,7 @@ export function CloudMiniInbox() {
                   square on the white panel. Rounding it reads as a deliberate
                   app-icon tile instead of a stray box. */}
               <Gear6Mark className="size-5 rounded-[5px]" />
-              <h1 className="text-lg font-semibold tracking-tight text-foreground">
+              <h1 className="text-lg font-semibold tracking-tight text-pulse-ink">
                 Gear6
               </h1>
             </span>
@@ -360,7 +411,7 @@ export function CloudMiniInbox() {
           </div>
 
           {users.status === "loading" ? (
-            <div aria-hidden="true" className="my-2 h-4 w-28 rounded bg-muted" />
+            <div aria-hidden="true" className="my-2 h-4 w-28 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
           ) : null}
           {users.status === "ready" && selected ? (
             <UserSelect
@@ -376,7 +427,7 @@ export function CloudMiniInbox() {
             blocking the panel behind it. */}
         {error ? (
           <p
-            className="shrink-0 px-4 pb-2 text-2xs text-muted-foreground"
+            className="shrink-0 px-4 pb-2 text-2xs text-pulse-ink-mute"
             role="status"
           >
             Could not open the full window: {error}
@@ -390,6 +441,7 @@ export function CloudMiniInbox() {
         <div className="min-h-0 flex-1 overflow-y-auto pb-3">
           <InboxBody
             inbox={inbox}
+            onOpenThread={() => expand("inbox")}
             onRetryInbox={retryInbox}
             onRetryUsers={retryUsers}
             selected={selected}
@@ -421,7 +473,7 @@ export function InboxSummary({
 }) {
   return (
     <div
-      className={`flex shrink-0 items-baseline justify-between gap-2 text-xs text-muted-foreground ${className}`}
+      className={`flex shrink-0 items-baseline justify-between gap-2 text-xs text-pulse-ink-mute ${className}`}
     >
       <span className="truncate">{summaryLabel(overview)}</span>
       <span className="shrink-0">
@@ -434,6 +486,7 @@ export function InboxSummary({
 /** Exported for the state-by-state render tests; not a second entry point. */
 export function InboxBody({
   inbox,
+  onOpenThread,
   onRetryInbox,
   onRetryUsers,
   selected,
@@ -441,6 +494,12 @@ export function InboxBody({
   visible,
 }: {
   inbox: Load<Inbox>;
+  /**
+   * What a Slack row does when clicked. Omitted by the expanded shell, where
+   * there is nowhere further to expand to, so those rows fall through to the
+   * source URL like every other provider.
+   */
+  onOpenThread?: () => void;
   onRetryInbox: () => void;
   onRetryUsers: () => void;
   selected: string | null;
@@ -481,7 +540,11 @@ export function InboxBody({
   return (
     <ul>
       {visible.map((action) => (
-        <ActionRow action={action} key={action.id} />
+        <ActionRow
+          action={action}
+          key={action.id}
+          onOpenThread={onOpenThread}
+        />
       ))}
     </ul>
   );

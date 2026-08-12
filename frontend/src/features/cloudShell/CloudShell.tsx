@@ -102,7 +102,7 @@ function SidebarSeparator({
       aria-valuemax={SIDEBAR_MAX}
       aria-valuemin={SIDEBAR_MIN}
       aria-valuenow={width}
-      className="w-1 shrink-0 cursor-col-resize bg-border/60 transition-colors hover:bg-border focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+      className="w-1 shrink-0 cursor-col-resize bg-pulse-hairline transition-colors hover:bg-pulse-tint focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
       onKeyDown={(event) => {
         if (event.key === "ArrowLeft") {
           event.preventDefault();
@@ -137,12 +137,17 @@ function NavButton({
   return (
     <button
       aria-current={active ? "page" : undefined}
+      // Selected is the filled aubergine, the same treatment the Pulse scope
+      // pills use for the same meaning. The sidebar sits on the cream surface
+      // and the alt lavender is only 1.05:1 against it, so a tinted-chip
+      // "selected" would have been invisible in light; the fill is also the
+      // one selection language this window already had.
       className={[
         "flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm transition-colors",
-        "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+        "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
         active
-          ? "bg-muted font-medium text-foreground"
-          : "text-muted-foreground hover:bg-muted/60",
+          ? "bg-pulse-brand font-medium text-pulse-brand-fg"
+          : "text-pulse-ink-mute hover:bg-pulse-canvas hover:text-pulse-ink",
       ].join(" ")}
       onClick={onSelect}
       type="button"
@@ -154,13 +159,16 @@ function NavButton({
 }
 
 export function CloudShell() {
-  const { changing, collapse, error, setView, view } = useCloudWindow();
+  const { collapse, error, setView, view } = useCloudWindow();
   const [width, resize] = useSidebarWidth();
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+    <div className="flex h-dvh overflow-hidden bg-pulse-canvas text-pulse-ink">
+      {/* The sidebar is the second neutral layer: cream against the content
+          column's canvas, so the two panes read as different surfaces without
+          a rule between them. */}
       <aside
-        className="flex shrink-0 flex-col overflow-hidden"
+        className="flex shrink-0 flex-col overflow-hidden bg-pulse-surface"
         style={{ width }}
       >
         {/* The close dot is overlaid at y=25 over this corner, exactly as in the
@@ -199,17 +207,16 @@ export function CloudShell() {
 
       <SidebarSeparator onResize={resize} width={width} />
 
-      <div className="flex min-w-0 flex-1 flex-col border-l border-border">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[54px] shrink-0 items-center justify-end gap-2 px-4">
           {error ? (
-            <p className="truncate text-xs text-muted-foreground" role="status">
+            <p className="truncate text-xs text-pulse-error" role="status">
               {error}
             </p>
           ) : null}
           <Button
             aria-label="Return to mini inbox"
-            className="size-7 text-foreground/80"
-            disabled={changing}
+            className="size-7 text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink active:bg-pulse-surface-alt"
             onClick={collapse}
             size="icon"
             title="Return to mini inbox"

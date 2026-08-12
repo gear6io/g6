@@ -15,7 +15,7 @@ export function CloudInboxPane() {
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pb-10 pt-7 sm:px-7">
-      <h1 className="text-[22px] font-semibold text-foreground">Inbox</h1>
+      <h1 className="text-pulse-display font-bold text-pulse-ink">Inbox</h1>
 
       <div className="mt-1 flex items-center justify-between gap-3">
         {users.status === "ready" && selected ? (
@@ -32,7 +32,7 @@ export function CloudInboxPane() {
       </div>
 
       {/* The rows keep their own 16px gutter, so the column supplies none. */}
-      <div className="mt-4 -mx-4 border-t border-border">
+      <div className="mt-4 -mx-4 border-t border-pulse-hairline">
         <InboxBody
           inbox={inbox}
           onRetryInbox={retryInbox}

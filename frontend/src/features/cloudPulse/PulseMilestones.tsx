@@ -1,23 +1,37 @@
-// Pulse's landing view: the active milestones, most recently touched first.
+// Pulse's landing view: the milestones Cloud is watching, most recently touched
+// first.
 //
 // It answers "what is moving, what is blocked, what regressed" and nothing
 // else. There is no completion percentage here because Cloud derives none — a
 // milestone has no single current health, only days do.
-import { RefreshCw, Signal } from "lucide-react";
+//
+// The page runs Design.md's palette rather than the app's Catppuccin tokens.
+// Everything below reads from the `pulse-*` colour tokens; nothing hardcodes a
+// hex, so both themes come from `theme.css`.
+import { RefreshCw, Signal, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { MilestonePanel } from "@/features/cloudPulse/MilestonePanel";
 import { useMilestoneTimelines } from "@/features/cloudPulse/useMilestoneTimelines";
-import { updatedLabel } from "@/features/cloudInbox/inbox";
+import { generatedAge } from "@/features/cloudInbox/inbox";
 import { listMilestones } from "@/shared/api/cloudGateway/client";
 import type {
   Milestone,
   MilestoneListResponse,
 } from "@/shared/api/cloudGateway/types";
-import { Button } from "@/shared/ui/button";
 
 /** A screenful and a bit. Cloud's own default page is 50. */
 const PAGE_SIZE = 12;
+
+/**
+ * `9 milestones. Updated 4m ago.` — the masthead subline, and the same sentence
+ * the live region announces when a refresh lands.
+ * Two sentences rather than a dot-separated strip: it is read aloud as often as
+ * it is looked at.
+ */
+export function milestoneSummary(count: number, updated: string): string {
+  return `${count} milestone${count === 1 ? "" : "s"}. Updated ${updated}.`;
+}
 
 type Page = { rows: Milestone[]; cursor: string | null; generatedAt: string };
 
@@ -30,16 +44,50 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** The card's own shape, so the first paint does not resize under the reader. */
 function PanelSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="h-[184px] rounded-[14px] border border-border p-5"
+      className="rounded-2xl border border-pulse-hairline bg-pulse-canvas p-6"
     >
-      <div className="h-4 w-2/5 rounded bg-muted" />
-      <div className="mt-2 h-3 w-1/5 rounded bg-muted" />
-      <div className="mt-5 h-3 w-3/5 rounded bg-muted" />
-      <div className="mt-6 h-0.5 w-full rounded bg-muted" />
+      <div className="h-5 w-2/5 rounded bg-pulse-surface" />
+      <div className="mt-2 h-3 w-3/5 rounded bg-pulse-surface" />
+      <div className="mt-5 h-6 w-1/3 rounded bg-pulse-surface" />
+      <div className="mt-5 flex h-[58px] items-start pt-3">
+        <div className="h-0.5 w-full rounded bg-pulse-surface" />
+      </div>
+      <div className="mt-3 h-3 w-1/4 rounded bg-pulse-surface" />
+    </div>
+  );
+}
+
+/** Design.md's cream feature card, doing the page's empty and failed states. */
+function Notice({
+  action,
+  detail,
+  onAction,
+  title,
+}: {
+  action: string;
+  detail: string;
+  onAction: () => void;
+  title: string;
+}) {
+  return (
+    <div className="g6-pulse-mesh mt-10 rounded-2xl bg-pulse-surface px-6 py-12 text-center">
+      <Signal aria-hidden="true" className="mx-auto size-5 text-pulse-ink-mute" />
+      <p className="mt-4 text-pulse-title font-semibold text-pulse-ink">{title}</p>
+      <p className="mx-auto mt-2 max-w-[50ch] text-pulse-body text-pulse-ink-mute">
+        {detail}
+      </p>
+      <button
+        className="mt-6 rounded-full border-2 border-pulse-brand-ink bg-pulse-canvas px-7 py-3.5 text-pulse-cap font-bold text-pulse-brand-ink transition-[background-color,transform] duration-100 ease-out hover:bg-pulse-surface-alt active:scale-[0.97] active:bg-pulse-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink motion-reduce:transition-none motion-reduce:active:scale-100"
+        onClick={onAction}
+        type="button"
+      >
+        {action}
+      </button>
     </div>
   );
 }
@@ -48,6 +96,7 @@ export function PulseMilestones() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [refreshKey, setRefreshKey] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const timelines = useMilestoneTimelines(refreshKey);
 
@@ -58,7 +107,7 @@ export function PulseMilestones() {
     setState((current) =>
       current.status === "ready" ? current : { status: "loading" },
     );
-    listMilestones({ status: "active", limit: PAGE_SIZE })
+    listMilestones({ limit: PAGE_SIZE })
       .then((res: MilestoneListResponse) => {
         if (!cancelled) {
           setNow(Date.now());
@@ -87,11 +136,8 @@ export function PulseMilestones() {
       return;
     }
     setLoadingMore(true);
-    listMilestones({
-      status: "active",
-      limit: PAGE_SIZE,
-      cursor: state.page.cursor,
-    })
+    setMoreFailed(false);
+    listMilestones({ limit: PAGE_SIZE, cursor: state.page.cursor })
       .then((res) => {
         setState((current) =>
           current.status === "ready"
@@ -108,47 +154,62 @@ export function PulseMilestones() {
             : current,
         );
       })
-      .catch(() => {
-        // The button stays, so the retry is the same press again.
-      })
+      // The press did nothing and the button looked identical afterwards, which
+      // reads as a dead control rather than a failed request. It says so now.
+      .catch(() => setMoreFailed(true))
       .finally(() => setLoadingMore(false));
   }, [loadingMore, state]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
   const refreshing = refreshKey > 0 && state.status === "loading";
 
+  const rows = state.status === "ready" ? state.page.rows : [];
+  const summary =
+    state.status === "ready"
+      ? milestoneSummary(rows.length, generatedAge(state.page.generatedAt, now))
+      : "";
+
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pb-10 pt-7 sm:px-7">
-      <header className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 pb-3 sm:-mx-7 sm:px-7">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-[22px] font-semibold text-foreground">Pulse</h1>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
-              Active milestones
-              {state.status === "ready"
-                ? ` · ${updatedLabel(state.page.generatedAt, now)}`
-                : ""}
-            </p>
-            <p className="text-xs text-muted-foreground">Last 30 UTC days</p>
+      {/* Floating chrome rather than an opaque bar with a rule under it: the
+          list scrolls *under* a translucent masthead, and the boundary is a
+          short fade where the two meet instead of a 1px line. The mesh wash is
+          Design.md's gradient, kept to this band alone — behind thirty rows of
+          timeline it would cost legibility and buy nothing. */}
+      <header className="g6-pulse-mesh g6-pulse-chrome sticky top-0 z-10 -mx-4 px-4 pb-4 after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-pulse-canvas after:to-transparent after:content-[''] sm:-mx-7 sm:px-7">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-pulse-display font-bold text-pulse-ink">Pulse</h1>
+            <p className="mt-1 text-pulse-body text-pulse-ink-mute">{summary}</p>
           </div>
-          <Button
+          <button
             aria-label="Refresh milestone progress"
-            className="size-7 text-foreground/80"
+            className="shrink-0 rounded-full border-2 border-pulse-brand-ink p-3 text-pulse-brand-ink transition-[background-color,transform] duration-100 ease-out hover:bg-pulse-surface-alt active:scale-[0.97] active:bg-pulse-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={refresh}
-            size="icon"
             title="Refresh milestone progress"
-            variant="ghost"
+            type="button"
           >
             <RefreshCw
               aria-hidden="true"
-              className={`size-3.5 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+              className={`size-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
             />
-          </Button>
+          </button>
         </div>
+
+        {/* A fact about the window Cloud reads, not a control over it. */}
+        <p className="mt-4 text-pulse-caption text-pulse-ink-mute">
+          Last 30 UTC days
+        </p>
       </header>
 
+      {/* Refresh and load-more both change the list without moving focus, so
+          the change is announced rather than only drawn. */}
+      <p aria-live="polite" className="sr-only">
+        {summary}
+      </p>
+
       {state.status === "loading" ? (
-        <div className="mt-5 space-y-4">
+        <div className="mt-6 space-y-4">
           {[0, 1, 2].map((row) => (
             <PanelSkeleton key={row} />
           ))}
@@ -156,37 +217,27 @@ export function PulseMilestones() {
       ) : null}
 
       {state.status === "error" ? (
-        <div className="mt-16 text-center">
-          <Signal aria-hidden="true" className="mx-auto size-5 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold text-foreground">
-            Could not load milestones
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{state.message}</p>
-          <Button className="mt-4" onClick={refresh} size="sm" variant="outline">
-            Refresh Pulse
-          </Button>
-        </div>
+        <Notice
+          action="Refresh Pulse"
+          detail={state.message}
+          onAction={refresh}
+          title="Could not load milestones"
+        />
       ) : null}
 
-      {state.status === "ready" && state.page.rows.length === 0 ? (
-        <div className="mt-16 text-center">
-          <Signal aria-hidden="true" className="mx-auto size-5 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold text-foreground">
-            No active milestones
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Milestone progress will appear here when Cloud observes it.
-          </p>
-          <Button className="mt-4" onClick={refresh} size="sm" variant="outline">
-            Refresh Pulse
-          </Button>
-        </div>
+      {state.status === "ready" && rows.length === 0 ? (
+        <Notice
+          action="Refresh Pulse"
+          detail="Milestone progress will appear here when Cloud observes it."
+          onAction={refresh}
+          title="No milestones"
+        />
       ) : null}
 
-      {state.status === "ready" && state.page.rows.length > 0 ? (
+      {state.status === "ready" && rows.length > 0 ? (
         <>
-          <div className="mt-5 space-y-4">
-            {state.page.rows.map((milestone) => (
+          <div className="mt-6 space-y-4">
+            {rows.map((milestone) => (
               <MilestonePanel
                 key={milestone.id}
                 milestone={milestone}
@@ -205,14 +256,22 @@ export function PulseMilestones() {
           </div>
 
           {state.page.cursor ? (
-            <Button
-              className="mt-4 h-9 w-full"
-              disabled={loadingMore}
-              onClick={loadMore}
-              variant="ghost"
-            >
-              Load more milestones
-            </Button>
+            <div className="mt-6 flex flex-col items-center gap-2">
+              {moreFailed ? (
+                <p className="flex items-center gap-1.5 text-xs text-pulse-error">
+                  <TriangleAlert aria-hidden="true" className="size-3.5" />
+                  That page did not load.
+                </p>
+              ) : null}
+              <button
+                className="rounded-full bg-pulse-surface-alt px-8 py-3.5 text-pulse-cap font-bold text-pulse-ink transition-[background-color,transform] duration-100 ease-out hover:bg-pulse-surface active:scale-[0.97] active:bg-pulse-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink disabled:opacity-60 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100"
+                disabled={loadingMore}
+                onClick={loadMore}
+                type="button"
+              >
+                {moreFailed ? "Try again" : "Load more milestones"}
+              </button>
+            </div>
           ) : null}
         </>
       ) : null}
