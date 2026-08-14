@@ -9,6 +9,8 @@
 // and measures the gaps between observed days; the sparkline is that same output
 // drawn small with the labels dropped. There is no second compression pass here,
 // and there must not be: two of them would disagree the first time either moved.
+import { useEffect } from "react";
+
 import type { Milestone, MilestoneStatus } from "@/shared/api/cloudGateway/types";
 
 import { generatedAge } from "@/features/cloudInbox/inbox";
@@ -126,6 +128,15 @@ export function MilestoneRow({
   const stages =
     timeline?.status === "ready" ? railStages(timeline.value.days) : [];
 
+  // On mount, not on hover. The sparkline is the column the row is sold on, and
+  // a version that filled in under the pointer left the list looking like it had
+  // an empty column until you touched it. `request` is idempotent and the hook
+  // queues four at a time, so a page of rows is a bounded burst rather than one
+  // request per milestone in the collection.
+  useEffect(() => {
+    onRequest(milestone.id);
+  }, [milestone.id, onRequest]);
+
   return (
     <button
       aria-current={selected ? "true" : undefined}
@@ -138,11 +149,6 @@ export function MilestoneRow({
           : "hover:bg-pulse-surface-alt/60",
       ].join(" ")}
       onClick={onOpen}
-      // The timeline is asked for when the row is pointed at or focused rather
-      // than at mount: eleven rows on screen out of 247 means eleven requests,
-      // not 247, and the same four-at-a-time queue the panels already use.
-      onFocus={() => onRequest(milestone.id)}
-      onMouseEnter={() => onRequest(milestone.id)}
       type="button"
     >
       <span className="min-w-0">

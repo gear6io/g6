@@ -19,8 +19,17 @@ import type {
  * The user directory is a development-only Cloud route, compiled out of a
  * release backend. Gating the call on the build rather than on a 404 keeps the
  * production path free of a request that is known to fail.
+ *
+ * `VITE_G6_CLOUD_DEV_USERS` opts a *build* into it. `import.meta.env.DEV` is
+ * false in every build regardless of `--mode` — it tracks the dev server, not
+ * the mode — so without this flag a built cloud bundle can never resolve an
+ * actor, and the screenshot harness would photograph "No users found" on every
+ * screen. It is off unless something sets it.
  */
-export const CAN_LIST_USERS = Boolean((import.meta.env ?? {}).DEV);
+export const CAN_LIST_USERS = Boolean(
+  (import.meta.env ?? {}).DEV ||
+    (import.meta.env ?? {}).VITE_G6_CLOUD_DEV_USERS === "true",
+);
 
 export type Load<T> =
   | { status: "loading" }

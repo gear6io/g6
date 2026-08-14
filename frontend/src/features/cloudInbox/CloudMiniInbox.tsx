@@ -484,9 +484,8 @@ export function CloudMiniInbox() {
             Minimize and zoom are hidden in src-tauri's `hide_minimize_and_zoom`,
             so the brand clears one dot rather than three. */}
         <header className="flex h-[42px] shrink-0 items-center gap-2 pl-9 pr-2">
-          {/* `rust-gear.avif` has no alpha — its #e6e6e6 matte is a visible
-              square on the white panel. Rounding it reads as a deliberate
-              app-icon tile instead of a stray box. */}
+          {/* The mark draws its own cobalt tile, so the rounding is the tile's
+              own corner radius rather than a patch over an opaque matte. */}
           <Gear6Mark className="size-4.5 rounded-[5px]" />
           <h1 className="text-sm font-semibold tracking-tight text-pulse-ink">
             Gear6

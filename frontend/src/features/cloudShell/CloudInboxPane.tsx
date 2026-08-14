@@ -66,7 +66,8 @@ function Facet({
   pressed,
   swatch,
 }: {
-  count: number;
+  /** Null draws no number at all, for a set whose size is not known yet. */
+  count: number | null;
   label: string;
   onSelect: () => void;
   pressed: boolean;
@@ -87,11 +88,13 @@ function Facet({
     >
       {swatch ? <span className="w-3.5 shrink-0 text-center">{swatch}</span> : null}
       <span className="min-w-0 truncate">{label}</span>
-      <span
-        className={`ml-auto shrink-0 text-2xs tabular-nums ${pressed ? "text-pulse-brand-fg/75" : ""}`}
-      >
-        {count}
-      </span>
+      {count === null ? null : (
+        <span
+          className={`ml-auto shrink-0 text-2xs tabular-nums ${pressed ? "text-pulse-brand-fg/75" : ""}`}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -211,9 +214,12 @@ export function CloudInboxPane() {
         {/* `me` and `anyone` are separate reads, not a client-side split: an
             obligation nobody was named on reaches no inbox at all, so the wider
             scope has rows the narrower one can never contain. */}
+        {/* Only the scope in hand has a count: the other one's size is a read
+            that has not happened, and rendering it as `0` would state a number
+            about a list nobody has fetched. */}
         {(["me", "anyone"] as const).map((scope) => (
           <Facet
-            count={scope === owner ? all.length : 0}
+            count={scope === owner ? all.length : null}
             key={scope}
             label={SCOPE_LABEL[scope]}
             onSelect={() => selectScope(scope)}

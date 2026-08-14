@@ -429,12 +429,12 @@ export function PulseMilestones({
       {selected ? (
         <aside
           aria-label={selected.subject}
-          className="flex w-[396px] shrink-0 flex-col overflow-hidden border-l border-pulse-hairline shadow-panel-left"
+          className="flex w-[440px] shrink-0 flex-col overflow-hidden border-l border-pulse-hairline shadow-panel-left"
         >
-          <div className="flex shrink-0 items-start justify-between gap-2 border-b border-pulse-hairline px-4 py-2">
-            <p className="min-w-0 truncate text-sm font-semibold text-pulse-ink">
-              {selected.subject}
-            </p>
+          {/* No title here: the panel below carries it in full, and a truncated
+              copy above an untruncated one is the same sentence twice with the
+              worse one on top. */}
+          <div className="flex shrink-0 justify-end border-b border-pulse-hairline px-4 py-2">
             <button
               aria-label="Close detail"
               className="shrink-0 rounded-md p-1 text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
@@ -444,7 +444,7 @@ export function PulseMilestones({
               <X aria-hidden="true" className="size-3.5" />
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <MilestonePanel
               milestone={selected}
               now={now}

@@ -121,6 +121,17 @@ export default defineConfig({
       },
     },
     {
+      // The Cloud surface, against a stubbed gateway. Its own build, its own
+      // port, and its own project so `--project=smoke` does not have to wait on
+      // a second `vite build` to run the legacy specs.
+      name: "cloud",
+      testMatch: ["**/cloud-screenshots.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: "http://127.0.0.1:4174",
+      },
+    },
+    {
       name: "integration",
       testMatch: [
         "**/agents.spec.ts",
@@ -147,10 +158,22 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "python3 -m http.server 4173 -d dist",
-    cwd: ".",
-    reuseExistingServer: !process.env.CI,
-    url: "http://127.0.0.1:4173",
-  },
+  // Two builds, two servers. The cloud bundle is a different entry point --
+  // `VITE_G6_APP_MODE=cloud` picks `CloudRoot` and the legacy tree is never
+  // evaluated -- so it cannot share `dist` with the legacy specs without one of
+  // them overwriting the other's app.
+  webServer: [
+    {
+      command: "python3 -m http.server 4173 -d dist",
+      cwd: ".",
+      reuseExistingServer: !process.env.CI,
+      url: "http://127.0.0.1:4173",
+    },
+    {
+      command: "python3 -m http.server 4174 -d dist-cloud",
+      cwd: ".",
+      reuseExistingServer: !process.env.CI,
+      url: "http://127.0.0.1:4174",
+    },
+  ],
 });

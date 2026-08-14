@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:e2e": "tsc && vite build --mode e2e",
+    "build:cloud-e2e": "tsc && VITE_G6_APP_MODE=cloud VITE_G6_CLOUD_DEV_USERS=true vite build --mode e2e --outDir dist-cloud",
     "typecheck": "tsc --noEmit",
     "check:file-sizes": "node ./scripts/check-file-sizes.mjs",
     "check:px-text": "node ./scripts/check-px-text.mjs",
@@ -19,6 +20,7 @@
     "tauri": "tauri",
     "test:e2e": "pnpm build:e2e && playwright test",
     "test:e2e:smoke": "pnpm build:e2e && playwright test --project=smoke",
+    "test:e2e:cloud": "pnpm build:cloud-e2e && playwright test --project=cloud",
     "test:e2e:integration": "pnpm build:e2e && playwright test --project=integration",
     "test:e2e:report": "playwright show-report",
     "tauri:build": "tauri build"
