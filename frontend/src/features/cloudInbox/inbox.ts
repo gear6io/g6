@@ -5,6 +5,7 @@
 // whole seconds and are formatted, `generated_at` stays the RFC 3339 string it
 // was sent as. See the note at the top of `@/shared/api/cloudGateway/types`.
 import type {
+  Action,
   CloudUser,
   OverviewResponse,
   PriorityLevel,
@@ -102,3 +103,49 @@ export function summaryLabel(overview: OverviewResponse): string {
  * Cloud dropped `audience`: every action in it is the viewer's own.
  */
 export const EMPTY_ACTIONS_COPY = "This user has no open actions right now.";
+
+/* ------------------------------------------------------------------ lanes -- */
+
+/**
+ * The three bands the list is read in. They are the priority tiers renamed, and
+ * nothing else — Cloud carries no due date, no snooze and no blocked flag, so a
+ * lane that meant "due today" would be a number this client made up. `p0` is the
+ * tier Cloud raises when an obligation is holding work, which is what makes
+ * "Blocked" a restatement rather than a claim; `p2` and `p3` share a lane
+ * because the distinction between them does not change what you do next.
+ */
+export type Lane = "blocked" | "today" | "later";
+
+export const LANE_ORDER: readonly Lane[] = ["blocked", "today", "later"];
+
+export const LANE_LABEL: Record<Lane, string> = {
+  blocked: "Blocked",
+  today: "Today",
+  later: "Later",
+};
+
+export function actionLane(level: PriorityLevel): Lane {
+  if (level === "p0") {
+    return "blocked";
+  }
+  return level === "p1" ? "today" : "later";
+}
+
+/**
+ * The list split into its lanes, in `LANE_ORDER` and with the empty ones
+ * dropped: a lane heading over no rows is a section that says only that the
+ * section is not there.
+ *
+ * Order inside a lane is Cloud's own — `/v1/actions` is already sorted by
+ * priority, and re-sorting here would fight it on the ties.
+ */
+export function laneGroups(
+  actions: readonly Action[],
+): { lane: Lane; actions: Action[] }[] {
+  return LANE_ORDER.map((lane) => ({
+    lane,
+    actions: actions.filter(
+      (action) => actionLane(action.priority.level) === lane,
+    ),
+  })).filter((group) => group.actions.length > 0);
+}

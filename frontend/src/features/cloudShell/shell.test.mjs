@@ -44,11 +44,13 @@ test("the expanded window offers Pulse, Inbox, Settings and a way back", () => {
 
 // Both window modes sit under the same native chrome, and that chrome is now a
 // lone close dot — minimize and zoom are hidden in src-tauri's
-// `hide_minimize_and_zoom`. The brand moves into the space the other two dots
-// used to hold, at the same inset in both modes.
-const BRAND_INSET = "pl-[40px]";
+// `hide_minimize_and_zoom`. The two modes no longer clear it by the same
+// number: `trafficLightPosition` moved to x=14, y=13, so compact's 42px bar
+// clears the dot at 36px (`pl-9`) with nothing above it, while the expanded
+// sidebar still starts below the dot on its old 40px inset.
+const BRAND_INSET = { expanded: "pl-[40px]", compact: "pl-9" };
 
-test("the brand clears the lone close dot at the same inset in both modes", () => {
+test("the brand clears the lone close dot in both modes", () => {
   for (const [mode, markup] of [
     ["expanded", shell()],
     ["compact", render(CloudMiniInbox)],
@@ -70,8 +72,8 @@ test("the brand clears the lone close dot at the same inset in both modes", () =
     // The inset is written as one number, so this catches a regression back to
     // the three-button 68px clearance without re-deriving container padding.
     assert.ok(
-      markup.includes(BRAND_INSET),
-      `${mode} should inset the brand by 40px`,
+      markup.includes(BRAND_INSET[mode]),
+      `${mode} should inset the brand by ${BRAND_INSET[mode]}`,
     );
     assert.ok(
       !markup.includes("pl-[68px]"),
@@ -80,10 +82,23 @@ test("the brand clears the lone close dot at the same inset in both modes", () =
   }
 });
 
+// The 54px of empty header was the close dot's old y=25 plus its clearance, and
+// it cost a whole action row in a 520px window. One bar, and the first content
+// under it.
+test("the compact header is one 42px bar with nothing above it", () => {
+  const markup = render(CloudMiniInbox);
+
+  assert.match(markup, /<header class="flex h-\[42px\]/);
+  assert.ok(
+    !markup.includes("pt-[54px]"),
+    "the reclaimed band should not come back as padding",
+  );
+});
+
 test("the compact window keeps its own controls beside the brand", () => {
   const markup = render(CloudMiniInbox);
 
-  for (const label of ["Open Pulse", "Inbox options"]) {
+  for (const label of ["Expand to full window", "Inbox options"]) {
     assert.match(markup, new RegExp(`aria-label="${label}"`));
   }
   // The pin reads out whichever action it offers, so either label is the button.

@@ -9,6 +9,10 @@ import { CloudMiniInbox, InboxBody } from "./CloudMiniInbox.tsx";
 import {
   ACTION_LABEL,
   EMPTY_ACTIONS_COPY,
+  LANE_LABEL,
+  LANE_ORDER,
+  actionLane,
+  laneGroups,
   priorityLabel,
   relativeAge,
   summaryLabel,
@@ -97,6 +101,44 @@ test("every required_action Cloud serves has a label, and nothing else does", ()
   ]);
   // The two-class taxonomy is gone; a client branching on it branches on air.
   assert.equal(ACTION_LABEL.act_on_handoff, undefined);
+});
+
+test("a lane is a priority tier renamed, and every tier lands in one", () => {
+  assert.deepEqual(
+    ["p0", "p1", "p2", "p3"].map(actionLane),
+    ["blocked", "today", "later", "later"],
+  );
+  // A lane with no label is a heading rendered as `undefined`.
+  for (const lane of LANE_ORDER) {
+    assert.equal(typeof LANE_LABEL[lane], "string");
+  }
+});
+
+test("lane groups keep Cloud's order and drop the empty lanes", () => {
+  const rows = [
+    action({ id: "a", priority: { level: "p2", evidence: [] } }),
+    action({ id: "b", priority: { level: "p0", evidence: [] } }),
+    action({ id: "c", priority: { level: "p3", evidence: [] } }),
+  ];
+  const groups = laneGroups(rows);
+
+  // Lane order is `LANE_ORDER`, not arrival order; `today` is absent entirely
+  // rather than present and empty.
+  assert.deepEqual(
+    groups.map(({ lane }) => lane),
+    ["blocked", "later"],
+  );
+  // Inside a lane the rows stay in the order the API returned them.
+  assert.deepEqual(
+    groups[1].actions.map(({ id }) => id),
+    ["a", "c"],
+  );
+  // The lanes partition the list: nothing is dropped and nothing is counted twice.
+  assert.equal(
+    groups.reduce((total, group) => total + group.actions.length, 0),
+    rows.length,
+  );
+  assert.deepEqual(laneGroups([]), []);
 });
 
 test("the priority chip is uppercased for display only", () => {
