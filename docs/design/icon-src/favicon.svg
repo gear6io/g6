@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-84 -84 168 168" width="168" height="168" role="img" aria-label="Gear6">
+  <defs>
+    <radialGradient id="m1" gradientUnits="userSpaceOnUse" cx="-70" cy="-84" r="150">
+      <stop offset="0" stop-color="#f1efe9" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#f1efe9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="m2" gradientUnits="userSpaceOnUse" cx="46" cy="-96" r="152">
+      <stop offset="0" stop-color="#e6ecf9" stop-opacity="0.17"/>
+      <stop offset="1" stop-color="#e6ecf9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="m3" gradientUnits="userSpaceOnUse" cx="96" cy="90" r="150">
+      <stop offset="0" stop-color="#b8c6e8" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#b8c6e8" stop-opacity="0"/>
+    </radialGradient>
+  </defs><rect x="-84" y="-84" width="168" height="168" fill="#2451b8"/><rect x="-84" y="-84" width="168" height="168" fill="url(#m1)"/><rect x="-84" y="-84" width="168" height="168" fill="url(#m2)"/><rect x="-84" y="-84" width="168" height="168" fill="url(#m3)"/>
+  <g fill="none" stroke="#f1efe9" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 38.97,22.5 A 45,45 0 1 1 38.97,-22.5"/>
+    <path d="M 10,0 L 38.97,0 L 38.97,22.5"/>
+  </g></svg>
