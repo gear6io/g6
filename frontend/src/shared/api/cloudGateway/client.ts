@@ -12,9 +12,13 @@ import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
 import type {
   ActionListResponse,
   ActorQuery,
+  AttentionQuery,
+  AttentionResponse,
   CloudErrorEnvelope,
   GatewayQuery,
   OverviewQuery,
+  SearchQuery,
+  SearchResponse,
   MilestoneListQuery,
   MilestoneListResponse,
   MilestoneTimelineResponse,
@@ -158,6 +162,28 @@ export function overview(
   query?: Omit<OverviewQuery, "account_id">,
 ): Promise<OverviewResponse> {
   return getJson("v1/overview", { ...query, account_id: accountId });
+}
+
+/**
+ * The four tiles above the list. No actor, like `/v1/overview`'s `open`: what
+ * is regressing is not a fact about the viewer.
+ *
+ * The thresholds are left to Cloud's defaults unless a caller has a reason —
+ * and the response echoes whichever were used, so a label is rendered from
+ * `blocked.blocked_days` rather than from what was asked for.
+ */
+export function attention(query?: AttentionQuery): Promise<AttentionResponse> {
+  return getJson("v1/attention", query);
+}
+
+/**
+ * One query across milestones, rail events and people. One route rather than
+ * three because a palette showing counts per scope needs all three answers per
+ * keystroke, and three round trips are three chances to draw counts from
+ * different instants.
+ */
+export function search(query: SearchQuery): Promise<SearchResponse> {
+  return getJson("v1/search", query);
 }
 
 /** No actor: the counts on a milestone are the tenant's, not the viewer's. */

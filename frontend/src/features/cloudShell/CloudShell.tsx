@@ -235,7 +235,7 @@ function SearchTrigger({ onOpen }: { onOpen: () => void }) {
       type="button"
     >
       <Search aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="truncate">Search milestones</span>
+      <span className="truncate">Search milestones, events, people</span>
       <kbd className="ml-auto shrink-0 rounded-[3px] border border-pulse-hairline px-1 font-mono text-badge">
         ⌘K
       </kbd>
@@ -326,15 +326,21 @@ export function CloudShell() {
         </main>
       </div>
 
-      {/* A result lands on Pulse filtered to that milestone's own words. The
-          detail panel is not the destination yet; the filtered list is, and it
-          is a real one rather than a control that closes and does nothing. */}
+      {/* Each hit goes where that kind of thing is read. A milestone lands on
+          Pulse filtered to its own words; an event opens the conversation panel
+          on the record itself, which is the whole reason an event match is worth
+          returning — searching "read state" should reach the day the gateway
+          rejected 44200, not only the milestone whose title says so. */}
       {searching ? (
         <CloudSearchPalette
           onClose={() => setSearching(false)}
-          onSelect={(milestone) => {
-            setPulseQuery(milestone.subject);
-            setView("pulse");
+          onSelect={(hit) => {
+            if (hit.kind === "milestone") {
+              setPulseQuery(hit.milestone.subject);
+              setView("pulse");
+            } else {
+              selectEvent(hit.event);
+            }
             setSearching(false);
           }}
         />

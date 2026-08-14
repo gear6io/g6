@@ -60,7 +60,7 @@ test("every rail destination is named, not only drawn", () => {
 test("the window bar carries search and names the view under it", () => {
   const markup = shell();
 
-  assert.match(markup, /Search milestones/);
+  assert.match(markup, /Search milestones, events, people/);
   assert.match(markup, /⌘K/);
   assert.match(markup, /<span class="shrink-0 text-sm font-bold[^"]*">Pulse<\/span>/);
 });
@@ -135,7 +135,7 @@ const MESSAGE_RENDERER = [
 ];
 
 test("the cloud surfaces never reach into the legacy tree", () => {
-  const dirs = ["cloudShell", "cloudPulse", "cloudInbox"].map((name) =>
+  const dirs = ["cloudShell", "cloudPulse", "cloudInbox", "cloudSearch"].map((name) =>
     path.join(here, "..", name),
   );
 

@@ -10,7 +10,11 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { CloudSearchPalette, resultSubtitle } from "./CloudSearchPalette.tsx";
+import {
+  CloudSearchPalette,
+  personStanding,
+  resultSubtitle,
+} from "./CloudSearchPalette.tsx";
 
 function milestone(overrides = {}) {
   return {
@@ -64,15 +68,35 @@ test("the subtitle is built from fields the row actually carries", () => {
   );
 });
 
-test("the palette says what it searches rather than implying it searches everything", () => {
+test("a person's row states their standing, which is all Cloud serves", () => {
+  assert.equal(
+    personStanding({ milestones: 3, open_actions: 4 }),
+    "named on 3 milestones · 4 open",
+  );
+  // Singular, because "named on 1 milestones" is the kind of thing a reader
+  // stops on.
+  assert.equal(
+    personStanding({ milestones: 1, open_actions: 0 }),
+    "named on 1 milestone · 0 open",
+  );
+});
+
+test("the palette offers all four scopes and no counts before a query", () => {
   const markup = palette();
 
-  assert.match(markup, /Search milestones/);
-  // No Events and no People scope: `/v1/milestones?q=` matches a milestone's own
-  // words, and Cloud is explicit that what was said on one is not searchable
-  // there. Tabs that return nothing would be worse than one honest list.
-  assert.doesNotMatch(markup, />Events<|>People<|>Everything</);
-  assert.match(markup, /not searchable here/);
+  for (const label of ["Everything", "Milestones", "Events", "People"]) {
+    assert.match(markup, new RegExp(`>${label}</button>`));
+  }
+  // Counts are the response's array lengths, so before a response there are
+  // none — a "0" beside every tab would be a fact about nothing.
+  assert.doesNotMatch(markup, />Milestones 0</);
+});
+
+test("the palette states what each scope matches instead of implying it matches everything", () => {
+  const markup = palette();
+
+  assert.match(markup, /Milestones match their subject, description and keywords/);
+  assert.match(markup, /Events match what was said on the source record/);
 });
 
 test("the palette is a dialog with a named input and its keys stated", () => {
@@ -80,6 +104,6 @@ test("the palette is a dialog with a named input and its keys stated", () => {
 
   assert.match(markup, /role="dialog"[^>]*/);
   assert.match(markup, /aria-modal="true"/);
-  assert.match(markup, /aria-label="Search milestones"/);
-  assert.match(markup, /↑↓ navigate · ↵ open · esc close/);
+  assert.match(markup, /aria-label="Search milestones, events and people"/);
+  assert.match(markup, /↑↓ navigate · ↵ open · ⇥ scope · esc close/);
 });

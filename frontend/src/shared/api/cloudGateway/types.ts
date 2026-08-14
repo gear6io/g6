@@ -313,6 +313,131 @@ export type MilestoneTimelineResponse = {
   generated_at: string;
 };
 
+/* ------------------------------------------------------------- attention -- */
+
+/**
+ * The four numbers above a milestone list — what regressed, what is blocked,
+ * what went quiet, what finished. Whole-tenant and actor-free: what is
+ * regressing is not a fact about the viewer.
+ *
+ * Four differently shaped tiles rather than one shape with three nulls, because
+ * the questions differ: one is a status, two are ages, one is a window. Each
+ * tile echoes the threshold it was computed with, so a label reads
+ * `Blocked ≥{blocked_days}d` from the response rather than from what the client
+ * remembers asking for.
+ */
+export type AttentionResponse = {
+  regressed: {
+    /**
+     * Milestones whose newest observed day is a regression. Equal to
+     * `counts.by_status.regression` on `/v1/milestones?counts=true` read at the
+     * same instant.
+     */
+    total: number;
+    /**
+     * Milestones at regression now that were **not** `since_days` ago — the
+     * entered set, not the difference of two totals. On a day three regress and
+     * three recover the difference is zero and two are still new.
+     */
+    entered: number;
+    since_days: number;
+  };
+  blocked: {
+    /** Milestones with a still-open `unblock` older than `blocked_days`. */
+    total: number;
+    /** The oldest still-open blocker's age. Null when nothing is blocked. */
+    longest_seconds: number | null;
+    blocked_days: number;
+  };
+  quiet: {
+    /**
+     * Observed at least once, then stopped. A milestone nothing was ever
+     * observed on is not counted: it did not go quiet, it was never seen.
+     */
+    total: number;
+    quiet_days: number;
+  };
+  closed: {
+    /**
+     * **Obligations**, not milestones — a milestone is never recorded as closed
+     * anywhere in this read model. "Closed 18 action items", never "18
+     * milestones". Abandoned obligations are excluded.
+     */
+    total: number;
+    closed_days: number;
+  };
+  generated_at: string;
+};
+
+export type AttentionQuery = {
+  /** How far back `regressed.entered` compares. Defaults to 1. */
+  since_days?: number;
+  /** How long a blocker must have been open to count. Defaults to 5. */
+  blocked_days?: number;
+  /** How stale the newest observation must be. Defaults to 14. */
+  quiet_days?: number;
+  /** The trailing window `closed.total` counts over. Defaults to 7. */
+  closed_days?: number;
+};
+
+/* ---------------------------------------------------------------- search -- */
+
+/**
+ * One rail event that matched, and the milestone it sits on. A `TimelineEvent`
+ * with the id added rather than the subject: a denormalized title here is a
+ * second copy that can disagree with the one in `milestones`.
+ */
+export type SearchEvent = TimelineEvent & { milestone_id: string };
+
+/**
+ * One person a search matched, and what they stand on. The counts cover their
+ * **actor's** whole account set, not the account that matched: somebody found by
+ * their Slack handle still counts work a GitHub source named them on.
+ */
+export type Person = CloudUser & {
+  /** Distinct milestones they are named on, open or closed. */
+  milestones: number;
+  open_actions: number;
+  /** A **prefix** of those ids, not a page — there is no cursor here. */
+  milestone_ids: string[];
+};
+
+/**
+ * What one query found, per collection. A scope that was not asked for is an
+ * empty array, never null; under `scope: "all"` the array lengths are the tab
+ * counts, and there is deliberately no separate count field for them to
+ * disagree with.
+ */
+export type SearchResponse = {
+  /** Subject, description, keywords — `/v1/milestones?q=`'s own predicate. */
+  milestones: Milestone[];
+  /**
+   * Matched on the **source record's text**, which the rail does not store: the
+   * scan runs against the logs and the hits are mapped back through the pointer
+   * that labels them. The expensive scope, and bounded rather than exhaustive —
+   * these are the best hits, not every hit.
+   */
+  events: SearchEvent[];
+  /** Handle and display name, never `account_id`. */
+  people: Person[];
+  scope: SearchScope;
+  generated_at: string;
+};
+
+export type SearchScope = "all" | "milestones" | "events" | "people";
+
+export type SearchQuery = {
+  /**
+   * Required, unlike `/v1/milestones?q=` where absent means no filter: a search
+   * route with no query would read every collection whole, so an empty one is
+   * `400 missing_query`.
+   */
+  q: string;
+  scope?: SearchScope;
+  /** **Per collection**, not across them. */
+  limit?: number;
+};
+
 /** Cloud's own error shape, relayed unchanged, and the gateway's own failures. */
 export type CloudErrorEnvelope = {
   error: { code: string; message: string };
@@ -378,8 +503,10 @@ export type TimelineQuery = { from?: string; to?: string };
 
 export type GatewayQuery =
   | ActorQuery
+  | AttentionQuery
   | OverviewQuery
   | MilestoneListQuery
+  | SearchQuery
   | TimelineQuery;
 
 /**
