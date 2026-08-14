@@ -27,6 +27,21 @@ export type VirtualizedTimelineItem =
       item: TimelineNonDayItem;
     };
 
+/**
+ * What `VList` is told a row is worth before it has measured one.
+ *
+ * virtua's `itemSize` is a single number for the whole list, not a per-item
+ * callback — it sizes the scrollbar until each row reports its real height on
+ * mount, after which the estimate is not consulted again. This is
+ * `rowHeightEstimate`'s own floor, which is the value that file already calls
+ * the credible minimum for a row.
+ *
+ * The per-item estimate below is still the one that matters: it feeds each
+ * row's `contain-intrinsic-size`, so a never-painted row reserves its own
+ * height rather than this one.
+ */
+export const VIRTUALIZED_TIMELINE_ITEM_ESTIMATE = 60;
+
 export function estimateVirtualizedTimelineItemHeight(
   item: VirtualizedTimelineItem,
 ): number {
