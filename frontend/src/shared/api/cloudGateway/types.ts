@@ -459,6 +459,14 @@ export type ActorQuery = {
    * `400`, not a silent `me`.
    */
   owner?: "me" | "unassigned" | "anyone";
+  /** 1..=100. Above the deployment's cap is a `400`, not a silent clamp. */
+  limit?: number;
+  /**
+   * `/v1/actions` sorts `(priority, opened_at, id)` and has its own cursor
+   * shape. Handing it a `/v1/milestones` cursor is `400 invalid_cursor` rather
+   * than a page that starts in the wrong place.
+   */
+  cursor?: string;
 };
 
 /** `/v1/overview` takes the actor's filters plus one backward-looking window. */

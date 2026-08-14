@@ -29,15 +29,54 @@ export type Load<T> =
 
 export type Inbox = { actions: Action[]; overview: OverviewResponse };
 
+/**
+ * Whose obligations to read. `me` is the inbox and the only one whose length is
+ * the badge `/v1/overview` reports; `anyone` is every open obligation in the
+ * tenant. Cloud's third scope, `unassigned`, is deliberately not offered here —
+ * it is a queue of its own rather than a share of somebody's.
+ */
+export type InboxOwner = "me" | "anyone";
+
 export type CloudInbox = {
   users: Load<CloudUser[]>;
   selected: string | null;
   inbox: Load<Inbox>;
+  owner: InboxOwner;
+  setOwner: (owner: InboxOwner) => void;
   select: (accountId: string) => void;
   refresh: () => void;
   retryUsers: () => void;
   retryInbox: () => void;
 };
+
+/** Cloud's maximum. Anything larger is a `400`, not a silent clamp. */
+const PAGE_SIZE = 100;
+
+/**
+ * Every page, not the first one.
+ *
+ * The wide inbox derives its facet counts from these rows, and a count over a
+ * prefix is a number that disagrees with the list it sits beside. An inbox is
+ * what one person owes — `/v1/overview`'s `actions` states its exact size — so
+ * this terminates in one or two requests for the scope that matters.
+ */
+async function listAllActions(
+  accountId: string,
+  owner: InboxOwner,
+): Promise<Action[]> {
+  const rows: Action[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await listActions(accountId, {
+      owner,
+      limit: PAGE_SIZE,
+      cursor,
+    });
+    rows.push(...page.data);
+    cursor = page.page.next_cursor ?? undefined;
+  } while (cursor);
+  return rows;
+}
 
 function errorMessage(err: unknown): string {
   // Never the HTTP status and never the account id: the panel keeps the
@@ -51,6 +90,7 @@ export function useCloudInbox(): CloudInbox {
   const [inbox, setInbox] = useState<Load<Inbox>>({ status: "loading" });
   const [usersAttempt, setUsersAttempt] = useState(0);
   const [inboxAttempt, setInboxAttempt] = useState(0);
+  const [owner, setOwner] = useState<InboxOwner>("me");
 
   useEffect(() => {
     if (!CAN_LIST_USERS) {
@@ -88,13 +128,10 @@ export function useCloudInbox(): CloudInbox {
     // read finds `cancelled` set and cannot overwrite the current inbox.
     let cancelled = false;
     setInbox({ status: "loading" });
-    Promise.all([listActions(selected), fetchOverview(selected)])
+    Promise.all([listAllActions(selected, owner), fetchOverview(selected)])
       .then(([actions, overview]) => {
         if (!cancelled) {
-          setInbox({
-            status: "ready",
-            value: { actions: actions.data, overview },
-          });
+          setInbox({ status: "ready", value: { actions, overview } });
         }
       })
       .catch((err: unknown) => {
@@ -105,7 +142,7 @@ export function useCloudInbox(): CloudInbox {
     return () => {
       cancelled = true;
     };
-  }, [selected, inboxAttempt]);
+  }, [owner, selected, inboxAttempt]);
 
   const retryUsers = useCallback(
     () => setUsersAttempt((count) => count + 1),
@@ -124,6 +161,8 @@ export function useCloudInbox(): CloudInbox {
     users,
     selected,
     inbox,
+    owner,
+    setOwner,
     select: setSelected,
     refresh,
     retryUsers,
