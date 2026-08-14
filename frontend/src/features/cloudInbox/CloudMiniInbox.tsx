@@ -13,7 +13,6 @@
 // drawn only where Cloud resolved one.
 import {
   CheckCheck,
-  ChevronDown,
   CornerUpRight,
   EllipsisVertical,
   GitPullRequestArrow,
@@ -54,7 +53,6 @@ import {
   relativeAge,
   summaryLabel,
   updatedLabel,
-  userLabel,
 } from "@/features/cloudInbox/inbox";
 import {
   CAN_LIST_USERS,
@@ -239,50 +237,6 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
   );
 }
 
-/**
- * A native `<select>` with its chrome removed: it keeps platform keyboard
- * behaviour and escapes the panel's scroll clipping for free, which a custom
- * popover in a 342px panel would have to re-earn.
- */
-export function UserSelect({
-  onSelect,
-  selected,
-  users,
-}: {
-  onSelect: (accountId: string) => void;
-  selected: string;
-  users: readonly CloudUser[];
-}) {
-  const label = useMemo(() => {
-    const user = users.find((candidate) => candidate.account_id === selected);
-    return user ? userLabel(user) : selected;
-  }, [selected, users]);
-
-  return (
-    <div className="relative flex h-8 items-center gap-1">
-      <span className="truncate text-xs font-medium text-pulse-ink">
-        {label}
-      </span>
-      <ChevronDown
-        aria-hidden="true"
-        className="size-3.5 shrink-0 text-pulse-ink-mute"
-      />
-      <select
-        aria-label="View actions as user"
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-        onChange={(event) => onSelect(event.target.value)}
-        value={selected}
-      >
-        {users.map((user) => (
-          <option key={user.account_id} value={user.account_id}>
-            {userLabel(user)}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ rows -- */
 
 /**
@@ -459,8 +413,7 @@ function Notice({
 
 export function CloudMiniInbox() {
   const { error, expand, inbox: data } = useCloudWindow();
-  const { inbox, refresh, retryInbox, retryUsers, select, selected, users } =
-    data;
+  const { inbox, refresh, retryInbox, retryUsers, selected, users } = data;
   const [lane, setLane] = useState<Lane | null>(null);
 
   const all = inbox.status === "ready" ? inbox.value.actions : [];
@@ -502,25 +455,6 @@ export function CloudMiniInbox() {
           </span>
         </header>
 
-        {/* Development-only, and no longer in the bar: the picker is a control
-            for whoever is testing the gateway, and the 42px bar belongs to the
-            three the shipped window has. */}
-        {users.status === "loading" ? (
-          <div
-            aria-hidden="true"
-            className="mx-3.5 mb-2 h-4 w-28 shrink-0 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none"
-          />
-        ) : null}
-        {users.status === "ready" && selected ? (
-          <div className="shrink-0 px-3.5">
-            <UserSelect
-              onSelect={select}
-              selected={selected}
-              users={users.value}
-            />
-          </div>
-        ) : null}
-
         {/* A resize that did not happen leaves the window as it was, so this
             explains the button that appeared to do nothing rather than
             blocking the panel behind it. */}
@@ -539,7 +473,7 @@ export function CloudMiniInbox() {
         {inbox.status === "ready" && selected ? (
           <>
             <InboxSummary
-              className="px-3.5 pb-2"
+              className="px-3.5 pb-2 pt-2"
               overview={inbox.value.overview}
             />
             <Lanes actions={all} lane={lane} onSelect={setLane} />

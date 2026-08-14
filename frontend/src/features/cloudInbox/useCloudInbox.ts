@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   listActions,
-  listDevUsers,
+  listUsers,
   overview as fetchOverview,
 } from "@/shared/api/cloudGateway/client";
 import type {
@@ -16,9 +16,9 @@ import type {
 } from "@/shared/api/cloudGateway/types";
 
 /**
- * The user directory is a development-only Cloud route, compiled out of a
- * release backend. Gating the call on the build rather than on a 404 keeps the
- * production path free of a request that is known to fail.
+ * The user selector is development-only, and its local gateway route is
+ * compiled out of a release backend. Gating the call on the build rather than
+ * on a 404 keeps production free of a request that is known to fail.
  *
  * `VITE_G6_CLOUD_DEV_USERS` opts a *build* into it. `import.meta.env.DEV` is
  * false in every build regardless of `--mode` — it tracks the dev server, not
@@ -108,7 +108,7 @@ export function useCloudInbox(): CloudInbox {
     }
     let cancelled = false;
     setUsers({ status: "loading" });
-    listDevUsers()
+    listUsers()
       .then((res) => {
         if (cancelled) {
           return;

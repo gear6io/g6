@@ -63,7 +63,7 @@ const SEARCH: &str = "v1/search";
 const MILESTONE_TIMELINE: &str = "v1/milestones/{id}/timeline";
 const EXTRACTIONS_RESOLVE: &str = "v1/extractions/resolve";
 #[cfg(debug_assertions)]
-const DEV_USERS: &str = "v1/dev/users";
+const USERS: &str = "v1/users";
 
 /// The resolve request is `{provider, reference, depth, limit, cursor}` — a few
 /// hundred bytes at most. The cap is enforced here rather than upstream so a
@@ -182,11 +182,11 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/v1/extractions/resolve", post(resolve_extraction));
 
-    // Compiled out of release builds, exactly as Cloud gates its own copy: the
-    // route enumerates the tenant's people, handles and emails, and a config
-    // flag would still ship the code in the production binary.
+    // The selector is development-only even though Cloud's user directory is
+    // now a regular endpoint. Keeping this local route out of release builds
+    // keeps the development control private without inventing another store.
     #[cfg(debug_assertions)]
-    let routes = routes.route("/v1/dev/users", get(dev_users));
+    let routes = routes.route("/v1/users", get(users));
 
     routes
 }
@@ -518,10 +518,10 @@ async fn actor_scoped(
 /// Development only, and unparameterised: the list is capped upstream at 1000
 /// rows and does not page.
 #[cfg(debug_assertions)]
-async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
+async fn users(State(state): State<AppState>, _auth: Auth) -> Response {
     let relayed = async {
-        let url = state.cloud.url(DEV_USERS)?;
-        relay(&state, DEV_USERS, url, None, None, JSON_STATUSES).await
+        let url = state.cloud.url(USERS)?;
+        relay(&state, USERS, url, None, None, JSON_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -1249,7 +1249,7 @@ mod tests {
         );
         assert!(!is_milestone_id("g123456789abcdef0123456789abcdef"), "hex");
         // The reason the check exists: nothing may add a segment or a query.
-        assert!(!is_milestone_id("../../v1/dev/users0123456789abcde"));
+        assert!(!is_milestone_id("../../0123456789abcdef0123456789"));
         assert!(!is_milestone_id("0123456789abcdef0123456789abcd?x"));
     }
 
@@ -1435,7 +1435,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, got) = get(&app, "/api/cloud/v1/dev/users?limit=5", Some(&token)).await;
+        let (status, _, got) = get(&app, "/api/cloud/v1/users?limit=5", Some(&token)).await;
 
         // Present because the test profile is a debug build; a release binary
         // has no such route and answers 404.
@@ -1443,7 +1443,7 @@ mod tests {
         assert_eq!(got, PAGE);
 
         let (uri, headers) = seen.last();
-        assert_eq!(uri, "/v1/dev/users", "no paging, no forwarded query");
+        assert_eq!(uri, "/v1/users", "no paging, no forwarded query");
         assert!(
             headers.get("x-g6-actor-id").is_none(),
             "the directory has no viewer"

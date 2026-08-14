@@ -12,12 +12,15 @@ import { ExternalLink, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { toThread } from "@/features/cloudPulse/thread";
+import type { TimelineMessage } from "@/features/messages/types";
 import {
   CloudGatewayError,
   resolveExtraction,
 } from "@/shared/api/cloudGateway/client";
 import type { RawRow, TimelineEvent } from "@/shared/api/cloudGateway/types";
+import { Markdown } from "@/shared/ui/markdown";
 import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
+import { TooltipProvider } from "@/shared/ui/tooltip";
 
 /** Cloud accepts 1..100 and pages the rest; a thread longer than this is rare. */
 const PAGE_SIZE = 50;
@@ -319,6 +322,70 @@ function ConversationSkeleton() {
   );
 }
 
+/**
+ * The records themselves.
+ *
+ * Split out from `CloudThreadConversation` because that one fetches, and an
+ * effect never runs under `renderToStaticMarkup` — the fold is testable, and so
+ * is this, but the two joined together are not.
+ *
+ * Bodies go through `Markdown` unconditionally, the same way `MessageRow` treats
+ * every workspace message. Cloud hands us Slack's `text` verbatim (its mapper
+ * copies the field and stops), so what arrives is whatever the author typed:
+ * usually real markdown, sometimes plain prose that markdown leaves alone.
+ * Sniffing for markers first would only add a heuristic that can be wrong.
+ *
+ * The `TooltipProvider` is load-bearing, not decoration. A masked link — the
+ * `[dev meeting](https://…)` shape that GitHub and Slack notifications are made
+ * of — renders `MaskedLinkTooltip`, which reveals the real destination on hover
+ * so a reader can see where "click here" goes before clicking. Radix throws
+ * outright without a provider above it, and a throw in render is a white
+ * window; the cloud shell mounts no provider of its own, so this one carries
+ * its own. Disabling the tooltip instead would be the wrong trade: these links
+ * are third-party content, which is precisely when the destination should stay
+ * auditable.
+ */
+export function ThreadMessages({ messages }: { messages: TimelineMessage[] }) {
+  return (
+    <TooltipProvider>
+      <ol>
+        {messages.map((message, index) => (
+          <li
+            className={`grid grid-cols-[26px_1fr] gap-2.5 py-2 ${index === 0 ? "-mx-2 rounded-lg bg-pulse-surface-alt px-2" : ""}`}
+            key={message.id}
+          >
+            <span
+              aria-hidden="true"
+              className={`grid size-[26px] place-items-center rounded-md text-badge font-bold text-pulse-brand-fg ${index % 2 === 0 ? "bg-pulse-brand" : "bg-pulse-tint"}`}
+            >
+              {initials(message.author)}
+            </span>
+            <div className="min-w-0">
+              <p className="flex items-baseline gap-2">
+                <b className="truncate text-xs font-bold text-pulse-ink">
+                  {message.author}
+                </b>
+                <time className="shrink-0 text-badge tabular-nums text-pulse-ink-mute">
+                  {message.time}
+                </time>
+              </p>
+              {/* No `whitespace-pre-wrap`: `remarkBreaks` already turns single
+                newlines into breaks, and both together double the spacing.
+                No `configNudgeAuthorPubkey` either — these bodies are
+                third-party content, which is exactly what that prop must not
+                be trusted with. */}
+              <Markdown
+                className="mt-0.5 max-w-full text-xs leading-relaxed text-pulse-ink"
+                content={message.body}
+              />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </TooltipProvider>
+  );
+}
+
 /** The Cloud-native, read-only thread body used by both event and action readers. */
 export function CloudThreadConversation({ event }: { event: TimelineEvent }) {
   const { loadMore, paging, retry, state } = useConversation(event);
@@ -375,34 +442,7 @@ export function CloudThreadConversation({ event }: { event: TimelineEvent }) {
           No readable messages were returned for this conversation.
         </p>
       ) : (
-        <ol>
-          {messages.map((message, index) => (
-            <li
-              className={`grid grid-cols-[26px_1fr] gap-2.5 py-2 ${index === 0 ? "-mx-2 rounded-lg bg-pulse-surface-alt px-2" : ""}`}
-              key={message.id}
-            >
-              <span
-                aria-hidden="true"
-                className={`grid size-[26px] place-items-center rounded-md text-badge font-bold text-pulse-brand-fg ${index % 2 === 0 ? "bg-pulse-brand" : "bg-pulse-tint"}`}
-              >
-                {initials(message.author)}
-              </span>
-              <div className="min-w-0">
-                <p className="flex items-baseline gap-2">
-                  <b className="truncate text-xs font-bold text-pulse-ink">
-                    {message.author}
-                  </b>
-                  <time className="shrink-0 text-badge tabular-nums text-pulse-ink-mute">
-                    {message.time}
-                  </time>
-                </p>
-                <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-pulse-ink">
-                  {message.body}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <ThreadMessages messages={messages} />
       )}
 
       {state.loaded.nextCursor ? (

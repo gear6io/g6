@@ -320,7 +320,11 @@ const THREAD_ROWS = [
   threadRow(
     2,
     "2026-08-12T09:26:00Z",
-    "Subscription isn't in the internal build's relay config. It ships in 0.9.40 — question is whether we backport.",
+    // Deliberately formatted. A masked link mounts `MaskedLinkTooltip` and a
+    // code span mounts the shiki block, and both reach for a provider the cloud
+    // window does not inherit — the two crashes that made this reader show a
+    // blank panel. Plain prose in every fixture would not have caught either.
+    "Subscription isn't in the internal build's [relay config](https://example.invalid/relay/config). It ships in `0.9.40` — question is whether we backport.",
     "U02MARCO",
     "Marco Böhm",
     "100.2",
@@ -469,7 +473,13 @@ const USERS = {
       kind: "human" as const,
       handle: "priya",
       display_name: "Priya Raman",
-      email: "",
+    },
+    {
+      account_id: "U08MORGAN2",
+      actor_id: "U08MORGAN2",
+      kind: "human" as const,
+      handle: "morgan",
+      display_name: "Morgan Lee",
     },
   ],
   page: { limit: 1000, next_cursor: null },
@@ -501,7 +511,7 @@ export async function installCloudGateway(page: Page): Promise<void> {
         body: "ok",
       });
     }
-    if (path === "v1/dev/users" || path === "v1/users") {
+    if (path === "v1/users") {
       return route.fulfill(json(USERS));
     }
     if (path === "v1/overview") {

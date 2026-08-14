@@ -142,12 +142,12 @@ async function getJson<T>(path: string, query?: GatewayQuery): Promise<T> {
 }
 
 /**
- * The development user directory. The route is compiled out of a release
- * backend, so this rejects with the gateway's 404 there rather than returning
- * an empty list — callers gate the call on the build, not on the answer.
+ * The app's development user directory. The local route is compiled out of a
+ * release backend, so this rejects with the gateway's 404 there rather than
+ * returning an empty list — callers gate the call on the build, not the answer.
  */
-export function listDevUsers(): Promise<UserListResponse> {
-  return getJson("v1/dev/users");
+export function listUsers(): Promise<UserListResponse> {
+  return getJson("v1/users");
 }
 
 export function listActions(

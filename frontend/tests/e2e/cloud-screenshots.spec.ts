@@ -171,6 +171,14 @@ for (const theme of THEMES) {
     await expect(
       page.getByText(/Gateway is rejecting kind 44200/),
     ).toBeVisible();
+    // Markdown, in the real bundle. The reader renders bodies through the
+    // workspace's `Markdown`, whose links and code spans each reach for a
+    // provider the cloud window has to supply itself; when it did not, the
+    // panel went blank. An anchor on screen is the proof it still does.
+    await expect(
+      page.getByRole("link", { name: "relay config" }),
+    ).toBeVisible();
+    await expect(page.locator("code", { hasText: "0.9.40" })).toBeVisible();
     // The footer that keeps the read-only contract visible rather than
     // discovered by pressing something that does nothing.
     await expect(
@@ -312,5 +320,123 @@ test("Pulse views, windows and repeated search stay coherent", async ({
   await searchMilestone("agent observer", /Agent observer frames/);
   await expect(
     page.getByRole("complementary", { name: /Agent observer frames/ }),
+  ).toBeVisible();
+});
+
+test("development user selection lives in Settings and scopes user reads", async ({
+  page,
+}) => {
+  await page.setViewportSize(COMPACT);
+  await bootCloud(page, "light");
+
+  const selector = page.getByRole("combobox", { name: "View as user" });
+  await expect(selector).toHaveCount(0);
+
+  await expand(page);
+  await page.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(selector).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(selector).toBeVisible();
+  await expect(selector).toHaveValue("U024BE7LH");
+
+  const actions = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.endsWith("/v1/actions") &&
+      url.searchParams.get("account_id") === "U08MORGAN2"
+    );
+  });
+  const overview = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.endsWith("/v1/overview") &&
+      url.searchParams.get("account_id") === "U08MORGAN2"
+    );
+  });
+
+  await selector.selectOption("U08MORGAN2");
+  await Promise.all([actions, overview]);
+
+  await expect(selector).toHaveValue("U08MORGAN2");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+});
+
+test("development user setting shows loading and an empty directory", async ({
+  page,
+}) => {
+  await installCloudGateway(page);
+  let releaseUsers = () => {};
+  const usersReady = new Promise<void>((resolve) => {
+    releaseUsers = resolve;
+  });
+  await page.route("**/api/cloud/v1/users", async (route) => {
+    await usersReady;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        page: { limit: 1000, next_cursor: null },
+        generated_at: "2026-08-14T09:12:00Z",
+      }),
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("cloud-mini-inbox")).toBeVisible();
+  await expand(page);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+
+  await expect(page.getByText("Loading users…")).toBeVisible();
+  releaseUsers();
+  await expect(
+    page.getByText("No users found in this Cloud dataset."),
+  ).toBeVisible();
+});
+
+test("development user setting retries directory failures", async ({ page }) => {
+  await installCloudGateway(page);
+  let attempts = 0;
+  await page.route("**/api/cloud/v1/users", async (route) => {
+    attempts += 1;
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: { code: "cloud_unavailable", message: "Directory unavailable" },
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [
+          {
+            account_id: "U024BE7LH",
+            actor_id: "U024BE7LH",
+            kind: "human",
+            handle: "priya",
+            display_name: "Priya Raman",
+          },
+        ],
+        page: { limit: 1000, next_cursor: null },
+        generated_at: "2026-08-14T09:12:00Z",
+      }),
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("cloud-mini-inbox")).toBeVisible();
+  await expand(page);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not load users: Directory unavailable",
+  );
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect(
+    page.getByRole("combobox", { name: "View as user" }),
   ).toBeVisible();
 });

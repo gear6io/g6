@@ -226,6 +226,37 @@ function legacyReachableFrom(entry) {
   return leaks;
 }
 
+/**
+ * What the expanded window is allowed to pull in behind `markdown.tsx`, and why
+ * each one is inert here.
+ *
+ * The thread reader renders message bodies through the workspace's `Markdown`,
+ * which is the whole point — reimplementing markdown, links, code highlighting
+ * and media for the cloud window would be a lookalike that drifts. Four of its
+ * imports sit in the legacy graph, and every one of them is behind a prop the
+ * cloud reader does not pass:
+ *
+ * - `MarkdownVideoPlayer` reaches `MessageComposer` for frame-accurate video
+ *   comments, mounted only when `canComment` — which needs `videoReviewContext`.
+ * - `UserProfilePopover` wraps a mention chip only when `opensProfile`, which
+ *   needs a pubkey resolved through `mentionPubkeysByName`.
+ * - `config-nudge-attachment` renders only when `configNudgeAuthorPubkey` is
+ *   set, which for third-party content it must never be.
+ * - `shared/api/tauri` is an IPC wrapper evaluated at import; the cloud window
+ *   is a Tauri window, so `invoke` is there.
+ *
+ * So none of them can throw in render, which is the failure this file exists to
+ * catch. The list stays exact rather than becoming a regex: a fifth leak, or a
+ * newly renderable fourth, still fails here.
+ */
+const MARKDOWN_LEGACY_EDGES = [
+  "features/agents/useOpenAgentActivity.ts imports @/app/navigation/useAppNavigation",
+  "features/messages/lib/useLinkEditor.tsx imports @/app/navigation/useAppNavigation",
+  "features/profile/ui/UserProfilePopover.tsx imports @/app/navigation/useAppNavigation",
+  "shared/api/tauri.ts imports @/shared/api/invoke",
+  "shared/ui/config-nudge-attachment.tsx imports @/app/AppShellContext",
+];
+
 test("nothing the cloud window evaluates pulls the router or the relay in behind it", () => {
   // The compact window renders no messages at all, so it stays strictly clean.
   assert.deepEqual(
@@ -236,9 +267,30 @@ test("nothing the cloud window evaluates pulls the router or the relay in behind
 
   assert.deepEqual(
     [...new Set(legacyReachableFrom(path.join(here, "CloudShell.tsx")))].sort(),
-    [],
+    MARKDOWN_LEGACY_EDGES,
     "the expanded window's legacy dependencies changed",
   );
+});
+
+test("the cloud reader passes none of the props that would wake the legacy imports", () => {
+  // The allowlist above is only safe while these stay unpassed. A comment
+  // cannot enforce that, so this does: each prop is the gate that keeps one
+  // legacy subtree from ever rendering in a window that has no router.
+  const reader = fs.readFileSync(
+    path.join(here, "../cloudPulse/CloudThreadPanel.tsx"),
+    "utf8",
+  );
+
+  for (const prop of [
+    "videoReviewContext",
+    "mentionPubkeysByName",
+    "configNudgeAuthorPubkey",
+  ]) {
+    assert.ok(
+      !new RegExp(`^\\s*${prop}=`, "m").test(reader),
+      `CloudThreadPanel passes ${prop}, which makes a legacy subtree renderable`,
+    );
+  }
 });
 
 test("markdown takes its navigation injected, so a message body never needs a router", () => {

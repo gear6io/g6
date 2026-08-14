@@ -9,7 +9,6 @@ import { X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { ActionReader } from "@/features/cloudInbox/ActionReader";
-import { UserSelect } from "@/features/cloudInbox/CloudMiniInbox";
 import {
   ACTION_LABEL,
   LANE_LABEL,
@@ -178,7 +177,7 @@ function ActionRow({
 
 export function CloudInboxPane() {
   const { inbox: data, setView } = useCloudWindow();
-  const { inbox, owner, retryInbox, select, selected, setOwner, users } = data;
+  const { inbox, owner, retryInbox, setOwner } = data;
   const [filter, setFilter] = useState<InboxFilter>(NO_INBOX_FILTER);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -303,16 +302,6 @@ export function CloudInboxPane() {
             }
           />
         ))}
-
-        {users.status === "ready" && selected ? (
-          <div className="mt-5 border-t border-pulse-hairline px-2 pt-2">
-            <UserSelect
-              onSelect={select}
-              selected={selected}
-              users={users.value}
-            />
-          </div>
-        ) : null}
       </aside>
 
       <div

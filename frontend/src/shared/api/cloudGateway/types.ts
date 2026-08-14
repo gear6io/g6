@@ -134,7 +134,7 @@ export type ActionListResponse = {
   generated_at: string;
 };
 
-/** One Slack account worth sending as the viewer. Development only. */
+/** One Slack account worth sending as the viewer. */
 export type CloudUser = {
   /** The value the gateway turns into `X-G6-Actor-ID`. */
   account_id: string;
@@ -144,7 +144,6 @@ export type CloudUser = {
   handle: string;
   /** Empty when unknown. */
   display_name: string;
-  email: string;
 };
 
 export type UserListResponse = {
