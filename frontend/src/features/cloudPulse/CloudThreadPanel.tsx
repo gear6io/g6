@@ -2,28 +2,22 @@
 //
 // A Pulse event row is Cloud's one-line reading of a record. This panel is the
 // record itself: the Slack thread it sits in, or the GitHub issue or pull
-// request it belongs to, fetched from Cloud and rendered by the same
-// `MessageThreadPanel` the legacy workspace uses. Reusing that component rather
-// than writing a lookalike is the whole point — markdown, reaction pills, media
-// attachments and day grouping are already right there and stay in step.
+// request it belongs to, fetched from Cloud and rendered as the compact reader
+// the Cloud mockup specifies. The same body sits inline in the action reader and
+// in the event side panel, so those two paths cannot drift apart.
 //
-// Read-only by construction: no `onSend`, no `onToggleReaction`, no edit or
-// delete. Cloud serves landed records and has no write path back to Slack, so
-// every affordance that would imply one is simply not passed.
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
+// Read-only by construction: Cloud serves landed records and has no write path
+// back to Slack, so no affordance implies one.
+import { ExternalLink, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { toThread } from "@/features/cloudPulse/thread";
-import { MessageThreadPanel } from "@/features/messages/ui/MessageThreadPanel";
-import { MessageThreadPanelSkeleton } from "@/features/messages/ui/MessageThreadPanelSkeleton";
 import {
   CloudGatewayError,
   resolveExtraction,
 } from "@/shared/api/cloudGateway/client";
 import type { RawRow, TimelineEvent } from "@/shared/api/cloudGateway/types";
 import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
-import { TooltipProvider } from "@/shared/ui/tooltip";
 
 /** Cloud accepts 1..100 and pages the rest; a thread longer than this is rare. */
 const PAGE_SIZE = 50;
@@ -117,22 +111,6 @@ async function resolveThread(
   }
 
   throw lastError;
-}
-
-/**
- * One client per mount, and a deliberately inert one.
- *
- * `MessageRow` reaches for react-query through `useReactionHandler`,
- * `useMessageEmoji` and `useKnownAgentPubkeys`. Those hooks read a workspace
- * that does not exist in the cloud window, so their queries fail — and this is
- * the configuration that makes failing the correct outcome rather than a retry
- * storm: one attempt, cached forever, empty result, read-only row. Cheaper than
- * teaching three hooks to be optional.
- */
-function inertQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-  });
 }
 
 type Loaded = {
@@ -290,117 +268,153 @@ export function CloudThreadPanel({
   onClose: () => void;
   widthPx: number;
 }) {
-  const { loadMore, paging, retry, state } = useConversation(event);
-  // Recreated only when the panel remounts, never per render: a fresh client on
-  // every render would discard the caches the rows just filled.
-  const [queryClient] = useState(inertQueryClient);
+  return (
+    <aside
+      className="flex shrink-0 flex-col overflow-hidden bg-pulse-canvas"
+      data-testid="cloud-thread-panel"
+      style={{ width: widthPx }}
+    >
+      <header className="flex min-h-[52px] shrink-0 items-center gap-3 border-b border-pulse-hairline px-4">
+        <Header event={event} />
+        <button
+          aria-label="Close conversation"
+          className="ml-auto shrink-0 rounded-md p-1.5 text-pulse-ink-mute transition-colors hover:bg-pulse-surface-alt hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+          onClick={onClose}
+          type="button"
+        >
+          <X aria-hidden="true" className="size-4" />
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-4">
+        <CloudThreadConversation event={event} />
+      </div>
+      <p className="shrink-0 border-t border-pulse-hairline px-[18px] py-2 text-xs text-pulse-ink-mute">
+        Read-only — open the source to reply or resolve.
+      </p>
+    </aside>
+  );
+}
 
+function initials(author: string): string {
+  const words = author.trim().split(/\s+/).filter(Boolean);
+  return (
+    words.length > 1
+      ? `${words[0][0]}${words.at(-1)?.[0]}`
+      : words[0]?.slice(0, 2) || "?"
+  ).toUpperCase();
+}
+
+function ConversationSkeleton() {
+  return (
+    <div aria-label="Loading conversation" className="space-y-4" role="status">
+      {["w-4/5", "w-2/3", "w-3/4"].map((width) => (
+        <div className="grid grid-cols-[26px_1fr] gap-2.5" key={width}>
+          <span className="size-[26px] rounded-md bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
+          <span
+            className={`h-10 rounded-md bg-pulse-surface-alt animate-pulse motion-reduce:animate-none ${width}`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The Cloud-native, read-only thread body used by both event and action readers. */
+export function CloudThreadConversation({ event }: { event: TimelineEvent }) {
+  const { loadMore, paging, retry, state } = useConversation(event);
   const thread = useMemo(
     () => (state.status === "ready" ? toThread(state.loaded.rows) : null),
     [state],
   );
 
   if (state.status === "loading") {
+    return <ConversationSkeleton />;
+  }
+  if (state.status === "error") {
     return (
-      <MessageThreadPanelSkeleton
-        isFocusMode={false}
-        onClose={onClose}
-        widthPx={widthPx}
+      <Notice
+        action="Retry"
+        message={`This conversation could not be read. ${state.message}`}
+        onAction={retry}
       />
     );
   }
 
-  if (state.status === "error") {
-    return (
-      <aside
-        className="flex shrink-0 flex-col overflow-hidden bg-pulse-surface"
-        data-testid="cloud-thread-panel"
-        style={{ width: widthPx }}
-      >
-        <div className="flex h-[54px] items-center justify-between px-4">
-          <Header event={event} />
-          <button
-            aria-label="Close conversation"
-            className="rounded p-1 text-pulse-ink-mute hover:bg-pulse-surface-alt"
-            onClick={onClose}
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
-        <Notice
-          action="Retry"
-          message={`This conversation could not be read. ${state.message}`}
-          onAction={retry}
-        />
-      </aside>
-    );
-  }
-
-  const { head, replies } = thread ?? { head: null, replies: [] };
+  const messages = thread
+    ? [thread.head, ...thread.replies].filter((message) => message !== null)
+    : [];
+  const sourceDate = messages[0]?.createdAt
+    ? new Date(messages[0].createdAt * 1000)
+    : new Date(event.occurred_at);
+  const date = Number.isNaN(sourceDate.getTime())
+    ? ""
+    : sourceDate.toLocaleDateString([], { day: "numeric", month: "short" });
 
   return (
-    // Both are plain context providers with no legacy graph behind them. The
-    // tooltip one is not optional: Radix throws outright without it, and the
-    // action bar and timestamps inside a row both use tooltips.
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div data-testid="cloud-thread-panel">
-          {state.loaded.warning ? (
-            // Cloud says the answer is partial, not wrong. The records it did
-            // return are still shown, with its own words above them.
-            <p className="px-4 py-2 text-2xs text-pulse-ink-mute" role="status">
-              {state.loaded.warning}
-            </p>
-          ) : null}
-          <MessageThreadPanel
-            channel={null}
-            channelId={null}
-            // Used as the composer placeholder, which is disabled here anyway;
-            // the event's own summary is the truest thing to call this.
-            channelName={event.summary}
-            // Every write path is deliberately absent, so the composer has nothing
-            // to submit into and the action bar has nothing to offer.
-            disabled
-            headerLeading={<Header event={event} />}
-            isFocusMode={false}
-            isSending={false}
-            layout="split"
-            onCancelReply={NOOP}
-            onClose={onClose}
-            onExpandReplies={NOOP}
-            onScrollTargetResolved={NOOP}
-            onSelectReplyTarget={NOOP}
-            onSend={NEVER_SENDS}
-            replyTargetMessage={null}
-            scrollTargetId={null}
-            threadHead={head}
-            threadReplies={replies.map((message) => ({
-              message,
-              summary: null,
-            }))}
-            threadTypingPubkeys={EMPTY}
-            toolbarExtraActions={
-              state.loaded.nextCursor ? (
-                <button
-                  className="rounded-full border border-pulse-brand-ink px-3 py-1 text-2xs font-bold text-pulse-brand-ink hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
-                  disabled={paging}
-                  onClick={loadMore}
-                  type="button"
-                >
-                  {paging ? "Loading…" : "Load earlier records"}
-                </button>
-              ) : null
-            }
-            widthPx={widthPx}
-          />
-        </div>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <section
+      aria-label="Source conversation"
+      data-testid="cloud-thread-conversation"
+    >
+      <div className="mb-1.5 flex items-center gap-2 text-pulse-eyebrow font-bold uppercase tracking-wider text-pulse-ink-mute">
+        <span>Source conversation</span>
+        <span aria-hidden="true" className="h-px flex-1 bg-pulse-hairline" />
+        {date || event.provider ? (
+          <span className="font-normal normal-case tracking-normal">
+            {[date, event.provider].filter(Boolean).join(" · ")}
+          </span>
+        ) : null}
+      </div>
+
+      {state.loaded.warning ? (
+        <p className="mb-2 text-xs text-pulse-ink-mute" role="status">
+          {state.loaded.warning}
+        </p>
+      ) : null}
+      {messages.length === 0 ? (
+        <p className="py-3 text-xs text-pulse-ink-mute">
+          No readable messages were returned for this conversation.
+        </p>
+      ) : (
+        <ol>
+          {messages.map((message, index) => (
+            <li
+              className={`grid grid-cols-[26px_1fr] gap-2.5 py-2 ${index === 0 ? "-mx-2 rounded-lg bg-pulse-surface-alt px-2" : ""}`}
+              key={message.id}
+            >
+              <span
+                aria-hidden="true"
+                className={`grid size-[26px] place-items-center rounded-md text-badge font-bold text-pulse-brand-fg ${index % 2 === 0 ? "bg-pulse-brand" : "bg-pulse-tint"}`}
+              >
+                {initials(message.author)}
+              </span>
+              <div className="min-w-0">
+                <p className="flex items-baseline gap-2">
+                  <b className="truncate text-xs font-bold text-pulse-ink">
+                    {message.author}
+                  </b>
+                  <time className="shrink-0 text-badge tabular-nums text-pulse-ink-mute">
+                    {message.time}
+                  </time>
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-pulse-ink">
+                  {message.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {state.loaded.nextCursor ? (
+        <button
+          className="mt-2 rounded-full border border-pulse-brand-ink px-3 py-1 text-2xs font-bold text-pulse-brand-ink hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
+          disabled={paging}
+          onClick={loadMore}
+          type="button"
+        >
+          {paging ? "Loading…" : "Load earlier records"}
+        </button>
+      ) : null}
+    </section>
   );
 }
-
-/** Module-level so they are stable references and never re-memoize a row. */
-const EMPTY: string[] = [];
-const NOOP = () => {};
-const NEVER_SENDS = () => Promise.resolve();

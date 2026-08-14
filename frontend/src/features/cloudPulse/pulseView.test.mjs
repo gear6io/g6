@@ -10,7 +10,11 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { AttentionBand, enteredLabel, longestBlockedLabel } from "./AttentionBand.tsx";
+import {
+  AttentionBand,
+  enteredLabel,
+  longestBlockedLabel,
+} from "./AttentionBand.tsx";
 import {
   NO_FILTER,
   activeLabel,
@@ -47,8 +51,9 @@ test("the default view asks Cloud for the two healths that need a reader", () =>
 
 test("quietness composes with health rather than replacing it", () => {
   const query = filterQuery(
-    { status: ["progress"], quietDays: 14, q: "read state" },
+    { status: ["progress"], quietDays: 14, movedToday: false },
     PAGE,
+    "read state",
   );
 
   // A milestone can be on track and silent for a fortnight — that is exactly
@@ -59,8 +64,12 @@ test("quietness composes with health rather than replacing it", () => {
 });
 
 test("a cursor carries every filter with it", () => {
-  const filter = { status: ["regression"], quietDays: null, q: "relay" };
-  const query = filterQuery(filter, { limit: 40, cursor: "opaque" });
+  const filter = {
+    status: ["regression"],
+    quietDays: null,
+    movedToday: false,
+  };
+  const query = filterQuery(filter, { limit: 40, cursor: "opaque" }, "relay");
 
   // A cursor is a position in a sort, not a saved query: dropping the filter
   // here would page the unfiltered collection from a filtered position.
@@ -72,18 +81,26 @@ test("a cursor carries every filter with it", () => {
 test("a filter names itself, and a named view is recognised whatever the order", () => {
   assert.equal(activeView(viewFilter("attention")), "attention");
   assert.equal(
-    activeView({ status: ["dependency", "regression"], quietDays: null, q: "" }),
+    activeView({
+      status: ["dependency", "regression"],
+      quietDays: null,
+      movedToday: false,
+    }),
     "attention",
   );
   assert.equal(activeView(NO_FILTER), "all");
+  assert.equal(activeView(viewFilter("moved")), "moved");
   // A search is not one of the named views even when its healths match one.
-  assert.equal(activeView({ ...viewFilter("attention"), q: "relay" }), null);
+  assert.equal(activeView(viewFilter("attention"), "relay"), null);
 
   assert.equal(activeLabel(viewFilter("attention")), "Needs attention");
   // "All milestones" is the unfiltered list, so it has no chip to remove.
   assert.equal(activeLabel(NO_FILTER), null);
   assert.equal(
-    activeLabel({ status: ["regression"], quietDays: 14, q: "relay" }),
+    activeLabel(
+      { status: ["regression"], quietDays: 14, movedToday: false },
+      "relay",
+    ),
     "“relay” · Regressed · Quiet ≥14d",
   );
 });

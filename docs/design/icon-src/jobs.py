@@ -50,6 +50,8 @@ for name, size in [
 ]:
     add(square(size), size, ICONS / name)
 
+add("mac-pair.svg", 512, ICONS / "icon.png")
+
 # --- the .icns iconset (macOS squircle, transparent margin) -----------------
 for slug, size in [
     ("16x16", 16),

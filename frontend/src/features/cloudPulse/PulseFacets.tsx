@@ -28,7 +28,7 @@ import {
 
 function GroupLabel({ children }: { children: string }) {
   return (
-    <p className="px-2 pb-1 pt-3.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute first:pt-1">
+    <p className="px-2 pb-1 pt-3.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute first:pt-1">
       {children}
     </p>
   );
@@ -52,7 +52,7 @@ function Facet({
     <button
       aria-pressed={pressed}
       className={[
-        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm leading-snug transition-colors",
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm leading-snug transition-[background-color,color,transform] duration-150 active:scale-[0.99]",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
         pressed
           ? "bg-pulse-brand font-medium text-pulse-brand-fg"
@@ -73,7 +73,7 @@ function Facet({
       <span className="min-w-0 truncate">{label}</span>
       {count === null ? null : (
         <span
-          className={`ml-auto shrink-0 text-2xs tabular-nums ${
+          className={`ml-auto shrink-0 text-xs tabular-nums ${
             pressed ? "text-pulse-brand-fg/75" : ""
           }`}
         >
@@ -88,6 +88,7 @@ export function PulseFacets({
   attention,
   counts,
   filter,
+  query,
   onSelectStatus,
   onSelectView,
 }: {
@@ -95,10 +96,11 @@ export function PulseFacets({
   attention: AttentionResponse | null;
   counts: MilestoneCounts | null;
   filter: PulseFilter;
+  query: string;
   onSelectStatus: (status: MilestoneStatus) => void;
   onSelectView: (view: PulseViewId) => void;
 }) {
-  const current = activeView(filter);
+  const current = activeView(filter, query);
 
   // "Needs attention" is regressed plus at risk, and its count is the sum of
   // those two facets — the same rows, added the same way, so the view and the
@@ -110,7 +112,7 @@ export function PulseFacets({
   return (
     <aside
       aria-label="Filter milestones"
-      className="w-[208px] shrink-0 overflow-y-auto border-r border-pulse-hairline px-2 pb-5 pt-2.5"
+      className="w-[208px] shrink-0 overflow-y-auto border-r border-pulse-hairline bg-pulse-canvas px-2 pb-5 pt-2.5"
     >
       <GroupLabel>Views</GroupLabel>
       <Facet
@@ -118,6 +120,12 @@ export function PulseFacets({
         label={VIEWS.attention.label}
         onSelect={() => onSelectView("attention")}
         pressed={current === "attention"}
+      />
+      <Facet
+        count={filter.movedToday ? (counts?.total ?? null) : null}
+        label={VIEWS.moved.label}
+        onSelect={() => onSelectView("moved")}
+        pressed={current === "moved"}
       />
       <Facet
         count={counts?.total ?? null}
@@ -141,7 +149,7 @@ export function PulseFacets({
       {/* Stated rather than silently missing. A facet column that stops at
           Status looks complete; one that says what it cannot group by yet is
           the difference between a gap and a bug. */}
-      <p className="px-2 pt-5 text-2xs leading-relaxed text-pulse-ink-mute">
+      <p className="px-2 pt-5 text-xs leading-relaxed text-pulse-ink-mute">
         Team and source are not filters Cloud serves yet.
         {attention ? ` Quiet is ≥${attention.quiet.quiet_days} days.` : ""}
       </p>

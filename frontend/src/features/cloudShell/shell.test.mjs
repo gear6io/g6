@@ -49,7 +49,9 @@ test("every rail destination is named, not only drawn", () => {
   for (const label of ["Pulse", "Inbox", "Settings"]) {
     assert.match(
       markup,
-      new RegExp(`title="${label}"[\\s\\S]{0,900}<span class="sr-only">${label}</span>`),
+      new RegExp(
+        `title="${label}"[\\s\\S]{0,900}<span class="sr-only">${label}</span>`,
+      ),
       `${label} should carry both a tooltip and an accessible name`,
     );
   }
@@ -62,7 +64,15 @@ test("the window bar carries search and names the view under it", () => {
 
   assert.match(markup, /Search milestones, events, people/);
   assert.match(markup, /⌘K/);
-  assert.match(markup, /<span class="shrink-0 text-sm font-bold[^"]*">Pulse<\/span>/);
+  assert.match(
+    markup,
+    /<span class="shrink-0 text-sm font-semibold[^"]*">Pulse<\/span>/,
+  );
+  assert.match(markup, /aria-label="Timeline window"/);
+  for (const days of [7, 30, 90]) {
+    assert.match(markup, new RegExp(`>${days}d<`));
+  }
+  assert.match(markup, /aria-pressed="true"[^>]*>30d</);
 });
 
 // The native chrome is now a lone close dot at x=14, y=13 — minimize and zoom
@@ -100,7 +110,7 @@ test("the expanded window is nav, not a second masthead", () => {
 test("the compact header is one 42px bar with nothing above it", () => {
   const markup = render(CloudMiniInbox);
 
-  assert.match(markup, /<header class="flex h-\[42px\]/);
+  assert.match(markup, /<header class="g6-pulse-chrome flex h-\[42px\]/);
   assert.ok(
     !markup.includes("pt-[54px]"),
     "the reclaimed band should not come back as padding",
@@ -117,26 +127,12 @@ test("the compact window keeps its own controls beside the brand", () => {
   assert.match(markup, /aria-label="(Unpin window|Keep window on top)"/);
 });
 
-/**
- * The message renderer, and only the message renderer.
- *
- * `CloudThreadPanel` shows a Slack thread with the components the legacy shell
- * uses, because a second implementation of message rendering would drift from
- * the first one within a release. These three modules are safe to cross the
- * boundary with because `MessageRow` takes its profile popover as the
- * `authorSlot` prop rather than importing it — that popover is what used to drag
- * the router, huddles and the relay-backed hooks in behind it. Nothing else from
- * `features/messages/` may be added here without re-checking that graph.
- */
-const MESSAGE_RENDERER = [
-  "@/features/messages/ui/MessageThreadPanel",
-  "@/features/messages/ui/MessageThreadPanelSkeleton",
-  "@/features/messages/types",
-];
+// `thread.ts` reuses the erased TimelineMessage type, not the legacy renderer.
+const CLOUD_TYPE_IMPORTS = ["@/features/messages/types"];
 
 test("the cloud surfaces never reach into the legacy tree", () => {
-  const dirs = ["cloudShell", "cloudPulse", "cloudInbox", "cloudSearch"].map((name) =>
-    path.join(here, "..", name),
+  const dirs = ["cloudShell", "cloudPulse", "cloudInbox", "cloudSearch"].map(
+    (name) => path.join(here, "..", name),
   );
 
   const banned =
@@ -151,7 +147,7 @@ test("the cloud surfaces never reach into the legacy tree", () => {
       // Blanked before the scan rather than excepted in the pattern: the ban
       // stays a single readable regex, and an import one character off an
       // allowed specifier still trips it.
-      const scanned = MESSAGE_RENDERER.reduce(
+      const scanned = CLOUD_TYPE_IMPORTS.reduce(
         (text, allowed) => text.split(allowed).join(""),
         source,
       );
@@ -170,10 +166,8 @@ test("the cloud surfaces never reach into the legacy tree", () => {
  * specifier reachable from it.
  *
  * The per-file scan above only reads the cloud directories, so it cannot see a
- * legacy dependency two modules deep — and the message renderer put two there
- * (`MessageComposer` reaching the router, `useKnownAgentPubkeys` reaching the
- * Tauri bridge). `import type` is skipped: types are erased and never evaluate
- * their module.
+ * legacy dependency two modules deep. `import type` is skipped: types are
+ * erased and never evaluate their module.
  */
 function legacyReachableFrom(entry) {
   // `@/app/navigation` is named too: `useAppNavigation` is the router by
@@ -182,9 +176,8 @@ function legacyReachableFrom(entry) {
     /@\/app\/(App|AppShell|LegacyAppRoot|router|routes|navigation)|@tanstack\/react-router|@\/shared\/api\/invoke|rtm-client/;
   const srcDir = path.join(here, "..", "..");
 
-  // Relative specifiers resolve too. An earlier version handled only `@/`, so
-  // the walk stopped dead at `MessageThreadPanel`'s `./MessageRow` and reported
-  // 47 clean modules for a graph that is really 322 and reaches the router.
+  // Relative specifiers resolve too, so an indirect import cannot evade the
+  // same boundary check applied to an aliased one.
   const resolve = (specifier, importer) => {
     let base;
     if (specifier.startsWith("@/")) {
@@ -233,30 +226,6 @@ function legacyReachableFrom(entry) {
   return leaks;
 }
 
-/**
- * Legacy modules the cloud window still evaluates, and why each is tolerated.
- *
- * All five are reached through `@/shared/ui/markdown`, which renders message
- * bodies and is the one module the cloud window genuinely needs from the legacy
- * side. None of them *runs*: nothing here renders a profile popover (rows take
- * `authorSlot` and the cloud passes none), a composer (`composerSlot`, same), or
- * a config nudge, and the Tauri bridge answers unmapped commands with `[]`.
- * They cost bundle weight, not correctness.
- *
- * This is a ledger, not an amnesty. A new entry means a new legacy dependency
- * crossed the boundary and wants the same argument made for it — most likely by
- * giving markdown another injected seam, the way
- * `markdown/navigationContext` replaced its `useAppNavigation` import after
- * that one took the whole window down with a `useLocation` throw.
- */
-const TOLERATED_LEAKS = [
-  "features/agents/useOpenAgentActivity.ts imports @/app/navigation/useAppNavigation",
-  "features/messages/lib/useLinkEditor.tsx imports @/app/navigation/useAppNavigation",
-  "features/profile/ui/UserProfilePopover.tsx imports @/app/navigation/useAppNavigation",
-  "shared/api/tauri.ts imports @/shared/api/invoke",
-  "shared/ui/config-nudge-attachment.tsx imports @/app/AppShellContext",
-];
-
 test("nothing the cloud window evaluates pulls the router or the relay in behind it", () => {
   // The compact window renders no messages at all, so it stays strictly clean.
   assert.deepEqual(
@@ -267,7 +236,7 @@ test("nothing the cloud window evaluates pulls the router or the relay in behind
 
   assert.deepEqual(
     [...new Set(legacyReachableFrom(path.join(here, "CloudShell.tsx")))].sort(),
-    TOLERATED_LEAKS,
+    [],
     "the expanded window's legacy dependencies changed",
   );
 });

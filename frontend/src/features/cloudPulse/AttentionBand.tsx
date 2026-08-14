@@ -30,7 +30,10 @@ export function longestBlockedLabel(seconds: number | null): string | null {
  * regression now that were not `since_days` ago — not the difference of two
  * totals, which would read zero on a day three regressed and three recovered.
  */
-export function enteredLabel(entered: number, sinceDays: number): string | null {
+export function enteredLabel(
+  entered: number,
+  sinceDays: number,
+): string | null {
   if (entered === 0) {
     return null;
   }
@@ -62,19 +65,21 @@ function Tile({
 }) {
   const body = (
     <>
-      <span className={`text-2xl font-bold leading-tight tabular-nums ${TONE[tone].ink}`}>
+      <span
+        className={`text-2xl font-bold leading-tight tabular-nums ${TONE[tone].ink}`}
+      >
         {value}
       </span>
-      <span className="text-2xs font-bold uppercase tracking-wider text-pulse-ink-mute">
+      <span className="text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
         {label}
       </span>
       {/* The sub-line is dropped rather than rendered empty: "0 new since
           yesterday" is a sentence that makes a reader stop and check. */}
-      <span className="text-2xs text-pulse-ink-mute">{detail ?? " "}</span>
+      <span className="text-xs text-pulse-ink-mute">{detail ?? " "}</span>
     </>
   );
 
-  const shape = `flex min-w-0 flex-1 flex-col gap-px rounded-xl border border-l-[3px] border-pulse-hairline ${TONE[tone].edge} px-3 py-2 text-left`;
+  const shape = `flex min-w-0 flex-1 flex-col gap-0.5 rounded-xl border border-l-[3px] border-pulse-hairline bg-pulse-canvas ${TONE[tone].edge} px-3.5 py-2.5 text-left`;
 
   if (!onSelect) {
     return <div className={shape}>{body}</div>;
@@ -82,8 +87,10 @@ function Tile({
   return (
     <button
       aria-pressed={pressed}
-      className={`${shape} transition-colors hover:border-pulse-brand-ink hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink ${
-        pressed ? "bg-pulse-surface-alt" : ""
+      className={`${shape} transition-[background-color,border-color,box-shadow,transform] duration-150 hover:border-pulse-brand-ink hover:bg-pulse-surface-alt active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink ${
+        pressed
+          ? "bg-pulse-surface-alt shadow-[inset_0_0_0_1px_var(--g6-pulse-brand-tint)]"
+          : ""
       }`}
       onClick={onSelect}
       type="button"
@@ -109,7 +116,7 @@ export function AttentionBand({
   const { blocked, closed, quiet, regressed } = attention;
 
   return (
-    <div className="flex shrink-0 gap-2 border-b border-pulse-hairline px-4 pb-2.5 pt-3">
+    <div className="flex shrink-0 gap-2 border-b border-pulse-hairline bg-pulse-surface/35 px-4 pb-3 pt-3">
       <Tile
         detail={enteredLabel(regressed.entered, regressed.since_days)}
         label="Regressed"

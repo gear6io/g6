@@ -53,7 +53,7 @@ const LANE_EDGE = {
 
 function GroupLabel({ children }: { children: string }) {
   return (
-    <p className="px-2 pb-1 pt-3.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute first:pt-1">
+    <p className="px-2 pb-1 pt-3.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute first:pt-1">
       {children}
     </p>
   );
@@ -86,11 +86,13 @@ function Facet({
       onClick={onSelect}
       type="button"
     >
-      {swatch ? <span className="w-3.5 shrink-0 text-center">{swatch}</span> : null}
+      {swatch ? (
+        <span className="w-3.5 shrink-0 text-center">{swatch}</span>
+      ) : null}
       <span className="min-w-0 truncate">{label}</span>
       {count === null ? null : (
         <span
-          className={`ml-auto shrink-0 text-2xs tabular-nums ${pressed ? "text-pulse-brand-fg/75" : ""}`}
+          className={`ml-auto shrink-0 text-xs tabular-nums ${pressed ? "text-pulse-brand-fg/75" : ""}`}
         >
           {count}
         </span>
@@ -131,7 +133,9 @@ function ActionRow({
           >
             {priorityLabel(action.priority.level)}
           </span>
-          <span className="truncate">{ACTION_LABEL[action.required_action]}</span>
+          <span className="truncate">
+            {ACTION_LABEL[action.required_action]}
+          </span>
           <span className="ml-auto shrink-0 tabular-nums">
             {relativeAge(action.age_seconds)}
           </span>
@@ -147,7 +151,10 @@ function ActionRow({
             resolved the referent it names. */}
         <span className="mt-1 flex min-w-0 items-center gap-1.5 text-badge text-pulse-ink-mute">
           {referent && hasProviderIcon(referent.provider) ? (
-            <ProviderIcon className="size-3 shrink-0" provider={referent.provider} />
+            <ProviderIcon
+              className="size-3 shrink-0"
+              provider={referent.provider}
+            />
           ) : null}
           {referent?.summary ? (
             <span className="min-w-0 shrink truncate">{referent.summary}</span>
@@ -191,7 +198,9 @@ export function CloudInboxPane() {
     () =>
       LANE_ORDER.map((lane) => ({
         lane,
-        rows: visible.filter((action) => actionLane(action.priority.level) === lane),
+        rows: visible.filter(
+          (action) => actionLane(action.priority.level) === lane,
+        ),
       })).filter((group) => group.rows.length > 0),
     [visible],
   );
@@ -205,10 +214,11 @@ export function CloudInboxPane() {
   }
 
   return (
-    <div className="flex min-w-0 flex-1">
+    <div className="relative flex min-w-0 flex-1">
       <aside
         aria-label="Filter actions"
-        className="w-[208px] shrink-0 overflow-y-auto border-r border-pulse-hairline px-2 pb-5 pt-2.5"
+        className="w-[208px] shrink-0 overflow-y-auto border-r border-pulse-hairline bg-pulse-canvas px-2 pb-5 pt-2.5 max-[980px]:hidden"
+        data-testid="cloud-inbox-facets"
       >
         <GroupLabel>Views</GroupLabel>
         {/* `me` and `anyone` are separate reads, not a client-side split: an
@@ -230,7 +240,10 @@ export function CloudInboxPane() {
           count={newTodayCount(all, filter)}
           label="New today"
           onSelect={() =>
-            setFilter((current) => ({ ...current, newToday: !current.newToday }))
+            setFilter((current) => ({
+              ...current,
+              newToday: !current.newToday,
+            }))
           }
           pressed={filter.newToday}
         />
@@ -263,8 +276,7 @@ export function CloudInboxPane() {
             onSelect={() =>
               setFilter((current) => ({
                 ...current,
-                milestoneId:
-                  current.milestoneId === entry.id ? null : entry.id,
+                milestoneId: current.milestoneId === entry.id ? null : entry.id,
               }))
             }
             pressed={filter.milestoneId === entry.id}
@@ -294,20 +306,29 @@ export function CloudInboxPane() {
 
         {users.status === "ready" && selected ? (
           <div className="mt-5 border-t border-pulse-hairline px-2 pt-2">
-            <UserSelect onSelect={select} selected={selected} users={users.value} />
+            <UserSelect
+              onSelect={select}
+              selected={selected}
+              users={users.value}
+            />
           </div>
         ) : null}
       </aside>
 
-      <div className="flex w-[372px] shrink-0 flex-col border-r border-pulse-hairline">
-        <div className="flex shrink-0 items-center gap-2 border-b border-pulse-hairline px-3 py-1.5 text-2xs text-pulse-ink-mute">
+      <div
+        className="flex w-[372px] shrink-0 flex-col border-r border-pulse-hairline bg-pulse-canvas max-[980px]:w-[300px]"
+        data-testid="cloud-inbox-list"
+      >
+        <div className="flex shrink-0 items-center gap-2 border-b border-pulse-hairline bg-pulse-canvas/90 px-3 py-1.5 text-xs text-pulse-ink-mute backdrop-blur-sm">
           {chip ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-pulse-surface-alt py-0.5 pl-2.5 pr-1 font-semibold text-pulse-ink">
               <span className="max-w-[150px] truncate">{chip}</span>
               <button
                 aria-label="Clear filter"
                 className="rounded-full p-0.5 text-pulse-ink-mute hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
-                onClick={() => setFilter({ ...NO_INBOX_FILTER, scope: filter.scope })}
+                onClick={() =>
+                  setFilter({ ...NO_INBOX_FILTER, scope: filter.scope })
+                }
                 type="button"
               >
                 <X aria-hidden="true" className="size-3" />
@@ -324,7 +345,9 @@ export function CloudInboxPane() {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {inbox.status === "loading" ? (
-            <p className="px-3 py-4 text-xs text-pulse-ink-mute">Loading actions…</p>
+            <p className="px-3 py-4 text-xs text-pulse-ink-mute">
+              Loading actions…
+            </p>
           ) : null}
 
           {inbox.status === "error" ? (
@@ -332,7 +355,9 @@ export function CloudInboxPane() {
               <p className="text-sm font-semibold text-pulse-ink">
                 Could not load this inbox
               </p>
-              <p className="mt-1 text-xs text-pulse-ink-mute">{inbox.message}</p>
+              <p className="mt-1 text-xs text-pulse-ink-mute">
+                {inbox.message}
+              </p>
               <button
                 className="mt-3 rounded-full border-2 border-pulse-brand-ink px-4 py-1 text-2xs font-bold text-pulse-brand-ink hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
                 onClick={retryInbox}
@@ -357,10 +382,15 @@ export function CloudInboxPane() {
           <ul>
             {lanes.map(({ lane, rows }) => (
               <li key={lane}>
-                <p className="sticky top-0 z-[3] flex items-baseline gap-2 bg-pulse-canvas px-3 pb-1 pt-2.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
-                  <span className="tabular-nums text-pulse-ink">{rows.length}</span>
+                <p className="sticky top-0 z-[3] flex items-baseline gap-2 bg-pulse-canvas/95 px-3 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute backdrop-blur-sm">
+                  <span className="tabular-nums text-pulse-ink">
+                    {rows.length}
+                  </span>
                   <span>{LANE_LABEL[lane]}</span>
-                  <span aria-hidden="true" className="h-px flex-1 self-center bg-pulse-hairline" />
+                  <span
+                    aria-hidden="true"
+                    className="h-px flex-1 self-center bg-pulse-hairline"
+                  />
                 </p>
                 <ul>
                   {rows.map((action) => (
@@ -392,7 +422,7 @@ export function CloudInboxPane() {
           onSelect={(next) => setOpenId(next.id)}
         />
       ) : (
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-8 text-center">
+        <div className="g6-pulse-mesh m-6 flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl border border-pulse-hairline bg-pulse-surface/60 px-8 text-center">
           <p className="text-sm font-semibold text-pulse-ink">
             Select an action to read it
           </p>
@@ -401,7 +431,7 @@ export function CloudInboxPane() {
             from, and what else is open on the same milestone.
           </p>
           {inbox.status === "ready" ? (
-            <p className="mt-3 text-2xs text-pulse-ink-mute">
+            <p className="mt-3 text-xs text-pulse-ink-mute">
               {summaryLabel(inbox.value.overview)}
             </p>
           ) : null}

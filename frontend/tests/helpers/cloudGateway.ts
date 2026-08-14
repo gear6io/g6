@@ -13,6 +13,7 @@ import type {
   AttentionResponse,
   Milestone,
   MilestoneStatus,
+  RawRow,
   RequiredAction,
   TimelineDay,
 } from "../../src/shared/api/cloudGateway/types";
@@ -256,7 +257,12 @@ function action(
         }
       : null,
     referent: provider
-      ? { summary, provider, url: "https://example.invalid/record", thread_id: "t1" }
+      ? {
+          summary,
+          provider,
+          url: "https://example.invalid/record",
+          thread_id: "t1",
+        }
       : null,
     work_item_ids: [],
     work_item_count: 1,
@@ -269,6 +275,76 @@ function action(
 
 const HOUR = 3600;
 const DAY = 24 * HOUR;
+
+function threadRow(
+  seed: number,
+  occurredAt: string,
+  message: string,
+  actorId: string,
+  actorName: string,
+  messageTs: string,
+  threadTs: string,
+): RawRow {
+  const timestamp = Date.parse(occurredAt) * 1e6;
+  return {
+    timestamp: occurredAt,
+    data: {
+      timestamp,
+      observed_timestamp: timestamp,
+      id: hex(700 + seed),
+      trace_id: "d08ee9f6b4d3dffe50e5fe3f5be5d0c3",
+      span_id: "",
+      severity_text: "INFO",
+      severity_number: 9,
+      body: { message },
+      attribute: {
+        g6: { actor: { id: actorId, name: actorName } },
+        slack: { message: { ts: messageTs }, thread: { ts: threadTs } },
+      },
+      resource: { g6: { source: { provider: "slack" } } },
+      scope: {},
+    },
+  };
+}
+
+const THREAD_ROWS = [
+  threadRow(
+    1,
+    "2026-08-12T09:12:00Z",
+    "Gateway is rejecting kind 44200 again on the internal build. Observer stream has been quiet since 03:00.",
+    "U024BE7LH",
+    "Priya Raman",
+    "100.1",
+    "100.1",
+  ),
+  threadRow(
+    2,
+    "2026-08-12T09:26:00Z",
+    "Subscription isn't in the internal build's relay config. It ships in 0.9.40 — question is whether we backport.",
+    "U02MARCO",
+    "Marco Böhm",
+    "100.2",
+    "100.1",
+  ),
+  threadRow(
+    3,
+    "2026-08-12T09:41:00Z",
+    "Backport is two lines in the relay config, but it changes what internal builds replay on startup. Needs a call.",
+    "U02YUKI",
+    "Yuki Tanaka",
+    "100.3",
+    "100.1",
+  ),
+  threadRow(
+    4,
+    "2026-08-12T10:03:00Z",
+    "Release branch cuts Thursday so we need an answer by Wednesday EOD.",
+    "U024BE7LH",
+    "Priya Raman",
+    "100.4",
+    "100.1",
+  ),
+];
 
 export const ACTIONS: Action[] = [
   action(
@@ -373,7 +449,13 @@ export const ACTIONS: Action[] = [
 ];
 
 const OVERVIEW = {
-  open: counts({ review: 14, approval: 3, response: 6, decision: 4, unblock: 5 }),
+  open: counts({
+    review: 14,
+    approval: 3,
+    response: 6,
+    decision: 4,
+    unblock: 5,
+  }),
   actions: ACTIONS.length,
   resolved: null,
   generated_at: GENERATED_AT,
@@ -413,7 +495,11 @@ export async function installCloudGateway(page: Page): Promise<void> {
     const path = url.pathname.replace(/^.*\/api\/cloud\//, "");
 
     if (path === "healthz") {
-      return route.fulfill({ status: 200, contentType: "text/plain", body: "ok" });
+      return route.fulfill({
+        status: 200,
+        contentType: "text/plain",
+        body: "ok",
+      });
     }
     if (path === "v1/dev/users" || path === "v1/users") {
       return route.fulfill(json(USERS));
@@ -427,6 +513,23 @@ export async function installCloudGateway(page: Page): Promise<void> {
           data: ACTIONS,
           page: { limit: 100, next_cursor: null },
           generated_at: GENERATED_AT,
+        }),
+      );
+    }
+    if (path === "v1/extractions/resolve") {
+      return route.fulfill(
+        json({
+          type: "raw",
+          data: {
+            results: [
+              {
+                queryName: "extraction",
+                nextCursor: "",
+                rows: THREAD_ROWS,
+              },
+            ],
+          },
+          meta: { rowsScanned: THREAD_ROWS.length, bytesScanned: 4096 },
         }),
       );
     }

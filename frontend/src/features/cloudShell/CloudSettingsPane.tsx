@@ -2,10 +2,7 @@
 // configures a feature the cloud window does not have — relays, communities,
 // notifications, agents — so listing them here would be a menu of controls that
 // change nothing.
-import {
-  APPEARANCES,
-  type Appearance,
-} from "@/features/cloudShell/appearance";
+import { APPEARANCES, type Appearance } from "@/features/cloudShell/appearance";
 import { useCloudWindow } from "@/features/cloudShell/CloudWindowProvider";
 
 export function CloudSettingsPane() {
@@ -15,13 +12,19 @@ export function CloudSettingsPane() {
     <div className="mx-auto w-full max-w-[960px] px-4 pb-10 pt-7 sm:px-7">
       <h1 className="text-pulse-display font-bold text-pulse-ink">Settings</h1>
 
-      <section className="mt-6 rounded-2xl border border-pulse-hairline p-5">
-        <h2 className="text-pulse-title font-semibold text-pulse-ink">Appearance</h2>
+      <section className="g6-pulse-elevated mt-6 rounded-2xl border border-pulse-hairline bg-pulse-surface/45 p-5">
+        <h2 className="text-pulse-title font-semibold text-pulse-ink">
+          Appearance
+        </h2>
         <p className="mt-1 text-pulse-caption text-pulse-ink-mute">
           System follows the operating system's light and dark setting.
         </p>
 
-        <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Appearance">
+        <div
+          className="mt-3 flex gap-2"
+          role="radiogroup"
+          aria-label="Appearance"
+        >
           {APPEARANCES.map(({ id, label }) => (
             <AppearanceOption
               id={id}
@@ -52,9 +55,9 @@ function AppearanceOption({
     <button
       aria-checked={selected}
       // Same selected language as the sidebar nav and the Pulse scope pills:
-      // one filled aubergine means "this is the one you are on".
+      // one filled cobalt means "this is the one you are on".
       className={[
-        "h-8 rounded-full px-5 text-xs font-medium transition-colors",
+        "h-8 rounded-full px-5 text-xs font-medium transition-[background-color,border-color,color,transform] active:scale-[0.98]",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink",
         selected
           ? "bg-pulse-brand text-pulse-brand-fg"

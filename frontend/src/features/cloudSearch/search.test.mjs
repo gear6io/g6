@@ -62,10 +62,7 @@ test("the subtitle is built from fields the row actually carries", () => {
 
   // A milestone with no observed day has no health, so the clause is absent
   // rather than rendered as "unknown" — the same rule the rest of Cloud follows.
-  assert.equal(
-    resultSubtitle(milestone({ last_activity: null }), 0),
-    "0 open",
-  );
+  assert.equal(resultSubtitle(milestone({ last_activity: null }), 0), "0 open");
 });
 
 test("a person's row states their standing, which is all Cloud serves", () => {
@@ -95,7 +92,10 @@ test("the palette offers all four scopes and no counts before a query", () => {
 test("the palette states what each scope matches instead of implying it matches everything", () => {
   const markup = palette();
 
-  assert.match(markup, /Milestones match their subject, description and keywords/);
+  assert.match(
+    markup,
+    /Milestones match their subject, description and keywords/,
+  );
   assert.match(markup, /Events match what was said on the source record/);
 });
 
@@ -105,5 +105,8 @@ test("the palette is a dialog with a named input and its keys stated", () => {
   assert.match(markup, /role="dialog"[^>]*/);
   assert.match(markup, /aria-modal="true"/);
   assert.match(markup, /aria-label="Search milestones, events and people"/);
+  assert.match(markup, /autocapitalize="none"/i);
+  assert.match(markup, /autocorrect="off"/i);
+  assert.match(markup, /spellcheck="false"/i);
   assert.match(markup, /↑↓ navigate · ↵ open · ⇥ scope · esc close/);
 });

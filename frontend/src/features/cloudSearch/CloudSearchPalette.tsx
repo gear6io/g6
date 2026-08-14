@@ -97,7 +97,10 @@ function Highlighted({ needle, text }: { needle: string; text: string }) {
  * with no observed day has no health and no instant, so that clause is absent
  * rather than rendered as "unknown".
  */
-export function resultSubtitle(milestone: Milestone, openTotal: number): string {
+export function resultSubtitle(
+  milestone: Milestone,
+  openTotal: number,
+): string {
   const parts: string[] = [];
   if (milestone.last_activity) {
     parts.push(STATUS_WORD[milestone.last_activity.status]);
@@ -158,8 +161,10 @@ function ResultRow({
       >
         <span className="justify-self-center">{glyph}</span>
         <span className="min-w-0">
-          <span className="block truncate text-sm text-pulse-ink">{children}</span>
-          <span className="mt-px block truncate text-2xs text-pulse-ink-mute">
+          <span className="block truncate text-sm text-pulse-ink">
+            {children}
+          </span>
+          <span className="mt-px block truncate text-xs text-pulse-ink-mute">
             {subtitle}
           </span>
         </span>
@@ -168,10 +173,16 @@ function ResultRow({
   );
 }
 
-function Group({ children, label }: { children: React.ReactNode; label: string }) {
+function Group({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
   return (
     <>
-      <p className="px-4 pb-1 pt-2.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+      <p className="px-4 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
         {label}
       </p>
       <ul>{children}</ul>
@@ -232,7 +243,8 @@ export function CloudSearchPalette({
 
   const value = results.status === "ready" ? results.value : null;
   const hits = value ? hitsFor(value, scope) : [];
-  const people = value && (scope === "all" || scope === "people") ? value.people : [];
+  const people =
+    value && (scope === "all" || scope === "people") ? value.people : [];
 
   const move = useCallback(
     (delta: number) => {
@@ -245,17 +257,14 @@ export function CloudSearchPalette({
     [hits.length],
   );
 
-  const cycleScope = useCallback(
-    (back: boolean) => {
-      setScope((current) => {
-        const at = SCOPES.findIndex((entry) => entry.id === current);
-        const next = (at + (back ? -1 : 1) + SCOPES.length) % SCOPES.length;
-        return SCOPES[next].id;
-      });
-      setActive(0);
-    },
-    [],
-  );
+  const cycleScope = useCallback((back: boolean) => {
+    setScope((current) => {
+      const at = SCOPES.findIndex((entry) => entry.id === current);
+      const next = (at + (back ? -1 : 1) + SCOPES.length) % SCOPES.length;
+      return SCOPES[next].id;
+    });
+    setActive(0);
+  }, []);
 
   // Tab counts are the array lengths, per the response's own contract.
   const counted = (id: SearchScope): number | null => {
@@ -263,7 +272,9 @@ export function CloudSearchPalette({
       return null;
     }
     if (id === "all") {
-      return value.milestones.length + value.events.length + value.people.length;
+      return (
+        value.milestones.length + value.events.length + value.people.length
+      );
     }
     return value[id].length;
   };
@@ -272,7 +283,7 @@ export function CloudSearchPalette({
     // The scrim is inside the window, not over the page: this is a window
     // overlay, and a fixed one would sit over the traffic light too.
     <div
-      className="absolute inset-0 z-50 flex justify-center bg-pulse-ink/30 pt-[76px]"
+      className="absolute inset-0 z-50 flex justify-center bg-pulse-ink/30 pt-[76px] backdrop-blur-[2px]"
       onClick={onClose}
       // biome-ignore lint/a11y/useKeyWithClickEvents: the dialog below owns the
       // keyboard; this element only catches a click outside it, and Escape
@@ -282,7 +293,7 @@ export function CloudSearchPalette({
       <div
         aria-label="Search Cloud"
         aria-modal="true"
-        className="flex max-h-[520px] w-[620px] max-w-[calc(100%-60px)] flex-col self-start overflow-hidden rounded-2xl border border-pulse-hairline bg-pulse-canvas shadow-panel-left"
+        className="g6-pulse-elevated flex max-h-[520px] w-[620px] max-w-[calc(100%-60px)] flex-col self-start overflow-hidden rounded-2xl border border-pulse-hairline bg-pulse-canvas"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
@@ -309,14 +320,20 @@ export function CloudSearchPalette({
         role="dialog"
       >
         <div className="flex shrink-0 items-center gap-2.5 border-b border-pulse-hairline px-4 py-3">
-          <Search aria-hidden="true" className="size-4 shrink-0 text-pulse-ink-mute" />
+          <Search
+            aria-hidden="true"
+            className="size-4 shrink-0 text-pulse-ink-mute"
+          />
           <input
             aria-label="Search milestones, events and people"
+            autoCapitalize="none"
+            autoCorrect="off"
             className="min-w-0 flex-1 bg-transparent text-base text-pulse-ink outline-hidden placeholder:text-pulse-ink-mute"
             maxLength={MAX_QUERY}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search milestones, events, people"
             ref={inputRef}
+            spellCheck={false}
             type="text"
             value={query}
           />
@@ -328,7 +345,7 @@ export function CloudSearchPalette({
             return (
               <button
                 aria-pressed={scope === id}
-                className={`rounded-full border px-3 py-0.5 text-2xs font-bold transition-colors ${
+                className={`rounded-full border px-3 py-0.5 text-xs font-bold transition-[background-color,border-color,color,transform] active:scale-[0.98] ${
                   scope === id
                     ? "border-pulse-brand bg-pulse-brand text-pulse-brand-fg"
                     : "border-pulse-hairline text-pulse-ink-mute hover:border-pulse-brand-ink hover:text-pulse-ink"
@@ -371,7 +388,8 @@ export function CloudSearchPalette({
             </p>
           ) : null}
 
-          {value && (scope === "all" || scope === "milestones") &&
+          {value &&
+          (scope === "all" || scope === "milestones") &&
           value.milestones.length > 0 ? (
             <Group label="Milestones">
               {value.milestones.map((milestone, index) => (
@@ -388,7 +406,9 @@ export function CloudSearchPalette({
                   }
                   key={milestone.id}
                   onSelect={() => onSelect({ kind: "milestone", milestone })}
-                  selected={hits[active]?.kind === "milestone" && index === active}
+                  selected={
+                    hits[active]?.kind === "milestone" && index === active
+                  }
                   subtitle={resultSubtitle(milestone, openTotal(milestone))}
                 >
                   <Highlighted needle={term} text={milestone.subject} />
@@ -397,7 +417,8 @@ export function CloudSearchPalette({
             </Group>
           ) : null}
 
-          {value && (scope === "all" || scope === "events") &&
+          {value &&
+          (scope === "all" || scope === "events") &&
           value.events.length > 0 ? (
             <Group label="Events">
               {value.events.map((event) => (
@@ -412,7 +433,8 @@ export function CloudSearchPalette({
                   onSelect={() => onSelect({ kind: "event", event })}
                   selected={
                     hits[active]?.kind === "event" &&
-                    (hits[active] as { event: SearchEvent }).event.id === event.id
+                    (hits[active] as { event: SearchEvent }).event.id ===
+                      event.id
                   }
                   // The milestone's title is deliberately not on this row —
                   // Cloud serves the id rather than a denormalized copy that
@@ -435,7 +457,7 @@ export function CloudSearchPalette({
               somewhere approximate. */}
           {people.length > 0 ? (
             <>
-              <p className="px-4 pb-1 pt-2.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+              <p className="px-4 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
                 People
               </p>
               <ul>
@@ -459,7 +481,7 @@ export function CloudSearchPalette({
                           text={person.display_name || person.handle}
                         />
                       </span>
-                      <span className="mt-px block truncate text-2xs text-pulse-ink-mute">
+                      <span className="mt-px block truncate text-xs text-pulse-ink-mute">
                         {personStanding(person)}
                       </span>
                     </span>
@@ -472,7 +494,7 @@ export function CloudSearchPalette({
 
         <p
           aria-live="polite"
-          className="shrink-0 border-t border-pulse-hairline px-4 py-1.5 text-badge text-pulse-ink-mute"
+          className="shrink-0 border-t border-pulse-hairline bg-pulse-surface/30 px-4 py-1.5 text-xs text-pulse-ink-mute"
         >
           {value
             ? `${hits.length} openable · ↑↓ navigate · ↵ open · ⇥ scope · esc close`

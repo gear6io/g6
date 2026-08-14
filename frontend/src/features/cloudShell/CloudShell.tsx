@@ -41,6 +41,8 @@ const THREAD = {
 
 /** One keypress on a separator. Enough to feel, small enough to aim with. */
 const SIDEBAR_STEP = 16;
+const TIMELINE_WINDOWS = [7, 30, 90] as const;
+type TimelineDays = (typeof TIMELINE_WINDOWS)[number];
 
 type WidthBounds = typeof THREAD;
 
@@ -143,7 +145,7 @@ function PanelSeparator({
       aria-valuemax={bounds.max}
       aria-valuemin={bounds.min}
       aria-valuenow={width}
-      className="w-1 shrink-0 cursor-col-resize bg-pulse-hairline transition-colors hover:bg-pulse-tint focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+      className="w-1 shrink-0 cursor-col-resize bg-pulse-hairline transition-colors duration-150 hover:bg-pulse-tint focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
       onKeyDown={(event) => {
         // Left always narrows the column left of the handle, which is what the
         // key looks like it should do from either side.
@@ -190,17 +192,14 @@ function NavButton({
   return (
     <button
       aria-current={active ? "page" : undefined}
-      // Selected is the filled aubergine, the same treatment the Pulse scope
-      // pills use for the same meaning. The rail sits on the cream surface and
-      // the alt lavender is only 1.05:1 against it, so a tinted-chip "selected"
-      // would have been invisible in light; the fill is also the one selection
-      // language this window already had.
+      // One filled cobalt means selected everywhere in Cloud. The neutral rail
+      // stays quiet so the active destination remains the only brand moment.
       className={[
-        "relative grid size-[38px] shrink-0 place-items-center rounded-lg transition-colors",
+        "relative grid size-[38px] shrink-0 place-items-center rounded-lg transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.96]",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
         active
-          ? "bg-pulse-brand text-pulse-brand-fg"
-          : "text-pulse-ink-mute hover:bg-pulse-canvas hover:text-pulse-ink",
+          ? "bg-pulse-brand text-pulse-brand-fg shadow-[inset_0_0_0_1px_var(--g6-pulse-brand-tint)]"
+          : "text-pulse-ink-mute hover:bg-pulse-surface-alt hover:text-pulse-ink",
       ].join(" ")}
       onClick={onSelect}
       title={label}
@@ -230,7 +229,7 @@ function NavButton({
 function SearchTrigger({ onOpen }: { onOpen: () => void }) {
   return (
     <button
-      className="flex h-[27px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full border border-pulse-hairline bg-pulse-surface px-2.5 text-xs text-pulse-ink-mute transition-colors hover:border-pulse-brand-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+      className="flex h-[29px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full border border-pulse-hairline bg-pulse-surface px-3 text-xs text-pulse-ink-mute transition-[background-color,border-color,color,transform] duration-150 hover:border-pulse-brand-ink hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
       onClick={onOpen}
       type="button"
     >
@@ -248,9 +247,23 @@ export function CloudShell() {
     useCloudWindow();
   const [threadWidth, resizeThread] = usePanelWidth(THREAD);
   const [searching, setSearching] = useState(false);
-  const [pulseQuery, setPulseQuery] = useState("");
+  const [pulseSearch, setPulseSearch] = useState({
+    query: "",
+    milestoneId: null as string | null,
+    revision: 0,
+  });
+  const [timelineDays, setTimelineDays] = useState<TimelineDays>(30);
   const closeThread = useCallback(() => selectEvent(null), [selectEvent]);
   const openSearch = useCallback(() => setSearching(true), []);
+  const clearPulseQuery = useCallback(
+    () =>
+      setPulseSearch((current) => ({
+        ...current,
+        query: "",
+        milestoneId: null,
+      })),
+    [],
+  );
 
   useSearchHotkey(openSearch);
 
@@ -261,15 +274,14 @@ export function CloudShell() {
     inbox.inbox.status === "ready" ? inbox.inbox.value.overview.actions : 0;
 
   return (
-    <div className="relative flex h-dvh overflow-hidden bg-pulse-canvas text-pulse-ink">
-      {/* The rail is the second neutral layer: cream against the content
-          column's canvas, so the two read as different surfaces without a rule
-          between them. `pt-[42px]` clears the close dot at y=13 — the rail runs
+    <div className="relative flex h-dvh overflow-hidden bg-pulse-canvas font-sans text-pulse-ink">
+      {/* The rail is the second neutral layer: bone against the content
+          column's canvas. `pt-[42px]` clears the close dot at y=13 — the rail runs
           to the window's own top edge, so the clearance is the rail's rather
           than a bar drawn above it. */}
       <nav
         aria-label="Cloud"
-        className="flex w-[52px] shrink-0 flex-col items-center gap-[3px] bg-pulse-surface pb-2 pt-[42px]"
+        className="flex w-[52px] shrink-0 flex-col items-center gap-[3px] border-r border-pulse-hairline bg-pulse-surface pb-2 pt-[42px]"
       >
         {NAV.map(({ id, label, icon }) => (
           <NavButton
@@ -291,11 +303,34 @@ export function CloudShell() {
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[42px] shrink-0 items-center gap-2.5 border-b border-pulse-hairline pl-3.5 pr-2.5">
-          <span className="shrink-0 text-sm font-bold tracking-tight">
+        <header className="g6-pulse-chrome z-10 flex h-[42px] shrink-0 items-center gap-2.5 border-b border-pulse-hairline pl-3.5 pr-2.5">
+          <span className="shrink-0 text-sm font-semibold tracking-tight">
             {VIEW_TITLE[view]}
           </span>
           <SearchTrigger onOpen={openSearch} />
+          {view === "pulse" ? (
+            <div
+              aria-label="Timeline window"
+              className="flex shrink-0 items-center rounded-full border border-pulse-hairline bg-pulse-surface p-0.5"
+              role="group"
+            >
+              {TIMELINE_WINDOWS.map((days) => (
+                <button
+                  aria-pressed={timelineDays === days}
+                  className={`rounded-full px-2 py-1 text-xs font-semibold tabular-nums transition-[background-color,color,transform] duration-100 active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink ${
+                    timelineDays === days
+                      ? "bg-pulse-brand text-pulse-brand-fg"
+                      : "text-pulse-ink-mute hover:bg-pulse-surface-alt hover:text-pulse-ink"
+                  }`}
+                  key={days}
+                  onClick={() => setTimelineDays(days)}
+                  type="button"
+                >
+                  {days}d
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {error ? (
               <p className="truncate text-xs text-pulse-error" role="status">
@@ -320,7 +355,15 @@ export function CloudShell() {
         </header>
 
         <main className="flex min-h-0 flex-1" data-testid="cloud-shell">
-          {view === "pulse" ? <PulseMilestones query={pulseQuery} /> : null}
+          {view === "pulse" ? (
+            <PulseMilestones
+              onClearQuery={clearPulseQuery}
+              query={pulseSearch.query}
+              queryMilestoneId={pulseSearch.milestoneId}
+              queryRevision={pulseSearch.revision}
+              timelineDays={timelineDays}
+            />
+          ) : null}
           {view === "inbox" ? <CloudInboxPane /> : null}
           {view === "settings" ? <CloudSettingsPane /> : null}
         </main>
@@ -336,7 +379,11 @@ export function CloudShell() {
           onClose={() => setSearching(false)}
           onSelect={(hit) => {
             if (hit.kind === "milestone") {
-              setPulseQuery(hit.milestone.subject);
+              setPulseSearch((current) => ({
+                query: hit.milestone.subject,
+                milestoneId: hit.milestone.id,
+                revision: current.revision + 1,
+              }));
               setView("pulse");
             } else {
               selectEvent(hit.event);
@@ -353,7 +400,7 @@ export function CloudShell() {
           event so switching rows remounts rather than showing the previous
           thread while the next one loads. */}
       {selectedEvent ? (
-        <>
+        <div className="g6-pulse-side-panel flex shrink-0 bg-pulse-canvas max-[1199px]:absolute max-[1199px]:inset-y-0 max-[1199px]:right-0 max-[1199px]:z-40 max-[1199px]:max-w-[calc(100%-3rem)]">
           <PanelSeparator
             bounds={THREAD}
             label="Resize conversation"
@@ -367,7 +414,7 @@ export function CloudShell() {
             onClose={closeThread}
             widthPx={threadWidth}
           />
-        </>
+        </div>
       ) : null}
     </div>
   );

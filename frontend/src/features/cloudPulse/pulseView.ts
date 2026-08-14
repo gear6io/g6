@@ -34,18 +34,27 @@ export const STATUS_FACET_LABEL: Record<MilestoneStatus, string> = {
 };
 
 /**
- * The two views the API can actually serve. "Moved today" and "My milestones"
- * are absent on purpose: neither is a filter Cloud has — the first would have to
- * be derived from a page rather than the collection, and the second needs an
- * ownership the read model does not carry.
+ * Named views. "Moved today" is completed client-side across sorted milestone
+ * pages because Cloud does not expose a matching predicate. "My milestones"
+ * remains absent because the read model carries no ownership to filter by.
  */
 export const VIEWS = {
   attention: {
     label: "Needs attention",
     /** Regressed and at risk: the two healths that mean somebody has to look. */
     status: ["regression", "dependency"] as MilestoneStatus[],
+    movedToday: false,
   },
-  all: { label: "All milestones", status: [] as MilestoneStatus[] },
+  moved: {
+    label: "Moved today",
+    status: [] as MilestoneStatus[],
+    movedToday: true,
+  },
+  all: {
+    label: "All milestones",
+    status: [] as MilestoneStatus[],
+    movedToday: false,
+  },
 } as const;
 
 export type PulseViewId = keyof typeof VIEWS;
@@ -59,14 +68,22 @@ export type PulseFilter = {
    * surfacing, so quietness composes with health rather than replacing it.
    */
   quietDays: number | null;
-  /** Cloud's `q`, over a milestone's own words. Set by the ⌘K palette. */
-  q: string;
+  /** Newest observation falls on Cloud's generated UTC day. */
+  movedToday: boolean;
 };
 
-export const NO_FILTER: PulseFilter = { status: [], quietDays: null, q: "" };
+export const NO_FILTER: PulseFilter = {
+  status: [],
+  quietDays: null,
+  movedToday: false,
+};
 
 export function viewFilter(view: PulseViewId): PulseFilter {
-  return { ...NO_FILTER, status: [...VIEWS[view].status] };
+  return {
+    ...NO_FILTER,
+    status: [...VIEWS[view].status],
+    movedToday: VIEWS[view].movedToday,
+  };
 }
 
 /**
@@ -81,25 +98,30 @@ export function viewFilter(view: PulseViewId): PulseFilter {
 export function filterQuery(
   filter: PulseFilter,
   page: { limit: number; cursor?: string },
+  query = "",
 ): MilestoneListQuery {
   return {
     ...page,
     counts: true,
-    q: filter.q || undefined,
+    q: query || undefined,
     status: filter.status.length > 0 ? filter.status.join(",") : undefined,
     quiet_days: filter.quietDays ?? undefined,
   };
 }
 
 /** Which named view this filter is, or null when it is a facet combination. */
-export function activeView(filter: PulseFilter): PulseViewId | null {
-  if (filter.quietDays !== null || filter.q) {
+export function activeView(
+  filter: PulseFilter,
+  query = "",
+): PulseViewId | null {
+  if (filter.quietDays !== null || query) {
     return null;
   }
   for (const [id, view] of Object.entries(VIEWS)) {
     if (
       view.status.length === filter.status.length &&
-      view.status.every((status) => filter.status.includes(status))
+      view.status.every((status) => filter.status.includes(status)) &&
+      view.movedToday === filter.movedToday
     ) {
       return id as PulseViewId;
     }
@@ -113,14 +135,14 @@ export function activeView(filter: PulseFilter): PulseViewId | null {
  * results" and "no results *here*" are different sentences and only one of them
  * is usually true.
  */
-export function activeLabel(filter: PulseFilter): string | null {
-  const view = activeView(filter);
+export function activeLabel(filter: PulseFilter, query = ""): string | null {
+  const view = activeView(filter, query);
   if (view) {
     return view === "all" ? null : VIEWS[view].label;
   }
   const parts: string[] = [];
-  if (filter.q) {
-    parts.push(`“${filter.q}”`);
+  if (query) {
+    parts.push(`“${query}”`);
   }
   for (const status of STATUS_ORDER) {
     if (filter.status.includes(status)) {
@@ -130,6 +152,9 @@ export function activeLabel(filter: PulseFilter): string | null {
   if (filter.quietDays !== null) {
     parts.push(`Quiet ≥${filter.quietDays}d`);
   }
+  if (filter.movedToday) {
+    parts.push(VIEWS.moved.label);
+  }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -138,7 +163,10 @@ export function activeLabel(filter: PulseFilter): string | null {
  * it, so this is honest even before the last page is loaded — which is the
  * whole reason `counts` is requested rather than counting the rows on screen.
  */
-export function countLine(shown: number, counts: MilestoneCounts | null): string {
+export function countLine(
+  shown: number,
+  counts: MilestoneCounts | null,
+): string {
   if (!counts) {
     return `${shown} shown`;
   }

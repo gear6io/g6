@@ -11,7 +11,11 @@
 // and there must not be: two of them would disagree the first time either moved.
 import { useEffect } from "react";
 
-import type { Milestone, MilestoneStatus } from "@/shared/api/cloudGateway/types";
+import type {
+  Milestone,
+  MilestoneStatus,
+  TimelineQuery,
+} from "@/shared/api/cloudGateway/types";
 
 import { generatedAge } from "@/features/cloudInbox/inbox";
 import {
@@ -90,18 +94,15 @@ const RING: Record<MilestoneStatus, string> = {
 export const ROW_GRID =
   "grid grid-cols-[minmax(0,1fr)_108px_66px_168px_92px] items-center gap-3.5 px-4";
 
-export function MilestoneRowHeader() {
+export function MilestoneRowHeader({ days = 30 }: { days?: number } = {}) {
   return (
     <div
-      className={`${ROW_GRID} sticky top-0 z-[3] border-b border-pulse-hairline bg-pulse-canvas py-1.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute`}
+      className={`${ROW_GRID} sticky top-0 z-[3] border-b border-pulse-hairline bg-pulse-canvas/95 py-2 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute backdrop-blur-sm`}
     >
       <span>Milestone</span>
       <span>Status</span>
       <span className="text-right">Open</span>
-      {/* The window Cloud reads, stated as a fact rather than offered as a
-          control: the timeline's default range is Cloud's, and dates computed
-          from this webview's clock would make the label disagree with it. */}
-      <span>Last 30 days</span>
+      <span>Last {days} days</span>
       <span className="text-right">Observed</span>
     </div>
   );
@@ -114,14 +115,16 @@ export function MilestoneRow({
   onRequest,
   selected,
   timeline,
+  timelineQuery,
 }: {
   milestone: Milestone;
   now: number;
   onOpen: () => void;
   /** Asks for this milestone's timeline; idempotent, and queued four at a time. */
-  onRequest: (milestoneId: string) => void;
+  onRequest: (milestoneId: string, query?: TimelineQuery) => void;
   selected: boolean;
   timeline: TimelineLoad | undefined;
+  timelineQuery?: TimelineQuery;
 }) {
   const status = milestone.last_activity?.status ?? null;
   const open = openTotal(milestone.open);
@@ -134,15 +137,15 @@ export function MilestoneRow({
   // queues four at a time, so a page of rows is a bounded burst rather than one
   // request per milestone in the collection.
   useEffect(() => {
-    onRequest(milestone.id);
-  }, [milestone.id, onRequest]);
+    onRequest(milestone.id, timelineQuery);
+  }, [milestone.id, onRequest, timelineQuery]);
 
   return (
     <button
       aria-current={selected ? "true" : undefined}
       className={[
         ROW_GRID,
-        "w-full border-b border-pulse-hairline py-2 text-left transition-colors",
+        "w-full border-b border-pulse-hairline py-2 text-left transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.998]",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-pulse-brand-ink",
         selected
           ? "bg-pulse-surface-alt shadow-[inset_3px_0_0_0_var(--g6-pulse-brand-ink)]"
@@ -157,7 +160,7 @@ export function MilestoneRow({
         </span>
         {/* The milestone's own description, not a team — Cloud has no team
             bucket, so the second line is what the lattice says this is. */}
-        <span className="mt-px block truncate text-2xs text-pulse-ink-mute">
+        <span className="mt-0.5 block truncate text-xs text-pulse-ink-mute">
           {milestone.description}
         </span>
       </span>
@@ -177,7 +180,7 @@ export function MilestoneRow({
           // Never observed is not a health. Cloud only returns these under
           // `has_no_activity`, and calling one "neutral" would state a reading
           // that was never taken.
-          <span className="text-2xs text-pulse-ink-mute">Never observed</span>
+          <span className="text-xs text-pulse-ink-mute">Never observed</span>
         )}
       </span>
 
@@ -197,7 +200,7 @@ export function MilestoneRow({
         {stages.length > 0 ? <Sparkline stages={stages} /> : null}
       </span>
 
-      <span className="text-right text-2xs tabular-nums text-pulse-ink-mute">
+      <span className="text-right text-xs tabular-nums text-pulse-ink-mute">
         {milestone.last_activity
           ? generatedAge(milestone.last_activity.observed_at, now)
           : "—"}

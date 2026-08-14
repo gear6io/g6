@@ -37,15 +37,11 @@ test("the masthead does not invent milestone lifecycle filters", () => {
   assert.doesNotMatch(markup, />Active<|>Pruned<|>All<|Milestone scope/);
 });
 
-// The sparkline column names the window Cloud reads. It is a column heading,
-// not a range control: the timeline's default range is Cloud's own, and a 7/30/90
-// switcher would have to compute dates from this webview's clock and could then
-// disagree with the range Cloud actually served.
-test("the window Cloud reads is stated as a fact, not offered as a control", () => {
+test("the sparkline heading follows the selected window", () => {
   const markup = renderToStaticMarkup(
-    React.createElement(MilestoneRowHeader),
+    React.createElement(MilestoneRowHeader, { days: 7 }),
   );
-  assert.match(markup, />Last 30 days</);
+  assert.match(markup, />Last 7 days</);
   assert.doesNotMatch(markup, /<button/);
 });
 
@@ -58,5 +54,8 @@ test("the first paint is the row's own shape, so it does not resize under you", 
 
 test("the summary counts milestones without a backend lifecycle", () => {
   assert.equal(milestoneSummary(9, "4m ago"), "9 milestones. Updated 4m ago.");
-  assert.equal(milestoneSummary(1, "just now"), "1 milestone. Updated just now.");
+  assert.equal(
+    milestoneSummary(1, "just now"),
+    "1 milestone. Updated just now.",
+  );
 });

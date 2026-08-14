@@ -11,10 +11,16 @@
 // no Snooze, and the footer says so rather than leaving you to discover it by
 // pressing something that does nothing.
 import { ExternalLink, TriangleAlert } from "lucide-react";
+import { useMemo } from "react";
 
-import type { Action } from "@/shared/api/cloudGateway/types";
+import { CloudThreadConversation } from "@/features/cloudPulse/CloudThreadPanel";
+import type { Action, TimelineEvent } from "@/shared/api/cloudGateway/types";
 
-import { ACTION_LABEL, priorityLabel, relativeAge } from "@/features/cloudInbox/inbox";
+import {
+  ACTION_LABEL,
+  priorityLabel,
+  relativeAge,
+} from "@/features/cloudInbox/inbox";
 import { siblingsOnMilestone } from "@/features/cloudInbox/inboxFacets";
 import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
 
@@ -37,14 +43,14 @@ function Crumb({
 }) {
   const body = (
     <>
-      <span className="shrink-0 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+      <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
         {label}
       </span>
       <span className="min-w-0 truncate">{children}</span>
     </>
   );
   const shape =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-pulse-surface px-2.5 py-0.5 text-2xs text-pulse-ink";
+    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-pulse-surface px-2.5 py-0.5 text-xs text-pulse-ink";
 
   if (!onSelect) {
     return <span className={shape}>{body}</span>;
@@ -77,11 +83,26 @@ export function ActionReader({
   const referent = action.referent;
   const siblings = siblingsOnMilestone(actions, action);
   const provider = referent?.provider ?? "";
+  const conversationEvent = useMemo<TimelineEvent | null>(
+    () =>
+      referent?.thread_id
+        ? {
+            id: action.id,
+            occurred_at: action.updated_at,
+            provider,
+            summary: referent.summary || action.subject,
+            thread_id: referent.thread_id,
+            type: "log",
+            url: referent.url,
+          }
+        : null,
+    [action, provider, referent],
+  );
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="shrink-0 border-b border-pulse-hairline px-5 py-3.5">
-        <div className="flex items-center gap-2 text-2xs text-pulse-ink-mute">
+      <header className="shrink-0 border-b border-pulse-hairline bg-pulse-surface/30 px-5 py-3.5">
+        <div className="flex items-center gap-2 text-xs text-pulse-ink-mute">
           <span
             className={`rounded border px-1 font-semibold tabular-nums ${PRIORITY_TINT[action.priority.level]}`}
           >
@@ -122,7 +143,10 @@ export function ActionReader({
             <Crumb label="Source">
               <span className="inline-flex items-center gap-1.5">
                 {hasProviderIcon(provider) ? (
-                  <ProviderIcon className="size-3 shrink-0" provider={provider} />
+                  <ProviderIcon
+                    className="size-3 shrink-0"
+                    provider={provider}
+                  />
                 ) : null}
                 {referent.summary || provider}
               </span>
@@ -133,7 +157,7 @@ export function ActionReader({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {referent?.url ? (
             <a
-              className="inline-flex items-center gap-1.5 rounded-full bg-pulse-brand px-4 py-1 text-2xs font-bold text-pulse-brand-fg transition-colors hover:bg-pulse-press focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
+              className="inline-flex items-center gap-1.5 rounded-full bg-pulse-brand px-4 py-1 text-xs font-bold text-pulse-brand-fg transition-[background-color,transform] active:scale-[0.98] hover:bg-pulse-press focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
               href={referent.url}
               rel="noreferrer noopener"
               target="_blank"
@@ -144,14 +168,14 @@ export function ActionReader({
           ) : null}
           {action.entity && onOpenMilestone ? (
             <button
-              className="rounded-full border-2 border-pulse-brand-ink px-4 py-0.5 text-2xs font-bold text-pulse-brand-ink transition-colors hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
+              className="rounded-full border-2 border-pulse-brand-ink px-4 py-0.5 text-xs font-bold text-pulse-brand-ink transition-[background-color,transform] active:scale-[0.98] hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink"
               onClick={() => onOpenMilestone(action.entity?.subject ?? "")}
               type="button"
             >
               View milestone
             </button>
           ) : null}
-          <span className="ml-auto text-2xs text-pulse-ink-mute">
+          <span className="ml-auto text-xs text-pulse-ink-mute">
             Read-only — Cloud does not post or resolve.
           </span>
         </div>
@@ -178,14 +202,10 @@ export function ActionReader({
           </p>
         </div>
 
-        {/* The conversation itself is the shell's panel, opened from here: the
-            thread renderer is one implementation and it lives there. A second
-            one inside this pane would drift from it within a release. */}
-        {referent?.thread_id ? (
-          <p className="mt-4 text-xs text-pulse-ink-mute">
-            Cloud resolved the conversation this came from. Open the source to
-            read it.
-          </p>
+        {conversationEvent ? (
+          <div className="mt-4">
+            <CloudThreadConversation event={conversationEvent} />
+          </div>
         ) : (
           <p className="mt-4 text-xs text-pulse-ink-mute">
             Cloud resolved no conversation for this obligation.
@@ -195,7 +215,7 @@ export function ActionReader({
         {siblings.length > 0 ? (
           <>
             <div className="mt-5 flex items-center gap-2">
-              <p className="text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+              <p className="text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
                 Also open on this milestone
               </p>
               <span className="h-px flex-1 bg-pulse-hairline" />
@@ -230,7 +250,7 @@ export function ActionReader({
         ) : null}
       </div>
 
-      <p className="shrink-0 border-t border-pulse-hairline px-5 py-2 text-badge text-pulse-ink-mute">
+      <p className="shrink-0 border-t border-pulse-hairline bg-pulse-surface/30 px-5 py-2 text-xs text-pulse-ink-mute">
         Cloud defines no action on an obligation — there is no Done and no
         Snooze. Resolving one happens where it was raised.
       </p>

@@ -117,7 +117,7 @@ function PinButton() {
     <Button
       aria-label={pinned ? "Unpin window" : "Keep window on top"}
       aria-pressed={pinned}
-      className="size-7 text-pulse-ink-mute"
+      className="size-7 text-pulse-ink-mute transition-[background-color,color,transform] duration-150 hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.94]"
       onClick={togglePin}
       size="icon"
       variant="ghost"
@@ -145,7 +145,7 @@ function ExpandButton() {
   return (
     <Button
       aria-label="Expand to full window"
-      className="size-7 bg-pulse-surface text-pulse-ink hover:bg-pulse-brand hover:text-pulse-brand-fg"
+      className="size-7 bg-pulse-surface text-pulse-ink transition-[background-color,color,transform] duration-150 hover:bg-pulse-brand hover:text-pulse-brand-fg active:scale-[0.94]"
       // Not `onClick={expand}`: that hands the click event over as the view.
       onClick={() => expand()}
       size="icon"
@@ -185,16 +185,16 @@ function Lanes({
   }, [actions]);
 
   return (
-    <div className="flex shrink-0 gap-1.5 px-3.5 pb-2">
+    <div className="flex shrink-0 gap-1.5 px-3.5 pb-2.5">
       {LANE_ORDER.map((id) => (
         <button
           aria-pressed={lane === id}
           className={[
-            "flex-1 rounded-lg border px-2 py-1 text-left transition-colors",
+            "flex-1 rounded-lg border bg-pulse-canvas/80 px-2.5 py-1.5 text-left transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.98]",
             "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
             lane === id
-              ? "border-pulse-brand-ink bg-pulse-surface-alt"
-              : "border-pulse-hairline hover:border-pulse-brand-ink",
+              ? "border-pulse-brand-ink bg-pulse-surface-alt shadow-[inset_0_0_0_1px_var(--g6-pulse-brand-tint)]"
+              : "border-pulse-hairline hover:border-pulse-brand-ink hover:bg-pulse-surface-alt/60",
           ].join(" ")}
           key={id}
           onClick={() => onSelect(lane === id ? null : id)}
@@ -205,7 +205,7 @@ function Lanes({
           >
             {counts[id]}
           </span>
-          <span className="block text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+          <span className="block text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
             {LANE_LABEL[id]}
           </span>
         </button>
@@ -220,7 +220,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Inbox options"
-          className="size-7 text-pulse-ink-mute"
+          className="size-7 text-pulse-ink-mute transition-[background-color,color,transform] duration-150 hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.94]"
           size="icon"
           variant="ghost"
         >
@@ -263,7 +263,10 @@ export function UserSelect({
       <span className="truncate text-xs font-medium text-pulse-ink">
         {label}
       </span>
-      <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-pulse-ink-mute" />
+      <ChevronDown
+        aria-hidden="true"
+        className="size-3.5 shrink-0 text-pulse-ink-mute"
+      />
       <select
         aria-label="View actions as user"
         className="absolute inset-0 cursor-pointer appearance-none opacity-0"
@@ -362,7 +365,9 @@ function ActionRow({
             aria-hidden="true"
             className={`size-3.5 shrink-0 ${actionIconTint(action.required_action)}`}
           />
-          <span className="truncate">{ACTION_LABEL[action.required_action]}</span>
+          <span className="truncate">
+            {ACTION_LABEL[action.required_action]}
+          </span>
         </span>
         <span className="shrink-0">{relativeAge(action.age_seconds)}</span>
       </div>
@@ -473,7 +478,7 @@ export function CloudMiniInbox() {
         // Edge to edge: no rounding and no shadow of its own, because the
         // window already supplies both. A card inset inside a 380px window is
         // what produced the border being complained about.
-        className="g6-cloud-panel flex min-h-0 flex-1 flex-col overflow-hidden"
+        className="g6-cloud-panel g6-pulse-mesh flex min-h-0 flex-1 flex-col overflow-hidden"
         data-testid="cloud-mini-inbox"
       >
         {/* One 42px bar, and nothing above it. The close dot sits at x=14, y=13
@@ -483,7 +488,7 @@ export function CloudMiniInbox() {
             25px down; moving the dot is what deleted the band, not this class.
             Minimize and zoom are hidden in src-tauri's `hide_minimize_and_zoom`,
             so the brand clears one dot rather than three. */}
-        <header className="flex h-[42px] shrink-0 items-center gap-2 pl-9 pr-2">
+        <header className="g6-pulse-chrome flex h-[42px] shrink-0 items-center gap-2 border-b border-pulse-hairline/70 pl-9 pr-2">
           {/* The mark draws its own cobalt tile, so the rounding is the tile's
               own corner radius rather than a patch over an opaque matte. */}
           <Gear6Mark className="size-4.5 rounded-[5px]" />
@@ -501,7 +506,10 @@ export function CloudMiniInbox() {
             for whoever is testing the gateway, and the 42px bar belongs to the
             three the shipped window has. */}
         {users.status === "loading" ? (
-          <div aria-hidden="true" className="mx-3.5 mb-2 h-4 w-28 shrink-0 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
+          <div
+            aria-hidden="true"
+            className="mx-3.5 mb-2 h-4 w-28 shrink-0 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none"
+          />
         ) : null}
         {users.status === "ready" && selected ? (
           <div className="shrink-0 px-3.5">
@@ -530,7 +538,10 @@ export function CloudMiniInbox() {
             back in a 520px window. */}
         {inbox.status === "ready" && selected ? (
           <>
-            <InboxSummary className="px-3.5 pb-2" overview={inbox.value.overview} />
+            <InboxSummary
+              className="px-3.5 pb-2"
+              overview={inbox.value.overview}
+            />
             <Lanes actions={all} lane={lane} onSelect={setLane} />
           </>
         ) : null}
@@ -641,7 +652,7 @@ export function InboxBody({
     <ul>
       {laneGroups(visible).map(({ lane, actions }) => (
         <li key={lane}>
-          <p className="sticky top-0 z-[2] bg-pulse-canvas px-3.5 pb-1 pt-2.5 text-badge font-bold uppercase tracking-wider text-pulse-ink-mute">
+          <p className="sticky top-0 z-[2] bg-pulse-canvas/95 px-3.5 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute backdrop-blur-sm">
             {LANE_LABEL[lane]}
           </p>
           <ul>

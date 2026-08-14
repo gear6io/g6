@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { generatedAge } from "@/features/cloudInbox/inbox";
 import { AttentionBand } from "@/features/cloudPulse/AttentionBand";
 import { MilestonePanel } from "@/features/cloudPulse/MilestonePanel";
+import { selectedRange } from "@/features/cloudPulse/milestones";
 import {
   MilestoneRow,
   MilestoneRowHeader,
@@ -37,7 +38,6 @@ import type {
   AttentionResponse,
   Milestone,
   MilestoneCounts,
-  MilestoneListResponse,
   MilestoneStatus,
 } from "@/shared/api/cloudGateway/types";
 
@@ -73,6 +73,53 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+function movedCounts(rows: readonly Milestone[]): MilestoneCounts {
+  const byStatus: MilestoneCounts["by_status"] = {
+    dependency: 0,
+    neutral: 0,
+    progress: 0,
+    regression: 0,
+  };
+  for (const row of rows) {
+    if (row.last_activity) {
+      byStatus[row.last_activity.status] += 1;
+    }
+  }
+  return { total: rows.length, by_status: byStatus, no_activity: 0 };
+}
+
+async function firstPage(filter: PulseFilter, query: string): Promise<Page> {
+  const first = await listMilestones(
+    filterQuery(filter, { limit: PAGE_SIZE }, query),
+  );
+  if (!filter.movedToday) {
+    return {
+      rows: first.data,
+      cursor: first.page.next_cursor,
+      counts: first.counts,
+      generatedAt: first.generated_at,
+    };
+  }
+
+  const rows = [...first.data];
+  let cursor = first.page.next_cursor;
+  while (cursor) {
+    const next = await listMilestones(
+      filterQuery(filter, { limit: PAGE_SIZE, cursor }, query),
+    );
+    rows.push(...next.data);
+    cursor = next.page.next_cursor;
+  }
+  const today = first.generated_at.slice(0, 10);
+  const moved = rows.filter((row) => row.last_activity?.date === today);
+  return {
+    rows: moved,
+    cursor: null,
+    counts: movedCounts(moved),
+    generatedAt: first.generated_at,
+  };
+}
+
 /** The row's own shape, so the first paint does not resize under the reader. */
 function RowSkeleton() {
   return (
@@ -89,7 +136,7 @@ function RowSkeleton() {
   );
 }
 
-/** Design.md's cream feature card, doing the list's empty and failed states. */
+/** Design.md's bone feature card, doing the list's empty and failed states. */
 function Notice({
   action,
   detail,
@@ -124,13 +171,23 @@ export function PulseMilestones({
    * the ⌘K palette; empty is no filter, which is what Cloud does with it too.
    */
   query = "",
+  queryMilestoneId = null,
+  queryRevision = 0,
+  onClearQuery,
+  timelineDays = 30,
 }: {
   query?: string;
+  queryMilestoneId?: string | null;
+  queryRevision?: number;
+  onClearQuery?: () => void;
+  timelineDays?: number;
 } = {}) {
   // The conversation panel is the shell's, not this view's — a record opens it
   // and the shell renders it beside the content column.
   const { selectEvent, selectedEvent } = useCloudWindow();
-  const [filter, setFilter] = useState<PulseFilter>(() => viewFilter("attention"));
+  const [filter, setFilter] = useState<PulseFilter>(() =>
+    viewFilter("attention"),
+  );
   const [state, setState] = useState<State>({ status: "loading" });
   const [tiles, setTiles] = useState<AttentionResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -138,13 +195,17 @@ export function PulseMilestones({
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const timelines = useMilestoneTimelines(refreshKey);
+  const timelines = useMilestoneTimelines(`${refreshKey}:${timelineDays}`);
 
-  // The palette's hit is a filter like any other, so it lands in the same value
-  // the facets write to rather than in a second piece of state beside it.
+  // A palette selection is a command, not merely a string value. Its revision
+  // makes selecting the same result twice work and clears facets left by the
+  // previous list before opening the matched milestone.
   useEffect(() => {
-    setFilter((current) => (current.q === query ? current : { ...current, q: query }));
-  }, [query]);
+    if (queryRevision > 0) {
+      setFilter(NO_FILTER);
+      setSelectedId(queryMilestoneId);
+    }
+  }, [queryMilestoneId, queryRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,19 +214,11 @@ export function PulseMilestones({
     setState((current) =>
       current.status === "ready" ? current : { status: "loading" },
     );
-    listMilestones(filterQuery(filter, { limit: PAGE_SIZE }))
-      .then((res: MilestoneListResponse) => {
+    firstPage(filter, query)
+      .then((page) => {
         if (!cancelled) {
           setNow(Date.now());
-          setState({
-            status: "ready",
-            page: {
-              rows: res.data,
-              cursor: res.page.next_cursor,
-              counts: res.counts,
-              generatedAt: res.generated_at,
-            },
-          });
+          setState({ status: "ready", page });
         }
       })
       .catch((err: unknown) => {
@@ -176,7 +229,7 @@ export function PulseMilestones({
     return () => {
       cancelled = true;
     };
-  }, [filter, refreshKey]);
+  }, [filter, query, refreshKey]);
 
   // The tiles are whole-tenant and carry no filter, so they are read once per
   // refresh rather than once per facet press: narrowing the list does not change
@@ -211,7 +264,11 @@ export function PulseMilestones({
     // not a saved query, and Cloud pages the filtered collection only while the
     // filter is still on the request.
     listMilestones(
-      filterQuery(filter, { limit: PAGE_SIZE, cursor: state.page.cursor }),
+      filterQuery(
+        filter,
+        { limit: PAGE_SIZE, cursor: state.page.cursor },
+        query,
+      ),
     )
       .then((res) => {
         setState((current) =>
@@ -234,7 +291,7 @@ export function PulseMilestones({
       // reads as a dead control rather than a failed request. It says so now.
       .catch(() => setMoreFailed(true))
       .finally(() => setLoadingMore(false));
-  }, [filter, loadingMore, state]);
+  }, [filter, loadingMore, query, state]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
   const refreshing = refreshKey > 0 && state.status === "loading";
@@ -245,7 +302,14 @@ export function PulseMilestones({
     state.status === "ready"
       ? milestoneSummary(rows.length, generatedAge(state.page.generatedAt, now))
       : "";
-  const chip = activeLabel(filter);
+  const chip = activeLabel(filter, query);
+  const timelineQuery = useMemo(
+    () =>
+      state.status === "ready"
+        ? selectedRange(state.page.generatedAt, timelineDays)
+        : undefined,
+    [state, timelineDays],
+  );
 
   const selected = useMemo(
     () => rows.find((row) => row.id === selectedId) ?? null,
@@ -260,8 +324,11 @@ export function PulseMilestones({
   }, []);
 
   const selectView = useCallback(
-    (view: PulseViewId) => applyFilter({ ...viewFilter(view), q: query }),
-    [applyFilter, query],
+    (view: PulseViewId) => {
+      onClearQuery?.();
+      applyFilter(viewFilter(view));
+    },
+    [applyFilter, onClearQuery],
   );
   const selectStatus = useCallback(
     (status: MilestoneStatus) =>
@@ -274,11 +341,12 @@ export function PulseMilestones({
   const onlyQuiet = filter.quietDays !== null;
 
   return (
-    <div className="flex min-w-0 flex-1">
+    <div className="relative flex min-w-0 flex-1">
       <PulseFacets
         attention={tiles}
         counts={counts}
         filter={filter}
+        query={query}
         onSelectStatus={selectStatus}
         onSelectView={selectView}
       />
@@ -292,15 +360,18 @@ export function PulseMilestones({
             onSelectQuiet={() =>
               applyFilter(
                 onlyQuiet
-                  ? { ...NO_FILTER, q: query }
-                  : { ...NO_FILTER, q: query, quietDays: tiles.quiet.quiet_days },
+                  ? NO_FILTER
+                  : {
+                      ...NO_FILTER,
+                      quietDays: tiles.quiet.quiet_days,
+                    },
               )
             }
             onSelectRegressed={() =>
               applyFilter(
                 onlyRegressed
-                  ? { ...NO_FILTER, q: query }
-                  : { ...NO_FILTER, q: query, status: ["regression"] },
+                  ? NO_FILTER
+                  : { ...NO_FILTER, status: ["regression"] },
               )
             }
           />
@@ -309,14 +380,17 @@ export function PulseMilestones({
         {/* With facets in play, a list that does not state its own filter is a
             list you cannot trust: "nothing here" and "nothing here *under this
             filter*" are different sentences. */}
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-pulse-hairline px-4 py-1.5 text-2xs text-pulse-ink-mute">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-pulse-hairline bg-pulse-canvas/90 px-4 py-2 text-xs text-pulse-ink-mute backdrop-blur-sm">
           {chip ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-pulse-surface-alt py-0.5 pl-2.5 pr-1 font-semibold text-pulse-ink">
               {chip}
               <button
                 aria-label="Clear filter"
                 className="rounded-full p-0.5 text-pulse-ink-mute hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
-                onClick={() => applyFilter({ ...NO_FILTER, q: query })}
+                onClick={() => {
+                  onClearQuery?.();
+                  applyFilter(NO_FILTER);
+                }}
                 type="button"
               >
                 <X aria-hidden="true" className="size-3" />
@@ -350,7 +424,7 @@ export function PulseMilestones({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {state.status === "ready" && rows.length > 0 ? (
-            <MilestoneRowHeader />
+            <MilestoneRowHeader days={timelineDays} />
           ) : null}
 
           {state.status === "loading"
@@ -374,7 +448,10 @@ export function PulseMilestones({
                   ? "No milestone matches this filter. Clearing it shows the rest."
                   : "Milestone progress will appear here when Cloud observes it."
               }
-              onAction={() => applyFilter(viewFilter("all"))}
+              onAction={() => {
+                onClearQuery?.();
+                applyFilter(viewFilter("all"));
+              }}
               title={chip ? "Nothing under this filter" : "No milestones"}
             />
           ) : null}
@@ -392,6 +469,7 @@ export function PulseMilestones({
               onRequest={timelines.request}
               selected={selectedId === milestone.id}
               timeline={timelines.get(milestone.id)}
+              timelineQuery={timelineQuery}
             />
           ))}
 
@@ -429,33 +507,20 @@ export function PulseMilestones({
       {selected ? (
         <aside
           aria-label={selected.subject}
-          className="flex w-[440px] shrink-0 flex-col overflow-hidden border-l border-pulse-hairline shadow-panel-left"
+          className="g6-pulse-side-panel flex w-[396px] shrink-0 flex-col overflow-hidden bg-pulse-canvas max-[1199px]:absolute max-[1199px]:inset-y-0 max-[1199px]:right-0 max-[1199px]:z-30 max-[1199px]:max-w-[calc(100%-3rem)]"
         >
-          {/* No title here: the panel below carries it in full, and a truncated
-              copy above an untruncated one is the same sentence twice with the
-              worse one on top. */}
-          <div className="flex shrink-0 justify-end border-b border-pulse-hairline px-4 py-2">
-            <button
-              aria-label="Close detail"
-              className="shrink-0 rounded-md p-1 text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
-              onClick={() => setSelectedId(null)}
-              type="button"
-            >
-              <X aria-hidden="true" className="size-3.5" />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <MilestonePanel
-              milestone={selected}
-              now={now}
-              onOpenEvent={selectEvent}
-              onRequest={timelines.request}
-              onRetry={timelines.retry}
-              openEventId={selectedEvent?.id ?? null}
-              timeline={timelines.get(selected.id)}
-            />
-          </div>
-          <p className="shrink-0 border-t border-pulse-hairline px-4 py-2 text-2xs text-pulse-ink-mute">
+          <MilestonePanel
+            milestone={selected}
+            now={now}
+            onClose={() => setSelectedId(null)}
+            onOpenEvent={selectEvent}
+            onRequest={timelines.request}
+            onRetry={timelines.retry}
+            openEventId={selectedEvent?.id ?? null}
+            timeline={timelines.get(selected.id)}
+            timelineQuery={timelineQuery}
+          />
+          <p className="shrink-0 border-t border-pulse-hairline px-4 py-2 text-xs text-pulse-ink-mute">
             Read-only — Cloud does not post.
           </p>
         </aside>

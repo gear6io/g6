@@ -1,45 +1,45 @@
 <title>Gear6 Cloud — UI rework mockup</title>
 <style>
-  /* Tokens verbatim from frontend/src/shared/styles/globals/theme.css. */
+  /* Design.md's Cobalt and Bone tokens, matching the shipped Cloud scope. */
   :root {
-    --brand: #4a154b; --brand-ink: #4a154b; --brand-press: #611f69; --brand-fg: #ffffff;
-    --brand-mute: #d9bdde; --brand-tint: #592466;
-    --surface: #f4ede4; --surface-alt: #f9f0ff; --canvas: #ffffff;
-    --ink: #1d1d1d; --ink-mute: #696969; --hairline: #e6e6e6;
-    --link: #1264a3; --error: #a83612; --warning: #7a5200; --success: #007a5a;
-    --mesh-a: rgb(255 240 230 / .9); --mesh-b: rgb(233 216 255 / .7); --mesh-c: rgb(227 237 225 / .65);
-    --page: #efe7dd;
-    --row-hover: rgb(74 21 75 / .045);
-    --shadow-win: 0 1px 3px rgb(29 29 29 / .08), 0 30px 70px -34px rgb(29 29 29 / .42);
-    --shadow-pop: 0 1px 2px rgb(29 29 29 / .08), 0 10px 28px -10px rgb(29 29 29 / .2);
+    --brand: #2451b8; --brand-ink: #2148a5; --brand-press: #3163d0; --brand-fg: #ffffff;
+    --brand-mute: #b8c6e8; --brand-tint: #3a63c4;
+    --surface: #f1efe9; --surface-alt: #e6ecf9; --canvas: #fcfbf8;
+    --ink: #1a1c22; --ink-mute: #61646f; --hairline: #e1ddd5;
+    --link: #2451b8; --error: #a8503a; --warning: #7b5a17; --success: #2a6f54;
+    --mesh-a: rgb(247 242 232 / .9); --mesh-b: rgb(227 234 248 / .78); --mesh-c: rgb(236 239 242 / .72);
+    --page: #f1efe9;
+    --row-hover: color-mix(in srgb, var(--brand) 4.5%, transparent);
+    --shadow-win: 0 1px 3px rgb(26 28 34 / .08), 0 30px 70px -34px color-mix(in srgb, var(--brand-ink) 36%, transparent);
+    --shadow-pop: 0 1px 2px rgb(26 28 34 / .08), 0 10px 28px -10px color-mix(in srgb, var(--brand-ink) 20%, transparent);
     --font: "Inter Variable", Inter, "Avenir Next", "Segoe UI", system-ui, sans-serif;
     --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --brand: #611f69; --brand-ink: #c9a2d4; --brand-press: #7a2b84; --brand-fg: #ffffff;
-      --brand-mute: #d9bdde; --brand-tint: #a06bab;
-      --surface: #2a2431; --surface-alt: #332b3d; --canvas: #262a3d;
-      --ink: #dfe3f5; --ink-mute: #a5adce; --hairline: #453f52;
-      --link: #8ec2ee; --error: #f0836a; --warning: #fbbf24; --success: #34d399;
-      --mesh-a: rgb(97 31 105 / .4); --mesh-b: rgb(70 58 105 / .4); --mesh-c: rgb(40 62 72 / .3);
-      --page: #1b1e2c;
-      --row-hover: rgb(201 162 212 / .07);
-      --shadow-win: 0 1px 3px rgb(0 0 0 / .5), 0 30px 70px -34px rgb(0 0 0 / .8);
-      --shadow-pop: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -10px rgb(0 0 0 / .6);
+      --brand: #3a67cf; --brand-ink: #9fb6ef; --brand-press: #4b79e0; --brand-fg: #ffffff;
+      --brand-mute: #b8c6e8; --brand-tint: #6c80bb;
+      --surface: #1f2027; --surface-alt: #272a35; --canvas: #16171d;
+      --ink: #e1e2e9; --ink-mute: #989cab; --hairline: #32343f;
+      --link: #8fb0f0; --error: #e58f78; --warning: #dab060; --success: #57c096;
+      --mesh-a: color-mix(in srgb, var(--surface) 72%, transparent); --mesh-b: color-mix(in srgb, var(--brand) 18%, transparent); --mesh-c: color-mix(in srgb, var(--hairline) 48%, transparent);
+      --page: #1f2027;
+      --row-hover: color-mix(in srgb, var(--brand-ink) 7%, transparent);
+      --shadow-win: 0 1px 3px rgb(0 0 0 / .5), 0 30px 70px -34px color-mix(in srgb, var(--brand) 48%, #000000);
+      --shadow-pop: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -10px color-mix(in srgb, var(--brand) 32%, #000000);
     }
   }
   :root[data-theme="dark"] {
-    --brand: #611f69; --brand-ink: #c9a2d4; --brand-press: #7a2b84; --brand-fg: #ffffff;
-    --brand-mute: #d9bdde; --brand-tint: #a06bab;
-    --surface: #2a2431; --surface-alt: #332b3d; --canvas: #262a3d;
-    --ink: #dfe3f5; --ink-mute: #a5adce; --hairline: #453f52;
-    --link: #8ec2ee; --error: #f0836a; --warning: #fbbf24; --success: #34d399;
-    --mesh-a: rgb(97 31 105 / .4); --mesh-b: rgb(70 58 105 / .4); --mesh-c: rgb(40 62 72 / .3);
-    --page: #1b1e2c;
-    --row-hover: rgb(201 162 212 / .07);
-    --shadow-win: 0 1px 3px rgb(0 0 0 / .5), 0 30px 70px -34px rgb(0 0 0 / .8);
-    --shadow-pop: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -10px rgb(0 0 0 / .6);
+    --brand: #3a67cf; --brand-ink: #9fb6ef; --brand-press: #4b79e0; --brand-fg: #ffffff;
+    --brand-mute: #b8c6e8; --brand-tint: #6c80bb;
+    --surface: #1f2027; --surface-alt: #272a35; --canvas: #16171d;
+    --ink: #e1e2e9; --ink-mute: #989cab; --hairline: #32343f;
+    --link: #8fb0f0; --error: #e58f78; --warning: #dab060; --success: #57c096;
+    --mesh-a: color-mix(in srgb, var(--surface) 72%, transparent); --mesh-b: color-mix(in srgb, var(--brand) 18%, transparent); --mesh-c: color-mix(in srgb, var(--hairline) 48%, transparent);
+    --page: #1f2027;
+    --row-hover: color-mix(in srgb, var(--brand-ink) 7%, transparent);
+    --shadow-win: 0 1px 3px rgb(0 0 0 / .5), 0 30px 70px -34px color-mix(in srgb, var(--brand) 48%, #000000);
+    --shadow-pop: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -10px color-mix(in srgb, var(--brand) 32%, #000000);
   }
 
   * { box-sizing: border-box; }
@@ -560,7 +560,7 @@
             <div class="meta"><span class="left"><span class="prio" data-l="p0">P0</span><span class="glyph warn">⚠</span><span>Unblock</span></span><span>2d</span></div>
             <p class="subj">Gateway rejects kind 44200 on the internal build</p>
             <p class="instr">Confirm whether the subscription ships in 0.9.40 or gets backported.</p>
-            <p class="ref"><span class="provico" style="background:#4a154b;">S</span> Slack · #incidents</p>
+            <p class="ref"><span class="provico" style="background:var(--brand);">S</span> Slack · #incidents</p>
           </div>
         </li>
         <li class="row">
@@ -585,7 +585,7 @@
             <div class="meta"><span class="left"><span class="prio" data-l="p1">P1</span><span class="glyph">↳</span><span>Response</span></span><span>3h</span></div>
             <p class="subj">Priya asked whether the 30-day window is UTC or local</p>
             <p class="instr">Answer in thread; the docs say UTC, the tooltip does not.</p>
-            <p class="ref"><span class="provico" style="background:#4a154b;">S</span> Slack · #relay-protocol</p>
+            <p class="ref"><span class="provico" style="background:var(--brand);">S</span> Slack · #relay-protocol</p>
           </div>
         </li>
         <li class="row">
@@ -649,7 +649,7 @@
             <button class="facet"><span class="ic">◇</span><span class="nm">Infra</span><span class="cn">44</span></button>
 
             <div class="facetgroup"><span>Source</span></div>
-            <button class="facet"><span class="provico" style="background:#4a154b;">S</span><span class="nm">Slack</span><span class="cn">210</span></button>
+            <button class="facet"><span class="provico" style="background:var(--brand);">S</span><span class="nm">Slack</span><span class="cn">210</span></button>
             <button class="facet"><span class="provico" style="background:#24292f;">G</span><span class="nm">GitHub</span><span class="cn">176</span></button>
             <button class="facet"><span class="provico" style="background:#0052cc;">J</span><span class="nm">Jira</span><span class="cn">39</span></button>
           </aside>
@@ -1164,7 +1164,7 @@
 
               <div class="pgroup">People</div>
               <button class="pres">
-                <span class="provico" style="background:#4a154b;">P</span>
+                <span class="provico" style="background:var(--brand);">P</span>
                 <span>
                   <span class="t">Priya Raman</span>
                   <span class="s">Named on 3 <mark>read-state</mark> milestones · 4 open items</span>
@@ -1226,7 +1226,7 @@
             <button class="facet"><span class="sw" style="background:var(--ink-mute);opacity:.5;"></span><span class="nm">No milestone</span><span class="cn">2</span></button>
 
             <div class="facetgroup"><span>Source</span></div>
-            <button class="facet"><span class="provico" style="background:#4a154b;">S</span><span class="nm">Slack</span><span class="cn">6</span></button>
+            <button class="facet"><span class="provico" style="background:var(--brand);">S</span><span class="nm">Slack</span><span class="cn">6</span></button>
             <button class="facet"><span class="provico" style="background:#24292f;">G</span><span class="nm">GitHub</span><span class="cn">4</span></button>
           </aside>
 
@@ -1251,7 +1251,7 @@
                 </span>
                 <span class="subj">Gateway rejects kind 44200 on the internal build</span>
                 <span class="srcline">
-                  <span class="provico" style="background:#4a154b;">S</span>#incidents
+                  <span class="provico" style="background:var(--brand);">S</span>#incidents
                   <span class="sep">·</span>
                   <span class="ms"><span class="dot" style="background:var(--error);width:6px;height:6px;"></span>Read-state convergence</span>
                 </span>
@@ -1295,7 +1295,7 @@
                 </span>
                 <span class="subj">Priya asked whether the 30-day window is UTC or local</span>
                 <span class="srcline">
-                  <span class="provico" style="background:#4a154b;">S</span>#relay-protocol
+                  <span class="provico" style="background:var(--brand);">S</span>#relay-protocol
                   <span class="sep">·</span>
                   <span class="ms"><span class="dot" style="background:var(--warning);width:6px;height:6px;"></span>Window parity</span>
                 </span>
@@ -1323,7 +1323,7 @@
                 </span>
                 <span class="subj">Marco asked whether the backport lands before Thursday</span>
                 <span class="srcline">
-                  <span class="provico" style="background:#4a154b;">S</span>#incidents
+                  <span class="provico" style="background:var(--brand);">S</span>#incidents
                   <span class="sep">·</span>
                   <span class="ms"><span class="dot" style="background:var(--error);width:6px;height:6px;"></span>Observer cold start</span>
                 </span>
@@ -1394,7 +1394,7 @@
                 </button>
                 <button class="crumb">
                   <span class="lbl">Source</span>
-                  <span class="provico" style="background:#4a154b;">S</span>
+                  <span class="provico" style="background:var(--brand);">S</span>
                   <span class="val">#incidents</span>
                 </button>
               </div>
@@ -1415,28 +1415,28 @@
               <div class="srchead"><span>Source conversation</span><span class="rule"></span><span style="font-weight:400;text-transform:none;letter-spacing:0;">Jul 29 · #incidents</span></div>
 
               <div class="msg hit">
-                <span class="av" style="background:#4a154b;">PR</span>
+                <span class="av" style="background:var(--brand);">PR</span>
                 <div>
                   <div class="who"><b>Priya Raman</b><time>09:12</time></div>
                   <p>Gateway is rejecting kind 44200 again on the internal build. Observer stream has been quiet since 03:00.</p>
                 </div>
               </div>
               <div class="msg">
-                <span class="av" style="background:#7a5200;">MB</span>
+                <span class="av" style="background:var(--warning);">MB</span>
                 <div>
                   <div class="who"><b>Marco Böhm</b><time>09:26</time></div>
                   <p>Subscription isn't in the internal build's relay config. It ships in 0.9.40 — question is whether we backport.</p>
                 </div>
               </div>
               <div class="msg">
-                <span class="av" style="background:#1264a3;">YT</span>
+                <span class="av" style="background:var(--brand-tint);">YT</span>
                 <div>
                   <div class="who"><b>Yuki Tanaka</b><time>09:41</time></div>
                   <p>Backport is two lines in the relay config, but it changes what internal builds replay on startup. Needs a call.</p>
                 </div>
               </div>
               <div class="msg">
-                <span class="av" style="background:#4a154b;">PR</span>
+                <span class="av" style="background:var(--brand);">PR</span>
                 <div>
                   <div class="who"><b>Priya Raman</b><time>10:03</time></div>
                   <p>Release branch cuts Thursday so we need an answer by Wednesday EOD.</p>
@@ -1556,7 +1556,7 @@
     </div>
     <div class="note">
       <h4>Palette still adds nothing</h4>
-      <p>Every colour resolves to a shipped <code>--g6-pulse-*</code> token in both themes. Dark uses the lifted <code>#c9a2d4</code> brand-ink exactly as <code>theme.css</code> specifies.</p>
+      <p>Every interface colour resolves to the Cobalt and Bone system in both themes. Dark uses the lifted <code>#9fb6ef</code> cobalt brand-ink exactly as <code>Design.md</code> specifies.</p>
       <span class="where">theme.css</span>
     </div>
   </div>

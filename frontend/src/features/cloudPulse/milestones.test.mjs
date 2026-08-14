@@ -16,6 +16,7 @@ import {
   openTotal,
   railStages,
   rangeLabel,
+  selectedRange,
   signed,
   stageEvents,
   stageLabel,
@@ -74,6 +75,18 @@ test("the gap between two observed days counts the days nobody looked at", () =>
 test("the default range is Cloud's own: today and the 29 days before it", () => {
   const now = Date.parse("2026-08-08T23:59:00Z");
   assert.deepEqual(defaultRange(now), { from: "2026-07-10", to: "2026-08-08" });
+});
+
+test("selected windows end on Cloud's generated UTC day", () => {
+  assert.deepEqual(selectedRange("2026-08-14T09:12:00Z", 7), {
+    from: "2026-08-08",
+    to: "2026-08-14",
+  });
+  assert.deepEqual(selectedRange("2026-08-14T09:12:00Z", 30), {
+    from: "2026-07-16",
+    to: "2026-08-14",
+  });
+  assert.deepEqual(selectedRange("not-a-date", 90), undefined);
 });
 
 test("the rendered window shifts onto a milestone last seen before it", () => {
@@ -222,7 +235,10 @@ test("adjacent neutral days fold into one stage; nothing else folds", () => {
   assert.equal(run.evidence, undefined);
 
   // A quiet day the next quiet day does not run into stays its own stage.
-  const split = railStages([timelineDay("2026-08-01"), timelineDay("2026-08-03")]);
+  const split = railStages([
+    timelineDay("2026-08-01"),
+    timelineDay("2026-08-03"),
+  ]);
   assert.equal(split.length, 2);
   assert.equal(split[1].gapBefore, 1);
 
@@ -233,9 +249,15 @@ test("a stage names its dates, status and count without relying on colour", () =
   const [one] = railStages([
     timelineDay("2026-08-08", { status: "regression", event_count: 1 }),
   ]);
-  assert.equal(stageLabel(one), "Saturday, Aug 8, Regression, 1 observed event");
+  assert.equal(
+    stageLabel(one),
+    "Saturday, Aug 8, Regression, 1 observed event",
+  );
 
-  const [run] = railStages([timelineDay("2026-08-01"), timelineDay("2026-08-02")]);
+  const [run] = railStages([
+    timelineDay("2026-08-01"),
+    timelineDay("2026-08-02"),
+  ]);
   assert.equal(
     stageLabel(run),
     "Saturday, Aug 1 to Sunday, Aug 2, 2 days, Neutral, 4 observed events",
