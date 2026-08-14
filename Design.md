@@ -1,28 +1,29 @@
 ---
 version: alpha
-name: Slacc-Inspired-design-analysis
-description: An inspired interpretation of Slacc's design language — a workplace messaging brand built on a deep aubergine primary, with cream-lavender hero gradients, blue inline links, and pill CTAs. The system pairs a proprietary humanist sans for display with a separate utility sans for body, and stages product UI mockups inside soft pastel-mesh hero composites that act as both decoration and feature explanation.
+name: Gear6-Cobalt-and-Bone
+description: Gear6's design language, built on a single confident cobalt over a bone neutral ground. The palette replaces the aubergine system this document previously carried; type, spacing, radii and component geometry are unchanged. Cobalt is the only brand hue, semantic colour is reserved for state, and the ground is warm off-white rather than pure white so an elevated surface has something to be elevated against.
 
 colors:
-  primary: "#4a154b"
-  primary-deep: "#481a54"
-  primary-press: "#611f69"
-  primary-tint: "#592466"
+  primary: "#2451b8"
+  primary-deep: "#2148a5"
+  primary-press: "#3163d0"
+  primary-tint: "#3a63c4"
   on-primary: "#ffffff"
-  ink: "#1d1d1d"
-  ink-mute: "#696969"
-  link-blue: "#1264a3"
-  link-hover: "#3860be"
-  canvas: "#ffffff"
-  canvas-cream: "#f4ede4"
-  canvas-lavender: "#f9f0ff"
-  surface-elev: "#ffffff"
-  surface-aubergine: "#4a154b"
-  hairline: "#e6e6e6"
-  hairline-strong: "#000000"
-  semantic-error: "#cc4117"
-  semantic-success: "#007a5a"
-  on-aubergine-mute: "#d9bdde"
+  ink: "#1a1c22"
+  ink-mute: "#61646f"
+  link-blue: "#2451b8"
+  link-hover: "#3163d0"
+  canvas: "#fcfbf8"
+  canvas-bone: "#f1efe9"
+  canvas-mist: "#e6ecf9"
+  surface-elev: "#fdfcfa"
+  surface-cobalt: "#2451b8"
+  hairline: "#e1ddd5"
+  hairline-strong: "#d5cfc4"
+  semantic-error: "#a8503a"
+  semantic-success: "#2a6f54"
+  semantic-warning: "#7b5a17"
+  on-cobalt-mute: "#b8c6e8"
 
 typography:
   display-xxl:
@@ -148,19 +149,19 @@ components:
     rounded: "{rounded.pill}"
     padding: 14px 28px
   button-secondary-pill:
-    backgroundColor: "{colors.canvas-lavender}"
+    backgroundColor: "{colors.canvas-mist}"
     textColor: "{colors.ink}"
     typography: "{typography.button-md}"
     rounded: "{rounded.pill}"
     padding: 10px 30px
-  button-outline-aubergine:
+  button-outline-cobalt:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.primary}"
     typography: "{typography.button-md}"
     rounded: "{rounded.pill}"
     padding: 14px 28px
-  button-outline-on-aubergine:
-    backgroundColor: "{colors.surface-aubergine}"
+  button-outline-on-cobalt:
+    backgroundColor: "{colors.surface-cobalt}"
     textColor: "{colors.on-primary}"
     typography: "{typography.button-md}"
     rounded: "{rounded.pill}"
@@ -172,7 +173,7 @@ components:
     rounded: "{rounded.sm}"
     padding: 10px 12px
   pill-cap-shade:
-    backgroundColor: "{colors.canvas-cream}"
+    backgroundColor: "{colors.canvas-bone}"
     textColor: "{colors.ink}"
     typography: "{typography.micro-cap}"
     rounded: "{rounded.pill}"
@@ -184,19 +185,19 @@ components:
     rounded: "{rounded.xl}"
     padding: 32px
   card-pricing-featured:
-    backgroundColor: "{colors.surface-aubergine}"
+    backgroundColor: "{colors.surface-cobalt}"
     textColor: "{colors.on-primary}"
     typography: "{typography.body-md}"
     rounded: "{rounded.xl}"
     padding: 32px
-  card-feature-cream:
-    backgroundColor: "{colors.canvas-cream}"
+  card-feature-bone:
+    backgroundColor: "{colors.canvas-bone}"
     textColor: "{colors.ink}"
     typography: "{typography.body-md}"
     rounded: "{rounded.xl}"
     padding: 32px
-  card-aubergine-band:
-    backgroundColor: "{colors.surface-aubergine}"
+  card-cobalt-band:
+    backgroundColor: "{colors.surface-cobalt}"
     textColor: "{colors.on-primary}"
     typography: "{typography.body-lg}"
     rounded: "{rounded.xl}"
@@ -219,14 +220,14 @@ components:
     typography: "{typography.body-md}"
     rounded: "{rounded.xs}"
     padding: 0px
-  link-on-aubergine:
-    backgroundColor: "{colors.surface-aubergine}"
+  link-on-cobalt:
+    backgroundColor: "{colors.surface-cobalt}"
     textColor: "{colors.on-primary}"
     typography: "{typography.body-md}"
     rounded: "{rounded.xs}"
     padding: 0px
-  footer-aubergine:
-    backgroundColor: "{colors.surface-aubergine}"
+  footer-cobalt:
+    backgroundColor: "{colors.surface-cobalt}"
     textColor: "{colors.on-primary}"
     typography: "{typography.caption}"
     rounded: "{rounded.xs}"
@@ -235,49 +236,73 @@ components:
 
 ## Overview
 
-Slacc's design language centers on a deep aubergine primary (`{colors.primary}`) — the brand's most enduring visual asset — applied as the dominant button color, the footer band, the featured pricing tier, and the brand wordmark. Around that aubergine the system stages an unusually delicate ecosystem: cream-lavender hero canvases with soft pastel-mesh gradients (peachy oranges, lavenders, dusty greens) that pulse behind floating product UI mockups, with the actual interface chrome rendered in fine detail at 3:2 aspect.
+Gear6's design language centers on one saturated cobalt (`{colors.primary}`) over a bone neutral ground. The cobalt is the only brand hue in the system, applied as the filled button, the selected state, the featured tier, the closing band, and the wordmark. Everything around it is warm off-white: bone surfaces, hairlines drawn from that same warm family, and ink just shy of black. The contrast lands on the brand rather than on the interface, which is what lets a page stay quiet while still having a point of view.
 
-Typography splits between two proprietary humanist sans families. The display tier runs at 700 weight at sizes 32–64px with negative letter-spacing for tight optical density on hero headlines. The UI tier uses the second family at 400–700 with slightly relaxed leading (1.55) — the brand's body copy reads quietly without competing with the aubergine moments.
+Typography splits between two humanist sans families. The display tier runs at 700 weight at sizes 32-64px with negative letter-spacing for tight optical density on hero headlines. The UI tier uses the second family at 400-700 with slightly relaxed leading (1.55), so body copy reads quietly without competing with the cobalt moments.
 
-Buttons are pill-shaped at 90px radius with an unusual amount of horizontal padding (28–30px), giving them a distinctly comfortable, almost over-padded feel. The primary aubergine pill is the only filled button in most contexts; secondary actions use a soft lavender pill (`{colors.canvas-lavender}`) which reads as a gentler echo of the primary surface. Inline links shift to a saturated blue (`{colors.link-blue}`) — the brand's only chromatic departure from the aubergine-and-cream world.
+Buttons are pill-shaped at 90px radius with an unusual amount of horizontal padding (28-30px), giving them a distinctly comfortable, almost over-padded feel. The primary cobalt pill is the only filled button in most contexts; secondary actions use a pale mist pill (`{colors.canvas-mist}`), which is the cobalt at its lightest rather than a second hue. Inline links use the brand itself (`{colors.link-blue}`) and carry an underline, because on a page whose only chromatic element is cobalt, colour alone no longer marks a link.
 
 **Key Characteristics:**
-- Single aubergine primary (`{colors.primary}`) reused across CTAs, the featured pricing tier, the footer band, and the wordmark — the brand's chromatic monotheism.
-- Cream-lavender hero canvas (`{colors.canvas-cream}` / `{colors.canvas-lavender}`) with diffused pastel-mesh atmospheric gradients and floating UI mockups composited above.
-- Pill buttons at `{rounded.pill}` (90px radius) with generous 28–30px horizontal padding — over-padded by SaaS-default standards, deliberately so.
-- Tight negative letter-spacing on display sizes (-0.768px on 64px hero) for editorial-density headlines.
-- Blue inline links (`{colors.link-blue}`) — the only non-aubergine chromatic accent in body type.
-- Pastel-mesh gradient atmospherics: every hero band has a subtle peach-lavender-dusty-green wash behind it; product UI sits on top, never inside, the gradient.
-- Statistics cards rendered in massive aubergine display type (90% / 43 / 87%) on white — quantitative emphasis through scale alone.
+- A single cobalt primary (`{colors.primary}`) reused across CTAs, selection, the featured tier, the closing band, and the wordmark. One hue, no second accent.
+- Bone neutral ground (`{colors.canvas-bone}`) with a cobalt mist tint (`{colors.canvas-mist}`) for selected and secondary surfaces. Warm ground, cool brand.
+- Off-white canvas (`#fcfbf8`) rather than pure white, so an elevated surface has something to be elevated against.
+- Pill buttons at `{rounded.pill}` (90px radius) with generous 28-30px horizontal padding, over-padded by SaaS-default standards, deliberately so.
+- Tight negative letter-spacing on display sizes (-0.768px on the 64px hero) for editorial-density headlines.
+- Semantic colour reserved for state and never used for emphasis. Cobalt sits 64 degrees from the nearest semantic hue, so brand and status never argue.
+- Statistics cards rendered in massive cobalt display type on bone. Quantitative emphasis through scale alone.
 
 ## Colors
 
-> **Source pages:** home (`/`), `/features/channels`, `/pricing`, `/contact-sales`.
+The palette is Cobalt and Bone: one confident brand hue against a soft warm ground, on the argument that calm is not the same as timid.
 
 ### Brand & Accent
-- **Aubergine** (`{colors.primary}` — `#4a154b`): The brand's primary surface and CTA color. Deep, warm purple with a hint of ruby — used on filled buttons, the featured pricing tier, the footer band, and the brand wordmark.
-- **Aubergine Deep** (`{colors.primary-deep}` — `#481a54`): A near-identical sibling of `{colors.primary}` extracted from a different surface; treat as functionally equivalent.
-- **Aubergine Press** (`{colors.primary-press}` — `#611f69`): Pressed-state lift of the primary, slightly lighter and warmer.
-- **Aubergine Tint** (`{colors.primary-tint}` — `#592466`): Border accent on aubergine-on-aubergine surfaces.
-- **Link Blue** (`{colors.link-blue}` — `#1264a3`): Inline link color — saturated, slightly warm blue. The only chromatic alternative to aubergine in body type.
-- **Link Hover** (`{colors.link-hover}` — `#3860be`): A more saturated blue used on link hover state.
+- **Cobalt** (`{colors.primary}` - `#2451b8`): The brand's primary surface and CTA color. Saturated and bright enough that a selected row reads as selected without going dark, which is the failure mode of a deep, heavily saturated brand fill.
+- **Cobalt Deep** (`{colors.primary-deep}` - `#2148a5`): The text-and-border weight of the brand. Use it for cobalt type, hairlines, and focus rings on light surfaces, where the fill weight does not clear 4.5:1.
+- **Cobalt Press** (`{colors.primary-press}` - `#3163d0`): Pressed-state lift of the primary, one step brighter.
+- **Cobalt Tint** (`{colors.primary-tint}` - `#3a63c4`): Border accent on cobalt-on-cobalt surfaces.
+- **Link** (`{colors.link-blue}` - `#2451b8`): Inline link color, identical to the primary by design. Links carry a persistent underline, since colour no longer separates them from the rest of the system.
+- **Link Hover** (`{colors.link-hover}` - `#3163d0`): The press weight, reused on link hover.
 
 ### Surface
-- **Canvas White** (`{colors.canvas}` — `#ffffff`): Default content surface.
-- **Canvas Cream** (`{colors.canvas-cream}` — `#f4ede4`): Warm off-white used on hero gradients and feature bands. Adds editorial warmth.
-- **Canvas Lavender** (`{colors.canvas-lavender}` — `#f9f0ff`): Pale lavender tint used as the secondary-button surface and as a soft section band.
-- **Surface Aubergine** (`{colors.surface-aubergine}` — `#4a154b`): The primary aubergine reused as a surface — featured pricing tier, footer, dark feature bands.
-- **Hairline** (`{colors.hairline}` — `#e6e6e6`): 1px borders on cards and table dividers.
+- **Canvas** (`{colors.canvas}` - `#fcfbf8`): Default content surface. Off-white, never pure white.
+- **Canvas Bone** (`{colors.canvas-bone}` - `#f1efe9`): Warm neutral for feature bands, secondary surfaces, and the quiet ground behind dense lists.
+- **Canvas Mist** (`{colors.canvas-mist}` - `#e6ecf9`): The cobalt at its lightest. Secondary-button surface, selected rows, soft section bands. This is the token that makes selection readable without a saturated block behind it.
+- **Surface Cobalt** (`{colors.surface-cobalt}` - `#2451b8`): The primary reused as a surface for the featured tier, the closing band, and the footer.
+- **Hairline** (`{colors.hairline}` - `#e1ddd5`): 1px borders on cards and table dividers, drawn from the bone family rather than a neutral grey so it sits on the warm ground without a seam.
+- **Hairline Strong** (`{colors.hairline-strong}` - `#d5cfc4`): The heavier divider, for group boundaries rather than row boundaries.
 
 ### Text
-- **Ink** (`{colors.ink}` — `#1d1d1d`): Primary body text on light surfaces. Just shy of pure black.
-- **Ink Mute** (`{colors.ink-mute}` — `#696969`): Secondary text, captions, helper copy.
-- **On Primary** (`{colors.on-primary}` — `#ffffff`): Text on aubergine surfaces and filled CTAs.
-- **On Aubergine Mute** (`{colors.on-aubergine-mute}` — `#d9bdde`): Secondary text on aubergine surfaces — a desaturated mauve that reads as muted-light.
+- **Ink** (`{colors.ink}` - `#1a1c22`): Primary body text on light surfaces. Off-black with a faint cool cast that ties it to the cobalt.
+- **Ink Mute** (`{colors.ink-mute}` - `#61646f`): Secondary text, captions, helper copy.
+- **On Primary** (`{colors.on-primary}` - `#ffffff`): Text on cobalt surfaces and filled CTAs.
+- **On Cobalt Mute** (`{colors.on-cobalt-mute}` - `#b8c6e8`): Secondary text on cobalt surfaces. A desaturated blue that reads as muted-light without going grey.
 
 ### Semantic
-- **Error** (`{colors.semantic-error}` — `#cc4117`): Form error and destructive-action color.
-- **Success** (`{colors.semantic-success}` — `#007a5a`): Inline success indicators.
+Semantic colour marks state. It is never used for emphasis, never a surface fill behind unread content, and never doubled as a wash plus a border plus a chip on the same element. One hue, one meaning.
+
+- **Error** (`{colors.semantic-error}` - `#a8503a`): Form error and destructive-action color.
+- **Warning** (`{colors.semantic-warning}` - `#7b5a17`): At-risk and degraded state.
+- **Success** (`{colors.semantic-success}` - `#2a6f54`): Inline success indicators.
+
+### Dark Rendering
+The dark set is not an inversion. `{colors.primary}` stays a dark fill under white type, and the text-and-border weight lifts to a light cobalt instead, because one hex cannot both sit under white text and be readable as text on a dark ground.
+
+| Token | Dark value | Note |
+|---|---|---|
+| `{colors.primary}` | `#3a67cf` | Fill only, always under `{colors.on-primary}` |
+| `{colors.primary-deep}` | `#9fb6ef` | Text, borders, focus rings on dark |
+| `{colors.primary-press}` | `#4b79e0` | Pressed lift |
+| `{colors.primary-tint}` | `#6c80bb` | Dashed and low-emphasis strokes |
+| `{colors.canvas}` | `#16171d` | Off-black, never pure black |
+| `{colors.canvas-bone}` | `#1f2027` | Quiet ground |
+| `{colors.canvas-mist}` | `#272a35` | Selected rows and secondary surfaces |
+| `{colors.hairline}` | `#32343f` | Row and card dividers |
+| `{colors.ink}` | `#e1e2e9` | Body text |
+| `{colors.ink-mute}` | `#989cab` | Secondary text |
+| `{colors.link-blue}` | `#8fb0f0` | Inline links |
+| `{colors.semantic-error}` | `#e58f78` | |
+| `{colors.semantic-warning}` | `#dab060` | |
+| `{colors.semantic-success}` | `#57c096` | |
 
 ## Typography
 
@@ -323,15 +348,15 @@ Use **Inter** (open-source Google Fonts) for both display and UI tiers — Inter
 - **Base unit**: 8px (with 4 / 12 / 16 / 20 / 24 / 28 sub-tokens for fine vertical rhythm).
 - **Tokens**: `{spacing.xs}` 4px · `{spacing.sm}` 8px · `{spacing.md}` 12px · `{spacing.lg}` 16px · `{spacing.xl}` 20px · `{spacing.xxl}` 24px · `{spacing.huge}` 28px.
 - **Section padding**: 64–96px on marketing surfaces; tightens to 48px on transactional pages.
-- **Card internal padding**: 32px on pricing cards; 48px on aubergine band cards.
+- **Card internal padding**: 32px on pricing cards; 48px on cobalt band cards.
 
 ### Grid & Container
-- Marketing pages center in a ~1240px container with edge-bleeding pastel-mesh gradients escaping the container.
+- Marketing pages center in a ~1240px container with edge-bleeding mesh washs escaping the container.
 - Pricing collapses 4-up → 2-up → 1-up at 992 / 768 breakpoints.
-- Statistics row: 3-column grid with massive 50px aubergine display numerals.
+- Statistics row: 3-column grid with massive 50px cobalt display numerals.
 
 ### Whitespace Philosophy
-The pastel-mesh gradients fill most of the negative space on marketing pages — sections feel expansive without being literally empty. On transactional pages the gradients drop, and whitespace reverts to traditional 48px-section breathing room.
+The mesh washs fill most of the negative space on marketing pages — sections feel expansive without being literally empty. On transactional pages the gradients drop, and whitespace reverts to traditional 48px-section breathing room.
 
 ## Elevation & Depth
 
@@ -341,10 +366,10 @@ The pastel-mesh gradients fill most of the negative space on marketing pages —
 | 1 | `box-shadow: rgba(0,0,0,0.1) 0 5px 20px 0` | Floating buttons on hero |
 | 2 | `box-shadow: rgba(0,0,0,0.1) 0 0 32px 0` | Product UI mockup composites |
 | 3 | `box-shadow: rgba(0,0,0,0.2) 0 1px 10px 0` | Toast / notification chrome |
-| 4 | `box-shadow: rgb(97,31,105) 0 0 0 1px inset` | Aubergine inset border (button focus, special chrome) |
+| 4 | `box-shadow: rgb(58,99,196) 0 0 0 1px inset` | Cobalt inset border (button focus, special chrome), drawn from `{colors.primary-tint}` |
 
 ### Decorative Depth
-The brand's depth language is the **pastel-mesh gradient** — peach, lavender, dusty green stops blurred together at large radii to create soft atmospheric backdrops behind product UI screenshots. The gradient is the brand's flavor of "depth without shadows": the eye perceives the product mockup as floating above a luminous backdrop without any literal lift.
+The brand's depth language is the **mesh wash** - warm bone, cobalt mist, and a pale slate stop blurred together at large radii to create soft atmospheric backdrops behind product UI screenshots. The gradient is the brand's flavor of "depth without shadows": the eye perceives the product mockup as floating above a luminous backdrop without any literal lift.
 
 ## Shapes
 
@@ -361,7 +386,7 @@ The brand's depth language is the **pastel-mesh gradient** — peach, lavender, 
 | `{rounded.pill}` | 90px | All buttons |
 
 ### Photography Geometry
-The brand uses **product UI screenshots** more than photography. UI mockups sit on top of pastel-mesh gradients at roughly 4:3 aspect, with no shadow but with the gradient providing the "lift" the eye expects. Real photography appears in customer-logo strips and the occasional case-study card, treated as full-bleed inside `{rounded.xl}` containers.
+The brand uses **product UI screenshots** more than photography. UI mockups sit on top of mesh washs at roughly 4:3 aspect, with no shadow but with the gradient providing the "lift" the eye expects. Real photography appears in customer-logo strips and the occasional case-study card, treated as full-bleed inside `{rounded.xl}` containers.
 
 ## Components
 
@@ -371,31 +396,31 @@ The brand uses **product UI screenshots** more than photography. UI mockups sit 
 - Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button-md}`, padding `14px 28px`, rounded `{rounded.pill}` 90px.
 - Pressed state `button-primary-pill-pressed` shifts background to `{colors.primary-press}`.
 
-**`button-secondary-pill`** — the soft lavender alternative.
-- Background `{colors.canvas-lavender}`, text `{colors.ink}`, padding `10px 30px`, same pill geometry. Used as the second action beside the primary aubergine pill.
+**`button-secondary-pill`** — the pale mist alternative.
+- Background `{colors.canvas-mist}`, text `{colors.ink}`, padding `10px 30px`, same pill geometry. Used as the second action beside the primary cobalt pill.
 
-**`button-outline-aubergine`** — outline variant on white surfaces.
+**`button-outline-cobalt`** — outline variant on white surfaces.
 - Background `{colors.canvas}`, text `{colors.primary}`, 2px solid `{colors.primary}` border, same pill shape.
 
-**`button-outline-on-aubergine`** — outline on aubergine canvas.
-- Background `{colors.surface-aubergine}` (transparent over the surface), text `{colors.on-primary}`, 2px solid `{colors.on-primary}` border, same pill shape.
+**`button-outline-on-cobalt`** — outline on cobalt canvas.
+- Background `{colors.surface-cobalt}` (transparent over the surface), text `{colors.on-primary}`, 2px solid `{colors.on-primary}` border, same pill shape.
 
 ### Cards & Containers
 
 **`card-pricing`** — standard pricing tier card.
 - Background `{colors.canvas}`, padding `{spacing.xxl}+` (32px), rounded `{rounded.xl}` 16px, 1px `{colors.hairline}` border. Title in `{typography.heading-lg}`, price in `{typography.display-md}`, body in `{typography.body-md}`, CTA pinned to bottom as `button-primary-pill`.
 
-**`card-pricing-featured`** — the inverted aubergine featured tier.
-- Background `{colors.surface-aubergine}`, text `{colors.on-primary}`, otherwise identical to `card-pricing`. The aubergine fill is the brand's signature featured-tier choice.
+**`card-pricing-featured`** — the inverted cobalt featured tier.
+- Background `{colors.surface-cobalt}`, text `{colors.on-primary}`, otherwise identical to `card-pricing`. The cobalt fill is the brand's signature featured-tier choice.
 
-**`card-feature-cream`** — feature explanation card on the cream track.
-- Background `{colors.canvas-cream}`, text `{colors.ink}`, rounded `{rounded.xl}`, padding 32px.
+**`card-feature-bone`** — feature explanation card on the bone track.
+- Background `{colors.canvas-bone}`, text `{colors.ink}`, rounded `{rounded.xl}`, padding 32px.
 
-**`card-aubergine-band`** — large horizontal band card with aubergine fill, often containing the closing CTA of a marketing page.
-- Background `{colors.surface-aubergine}`, text `{colors.on-primary}`, padding 48px, rounded `{rounded.xl}` 16px.
+**`card-cobalt-band`** — large horizontal band card with cobalt fill, often containing the closing CTA of a marketing page.
+- Background `{colors.surface-cobalt}`, text `{colors.on-primary}`, padding 48px, rounded `{rounded.xl}` 16px.
 
 **`card-stat`** — statistics callout card.
-- Background `{colors.canvas}`, text `{colors.primary}` rendered in `{typography.display-lg}` (50px aubergine numeral). Holds a single percentage/number with a small caption underneath.
+- Background `{colors.canvas}`, text `{colors.primary}` rendered in `{typography.display-lg}` (50px cobalt numeral). Holds a single percentage/number with a small caption underneath.
 
 ### Inputs & Forms
 
@@ -410,40 +435,40 @@ The brand uses **product UI screenshots** more than photography. UI mockups sit 
 ### Pills, Tags, and Chips
 
 **`pill-cap-shade`** — small all-caps pill used as eyebrow above pricing-tier titles.
-- Background `{colors.canvas-cream}`, text `{colors.ink}`, type `{typography.micro-cap}`, padding `4px 12px`, rounded `{rounded.pill}`.
+- Background `{colors.canvas-bone}`, text `{colors.ink}`, type `{typography.micro-cap}`, padding `4px 12px`, rounded `{rounded.pill}`.
 
 ### Signature Components
 
-**Pastel-Mesh Gradient Backdrop** — peach (`#fff0e6`-ish) + lavender (`#e9d8ff`) + dusty green stops blurred together behind hero bands. Implemented as a CSS radial-gradient stack, not a single image. Provides the brand's depth/luminosity without literal shadows.
+**Mesh Wash Backdrop** - warm bone (`#f7f2e8`) + cobalt mist (`#e3eaf8`) + pale slate (`#eceff2`) stops blurred together behind hero bands. Implemented as a CSS radial-gradient stack, not a single image. Provides the brand's depth/luminosity without literal shadows.
 
-**Floating Product UI Mockup** — product screenshots framed in `{rounded.lg}` (12px) containers, positioned above the pastel-mesh gradient with no border or shadow. The gradient does the lifting.
+**Floating Product UI Mockup** — product screenshots framed in `{rounded.lg}` (12px) containers, positioned above the mesh wash with no border or shadow. The gradient does the lifting.
 
-**Aubergine Footer Band** — every marketing page closes with a full-bleed `card-aubergine-band` containing a closing CTA in white type. The band height is generous (~480–600px on desktop) and reads as the page's signature.
+**Cobalt Footer Band** — every marketing page closes with a full-bleed `card-cobalt-band` containing a closing CTA in white type. The band height is generous (~480–600px on desktop) and reads as the page's signature.
 
 **`link-on-light`** — inline links in body copy on light surfaces.
 - Text `{colors.link-blue}` rendered in `{typography.body-md}`. No underline by default; underline appears on hover via the link-hover behavior.
 
-**`link-on-aubergine`** — links inside aubergine surfaces.
+**`link-on-cobalt`** — links inside cobalt surfaces.
 - Text `{colors.on-primary}` with persistent underline.
 
-**`footer-aubergine`** — site-wide footer.
-- Background `{colors.surface-aubergine}`, text `{colors.on-primary}` rendered in `{typography.caption}`, padding `{spacing.huge}+ {spacing.xxl}` (32px 24px). Holds 4–5 columns of `{colors.on-aubergine-mute}` link groups, social icons, and a small legal/copyright row at the bottom.
+**`footer-cobalt`** — site-wide footer.
+- Background `{colors.surface-cobalt}`, text `{colors.on-primary}` rendered in `{typography.caption}`, padding `{spacing.huge}+ {spacing.xxl}` (32px 24px). Holds 4–5 columns of `{colors.on-cobalt-mute}` link groups, social icons, and a small legal/copyright row at the bottom.
 
 ## Do's and Don'ts
 
 ### Do
-- Reserve `{colors.primary}` aubergine for filled CTAs, the featured pricing tier, and the closing aubergine band — it's the brand's chromatic monotheism.
+- Reserve `{colors.primary}` cobalt for filled CTAs, the featured pricing tier, and the closing cobalt band. One hue carries all of them.
 - Use `{rounded.pill}` (90px) for every button across the system — never a rounded-rectangle button.
 - Pair display tiers with negative letter-spacing (`-0.768px` at 64px); the proprietary face needs the tracking pull.
-- Compose hero bands with pastel-mesh gradient backdrop + floating product UI mockup; the gradient is the depth.
-- Use `{colors.link-blue}` for inline links — it's the only chromatic departure from aubergine and is part of the brand voice.
+- Compose hero bands with mesh wash backdrop + floating product UI mockup; the gradient is the depth.
+- Use `{colors.link-blue}` for inline links, and always with an underline. The link colour is the brand colour, so the underline is what marks it as a link.
 
 ### Don't
-- Don't add a third accent color to the system — the aubergine + blue link combination is exhaustive.
+- Do not add a second accent colour. Cobalt is the whole chromatic system; the semantic trio is state, not accent.
 - Don't shrink button padding below `14px 28px` — the over-padded pill is part of the brand feel.
 - Don't render display tiers at default tracking (0) — without negative letter-spacing the headlines read loose and unedited.
-- Don't put product UI screenshots inside cards — they sit ABOVE the pastel-mesh gradient, never inside chrome.
-- Don't use aubergine for body text — it's a surface and CTA color, not a type color at body sizes.
+- Don't put product UI screenshots inside cards — they sit ABOVE the mesh wash, never inside chrome.
+- Do not use cobalt for body text — it's a surface and CTA color, not a type color at body sizes.
 - Don't replace the pill shape with a square button anywhere.
 
 ## Responsive Behavior
@@ -452,7 +477,7 @@ The brand uses **product UI screenshots** more than photography. UI mockups sit 
 
 | Name | Width | Key Changes |
 |---|---|---|
-| Wide | ≥ 1440px | Full-bleed pastel-mesh hero; pricing 4-up |
+| Wide | ≥ 1440px | Full-bleed mesh-wash hero; pricing 4-up |
 | Desktop | 1024–1440px | Default content max-width; pricing 4-up |
 | Tablet | 768–1023px | Pricing 2-up; product UI mockups crop to focal panel |
 | Mobile | < 768px | Pricing 1-up; hamburger nav; display-xxl drops 64 → 40px |
@@ -463,9 +488,9 @@ The brand uses **product UI screenshots** more than photography. UI mockups sit 
 
 ### Collapsing Strategy
 - Display tiers stair-step 64 → 50 → 32 → 28 → 24 across breakpoints.
-- Pastel-mesh gradients re-tile on mobile to prevent the wash from disappearing entirely.
+- Mesh washes re-tile on mobile to prevent the wash from disappearing entirely.
 - Floating product UI mockups crop to the most actionable inner panel on mobile.
-- Pricing tiers stair-step 4 → 2 → 1; aubergine featured tier stays distinguished.
+- Pricing tiers stair-step 4 → 2 → 1; cobalt featured tier stays distinguished.
 - Top nav collapses to hamburger below 768px; menu inherits canvas color.
 
 ### Image Behavior
@@ -478,5 +503,5 @@ Product UI mockups use `srcset` for desktop / tablet / mobile crops; the mobile 
 3. Run `npx @google/design.md lint DESIGN.md` after edits.
 4. Add new variants as separate entries.
 5. Default body to `{typography.body-md}`; reserve `{typography.body-lg}` for marketing leads.
-6. Keep aubergine scarce — one filled aubergine button per viewport.
-7. Pair every hero band with the pastel-mesh gradient backdrop; bare-canvas heroes read as off-brand.
+6. Keep cobalt scarce. One filled cobalt button per viewport, and selection uses `{colors.canvas-mist}` rather than a filled block.
+7. Pair every hero band with the mesh wash backdrop; bare-canvas heroes read as off-brand.
