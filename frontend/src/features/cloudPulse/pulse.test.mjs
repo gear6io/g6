@@ -442,7 +442,7 @@ test("only the first six events render until they are asked for", () => {
   assert.match(markup, /Show all 9 events/);
 });
 
-test("a resolvable event opens in place, and still offers the way out", () => {
+test("a resolvable event is one conversation target, not a button plus link", () => {
   const event = {
     id: "s1",
     type: "log",
@@ -457,12 +457,8 @@ test("a resolvable event opens in place, and still offers the way out", () => {
 
   assert.match(markup, /<button[^>]*aria-pressed="false"/);
   assert.match(markup, /Show conversation/);
-  // Reading here and acting at the source are two errands, so the link stays.
-  assert.match(
-    markup,
-    /href="https:\/\/slack\.example\.com\/archives\/C1\/p1"/,
-  );
-  assert.match(markup, /Open in slack/);
+  assert.doesNotMatch(markup, /<a /);
+  assert.doesNotMatch(markup, /Open in slack/);
 });
 
 test("the open event says so, and the others do not", () => {

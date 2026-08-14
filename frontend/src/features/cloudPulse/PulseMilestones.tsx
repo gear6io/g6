@@ -380,7 +380,7 @@ export function PulseMilestones({
         {/* With facets in play, a list that does not state its own filter is a
             list you cannot trust: "nothing here" and "nothing here *under this
             filter*" are different sentences. */}
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-pulse-hairline bg-pulse-canvas/90 px-4 py-2 text-xs text-pulse-ink-mute backdrop-blur-sm">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-pulse-hairline bg-pulse-canvas/90 px-4 py-[9px] text-[11.5px] text-pulse-ink-mute backdrop-blur-sm">
           {chip ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-pulse-surface-alt py-0.5 pl-2.5 pr-1 font-semibold text-pulse-ink">
               {chip}
@@ -401,10 +401,9 @@ export function PulseMilestones({
           {/* Cloud sorts by `last_activity` descending and serves no other
               order, so this states the sort rather than offering one that does
               not exist. */}
-          <span className="ml-auto font-semibold">Sorted by last observed</span>
           <button
             aria-label="Refresh milestones"
-            className="rounded-md p-1 text-pulse-ink-mute transition-colors hover:bg-pulse-surface hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+            className="ml-auto rounded-md p-1 text-pulse-ink-mute transition-colors hover:bg-pulse-surface hover:text-pulse-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
             onClick={refresh}
             title="Refresh milestones"
             type="button"
@@ -414,6 +413,7 @@ export function PulseMilestones({
               className={`size-3.5 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
             />
           </button>
+          <span className="font-semibold">Sort: Last observed ▾</span>
         </div>
 
         {/* Refresh, paging and every facet press change the list without moving

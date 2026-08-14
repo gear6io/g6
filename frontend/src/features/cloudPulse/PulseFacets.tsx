@@ -10,6 +10,8 @@
 // health filter **lifted** — so selecting "Regressed" leaves the other three
 // reporting their real sizes and the column stays navigable instead of
 // collapsing to one row and three zeros.
+import { Clock3, Diamond, List, type LucideIcon } from "lucide-react";
+
 import type {
   AttentionResponse,
   MilestoneCounts,
@@ -28,7 +30,7 @@ import {
 
 function GroupLabel({ children }: { children: string }) {
   return (
-    <p className="px-2 pb-1 pt-3.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute first:pt-1">
+    <p className="px-2 pb-[5px] pt-3.5 text-[10.5px] font-bold uppercase tracking-[0.9px] text-pulse-ink-mute first:pt-1">
       {children}
     </p>
   );
@@ -36,6 +38,7 @@ function GroupLabel({ children }: { children: string }) {
 
 function Facet({
   count,
+  icon: Icon,
   label,
   onSelect,
   pressed,
@@ -43,6 +46,7 @@ function Facet({
 }: {
   /** Null while the collection's size is unknown; no number is drawn then. */
   count: number | null;
+  icon?: LucideIcon;
   label: string;
   onSelect: () => void;
   pressed: boolean;
@@ -52,11 +56,11 @@ function Facet({
     <button
       aria-pressed={pressed}
       className={[
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm leading-snug transition-[background-color,color,transform] duration-150 active:scale-[0.99]",
+        "flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-left text-[13px] leading-[1.4] transition-[background-color,color,transform] duration-150 active:scale-[0.99]",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
         pressed
-          ? "bg-pulse-brand font-medium text-pulse-brand-fg"
-          : "text-pulse-ink-mute hover:bg-pulse-surface-alt hover:text-pulse-ink",
+          ? "bg-pulse-brand font-semibold text-pulse-brand-fg"
+          : "font-normal text-pulse-ink-mute hover:bg-pulse-surface-alt hover:text-pulse-ink",
       ].join(" ")}
       onClick={onSelect}
       type="button"
@@ -64,7 +68,9 @@ function Facet({
       {/* The swatch is the same fill the rail and the sparkline use for that
           health, so one colour means one thing across the whole view. It is
           never the only cue — the word beside it says the same thing. */}
-      {swatch ? (
+      {Icon ? (
+        <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+      ) : swatch ? (
         <span
           aria-hidden="true"
           className={`size-2 shrink-0 rounded-full ${swatch}`}
@@ -73,7 +79,7 @@ function Facet({
       <span className="min-w-0 truncate">{label}</span>
       {count === null ? null : (
         <span
-          className={`ml-auto shrink-0 text-xs tabular-nums ${
+          className={`ml-auto shrink-0 text-[11px] tabular-nums ${
             pressed ? "text-pulse-brand-fg/75" : ""
           }`}
         >
@@ -117,18 +123,21 @@ export function PulseFacets({
       <GroupLabel>Views</GroupLabel>
       <Facet
         count={attentionCount}
+        icon={Diamond}
         label={VIEWS.attention.label}
         onSelect={() => onSelectView("attention")}
         pressed={current === "attention"}
       />
       <Facet
         count={filter.movedToday ? (counts?.total ?? null) : null}
+        icon={Clock3}
         label={VIEWS.moved.label}
         onSelect={() => onSelectView("moved")}
         pressed={current === "moved"}
       />
       <Facet
         count={counts?.total ?? null}
+        icon={List}
         label={VIEWS.all.label}
         onSelect={() => onSelectView("all")}
         pressed={current === "all"}

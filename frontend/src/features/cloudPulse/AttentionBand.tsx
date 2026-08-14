@@ -66,20 +66,20 @@ function Tile({
   const body = (
     <>
       <span
-        className={`text-2xl font-bold leading-tight tabular-nums ${TONE[tone].ink}`}
+        className={`text-[22px] font-bold leading-[1.15] tabular-nums ${TONE[tone].ink}`}
       >
         {value}
       </span>
-      <span className="text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
+      <span className="text-[11px] font-bold uppercase tracking-[0.8px] text-pulse-ink-mute">
         {label}
       </span>
       {/* The sub-line is dropped rather than rendered empty: "0 new since
           yesterday" is a sentence that makes a reader stop and check. */}
-      <span className="text-xs text-pulse-ink-mute">{detail ?? " "}</span>
+      <span className="text-[11px] text-pulse-ink-mute">{detail ?? " "}</span>
     </>
   );
 
-  const shape = `flex min-w-0 flex-1 flex-col gap-0.5 rounded-xl border border-l-[3px] border-pulse-hairline bg-pulse-canvas ${TONE[tone].edge} px-3.5 py-2.5 text-left`;
+  const shape = `flex min-w-0 flex-1 flex-col gap-px rounded-[10px] border border-l-[3px] border-pulse-hairline bg-pulse-canvas ${TONE[tone].edge} px-3 py-[9px] text-left`;
 
   if (!onSelect) {
     return <div className={shape}>{body}</div>;
@@ -116,7 +116,7 @@ export function AttentionBand({
   const { blocked, closed, quiet, regressed } = attention;
 
   return (
-    <div className="flex shrink-0 gap-2 border-b border-pulse-hairline bg-pulse-surface/35 px-4 pb-3 pt-3">
+    <div className="flex shrink-0 gap-2 border-b border-pulse-hairline bg-pulse-surface/35 px-4 pb-2.5 pt-3">
       <Tile
         detail={enteredLabel(regressed.entered, regressed.since_days)}
         label="Regressed"

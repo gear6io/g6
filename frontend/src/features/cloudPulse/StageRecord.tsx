@@ -10,7 +10,7 @@
 // Cloud's `status_evidence` — the rationale and provenance behind the
 // classification — is deliberately not drawn here. The record states the
 // reading; it does not argue for it.
-import { ExternalLink, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
@@ -139,7 +139,7 @@ function EventLine({
   // into. Any of those missing and the row keeps the behavior it always had.
   if (onOpen && canOpenThread(event)) {
     return (
-      <li className="group flex items-start">
+      <li>
         <button
           aria-pressed={open}
           className={`grid min-w-0 flex-1 grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border px-2 py-2 text-left transition-colors active:bg-pulse-surface hover:bg-pulse-surface-alt focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink ${
@@ -153,19 +153,6 @@ function EventLine({
           {body}
           <span className="sr-only">Show conversation</span>
         </button>
-        {/* The link out survives alongside it: reading here and acting at the
-            source are two different errands. */}
-        {event.url ? (
-          <a
-            className="shrink-0 rounded p-2 text-pulse-link opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-pulse-brand-ink group-hover:opacity-100 hover:opacity-100 motion-reduce:transition-none"
-            href={event.url}
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            <ExternalLink aria-hidden="true" className="size-3.5" />
-            <span className="sr-only">{openLabel(event)}</span>
-          </a>
-        ) : null}
       </li>
     );
   }

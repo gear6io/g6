@@ -66,9 +66,9 @@ test("the window bar carries search and names the view under it", () => {
   assert.match(markup, /⌘K/);
   assert.match(
     markup,
-    /<span class="shrink-0 text-sm font-semibold[^"]*">Pulse<\/span>/,
+    /<span class="shrink-0[^"]*font-semibold[^"]*">Pulse<\/span>/,
   );
-  assert.match(markup, /aria-label="Timeline window"/);
+  assert.match(markup, /aria-label="Timeline window" class="ml-auto/);
   for (const days of [7, 30, 90]) {
     assert.match(markup, new RegExp(`>${days}d<`));
   }

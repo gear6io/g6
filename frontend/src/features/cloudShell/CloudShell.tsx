@@ -229,7 +229,7 @@ function NavButton({
 function SearchTrigger({ onOpen }: { onOpen: () => void }) {
   return (
     <button
-      className="flex h-[29px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full border border-pulse-hairline bg-pulse-surface px-3 text-xs text-pulse-ink-mute transition-[background-color,border-color,color,transform] duration-150 hover:border-pulse-brand-ink hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+      className="flex h-[29px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full border border-pulse-hairline bg-pulse-surface px-3 text-[11.5px] text-pulse-ink-mute transition-[background-color,border-color,color,transform] duration-150 hover:border-pulse-brand-ink hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
       onClick={onOpen}
       type="button"
     >
@@ -304,20 +304,20 @@ export function CloudShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="g6-pulse-chrome z-10 flex h-[42px] shrink-0 items-center gap-2.5 border-b border-pulse-hairline pl-3.5 pr-2.5">
-          <span className="shrink-0 text-sm font-semibold tracking-tight">
+          <span className="shrink-0 text-[13.5px] font-semibold tracking-tight">
             {VIEW_TITLE[view]}
           </span>
           <SearchTrigger onOpen={openSearch} />
           {view === "pulse" ? (
             <div
               aria-label="Timeline window"
-              className="flex shrink-0 items-center rounded-full border border-pulse-hairline bg-pulse-surface p-0.5"
+              className="ml-auto flex shrink-0 items-center rounded-full border border-pulse-hairline bg-pulse-surface p-0.5"
               role="group"
             >
               {TIMELINE_WINDOWS.map((days) => (
                 <button
                   aria-pressed={timelineDays === days}
-                  className={`rounded-full px-2 py-1 text-xs font-semibold tabular-nums transition-[background-color,color,transform] duration-100 active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink ${
+                  className={`rounded-full px-2 py-1 text-[11.5px] font-semibold tabular-nums transition-[background-color,color,transform] duration-100 active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink ${
                     timelineDays === days
                       ? "bg-pulse-brand text-pulse-brand-fg"
                       : "text-pulse-ink-mute hover:bg-pulse-surface-alt hover:text-pulse-ink"
@@ -331,7 +331,9 @@ export function CloudShell() {
               ))}
             </div>
           ) : null}
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div
+            className={`${view === "pulse" ? "" : "ml-auto"} flex shrink-0 items-center gap-1.5`}
+          >
             {error ? (
               <p className="truncate text-xs text-pulse-error" role="status">
                 {error}

@@ -97,7 +97,7 @@ export const ROW_GRID =
 export function MilestoneRowHeader({ days = 30 }: { days?: number } = {}) {
   return (
     <div
-      className={`${ROW_GRID} sticky top-0 z-[3] border-b border-pulse-hairline bg-pulse-canvas/95 py-2 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute backdrop-blur-sm`}
+      className={`${ROW_GRID} sticky top-0 z-[3] border-b border-pulse-hairline bg-pulse-canvas/95 py-[7px] text-[10px] font-bold uppercase tracking-[0.9px] text-pulse-ink-mute backdrop-blur-sm`}
     >
       <span>Milestone</span>
       <span>Status</span>
@@ -145,7 +145,7 @@ export function MilestoneRow({
       aria-current={selected ? "true" : undefined}
       className={[
         ROW_GRID,
-        "w-full border-b border-pulse-hairline py-2 text-left transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.998]",
+        "w-full border-b border-pulse-hairline py-[9px] text-left transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.998]",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-pulse-brand-ink",
         selected
           ? "bg-pulse-surface-alt shadow-[inset_3px_0_0_0_var(--g6-pulse-brand-ink)]"
@@ -155,12 +155,12 @@ export function MilestoneRow({
       type="button"
     >
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-pulse-ink">
+        <span className="block truncate text-[13.5px] font-semibold leading-[1.35] text-pulse-ink">
           {milestone.subject}
         </span>
         {/* The milestone's own description, not a team — Cloud has no team
             bucket, so the second line is what the lattice says this is. */}
-        <span className="mt-0.5 block truncate text-xs text-pulse-ink-mute">
+        <span className="mt-0.5 block truncate text-[11px] text-pulse-ink-mute">
           {milestone.description}
         </span>
       </span>

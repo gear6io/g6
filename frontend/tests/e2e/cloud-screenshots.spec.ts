@@ -83,6 +83,17 @@ for (const theme of THEMES) {
     await expect(
       page.getByRole("button", { name: /Read-state convergence/ }),
     ).toBeVisible();
+    await expect(page.getByText("Sort: Last observed ▾")).toBeVisible();
+
+    const searchBox = await page
+      .getByRole("button", { name: /Search milestones/ })
+      .boundingBox();
+    const timeWindow = await page
+      .getByRole("group", { name: "Timeline window" })
+      .boundingBox();
+    expect(timeWindow?.x).toBeGreaterThan(
+      (searchBox?.x ?? 0) + (searchBox?.width ?? 0) + 300,
+    );
 
     await page.screenshot({ path: `${SCREENS}/pulse-${theme}.png` });
     await testInfo.attach(`pulse-${theme}.png`, {
