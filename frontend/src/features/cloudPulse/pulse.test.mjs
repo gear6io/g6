@@ -5,6 +5,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { MilestonePanel } from "./MilestonePanel.tsx";
+import { Sparkline, sparklineLabel } from "./MilestoneRow.tsx";
 import { MilestoneRail } from "./MilestoneRail.tsx";
 import { StageRecord } from "./StageRecord.tsx";
 import { railStages } from "./milestones.ts";
@@ -518,4 +519,56 @@ test("an unresolved thread is a link, not a button that opens nothing", () => {
 
   assert.doesNotMatch(markup, /Show conversation/);
   assert.match(markup, /Open in slack/);
+});
+
+/* --------------------------------------------------------------- the row -- */
+
+/**
+ * The sparkline is `railStages()` output drawn small with the labels dropped.
+ * There is deliberately no second compression pass: two of them would disagree
+ * the first time either one moved, and the row and the panel would then tell
+ * different stories about the same milestone.
+ */
+test("the row's sparkline is the rail's own stages, not a second pass", () => {
+  const days = [
+    day("2026-07-02"),
+    day("2026-07-03", { status: "neutral" }),
+    day("2026-07-04", { status: "neutral" }),
+    day("2026-07-05", { status: "neutral" }),
+    // A gap: Cloud observed nothing on the 6th through the 8th.
+    day("2026-07-09", { status: "regression" }),
+  ];
+  const stages = railStages(days);
+
+  const markup = renderToStaticMarkup(
+    React.createElement(Sparkline, { stages }),
+  );
+
+  // Three stages: one progress day, one compressed neutral run, one regression.
+  assert.equal(stages.length, 3);
+  // The run is one wide pip rather than three, which is the whole point of the
+  // compression — a quiet stretch is one fact, not one per day.
+  assert.equal((markup.match(/w-\[18px\]/g) ?? []).length, 1);
+  assert.equal((markup.match(/w-\[7px\]/g) ?? []).length, 2);
+  // The gap is a dash, and there is exactly one.
+  assert.equal((markup.match(/border-dashed/g) ?? []).length, 1);
+  // The newest stage is ringed, in its own health's colour rather than a
+  // neutral "selected" ring that would read as selection on an unselected row.
+  assert.equal((markup.match(/ring-1/g) ?? []).length, 1);
+  assert.match(markup, /ring-pulse-error/);
+});
+
+test("the sparkline's pips are hidden and the shape is named instead", () => {
+  const stages = railStages([day("2026-07-02"), day("2026-07-03")]);
+  const label = sparklineLabel(stages);
+
+  // Eight unlabelled dots announce as nothing useful, so the pips are hidden
+  // and one sentence carries what the shape conveys at a glance.
+  assert.match(label, /^2 observed stages, newest /);
+  assert.match(label, /Progress/);
+
+  const markup = renderToStaticMarkup(
+    React.createElement(Sparkline, { stages }),
+  );
+  assert.equal((markup.match(/aria-hidden="true"/g) ?? []).length, stages.length);
 });

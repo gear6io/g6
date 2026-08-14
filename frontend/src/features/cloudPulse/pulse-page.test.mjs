@@ -12,6 +12,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { CloudWindowProvider } from "../cloudShell/CloudWindowProvider.tsx";
+import { MilestoneRowHeader } from "./MilestoneRow.tsx";
 import { PulseMilestones, milestoneSummary } from "./PulseMilestones.tsx";
 
 // The page reads the window's selected event, so it renders inside the window —
@@ -36,18 +37,22 @@ test("the masthead does not invent milestone lifecycle filters", () => {
   assert.doesNotMatch(markup, />Active<|>Pruned<|>All<|Milestone scope/);
 });
 
+// The sparkline column names the window Cloud reads. It is a column heading,
+// not a range control: the timeline's default range is Cloud's own, and a 7/30/90
+// switcher would have to compute dates from this webview's clock and could then
+// disagree with the range Cloud actually served.
 test("the window Cloud reads is stated as a fact, not offered as a control", () => {
-  const markup = page();
-  assert.match(markup, /Last 30 UTC days/);
-  // It used to sit in the header looking like something to press.
-  assert.doesNotMatch(markup, /<button[^>]*>[^<]*Last 30 UTC days/);
+  const markup = renderToStaticMarkup(
+    React.createElement(MilestoneRowHeader),
+  );
+  assert.match(markup, />Last 30 days</);
+  assert.doesNotMatch(markup, /<button/);
 });
 
-test("the first paint is the card's own shape, so it does not resize under you", () => {
+test("the first paint is the row's own shape, so it does not resize under you", () => {
   const markup = page();
-  // Three placeholders, each carrying the rail's row height like the real card.
-  assert.equal((markup.match(/aria-hidden="true"/g) ?? []).length >= 3, true);
-  assert.equal((markup.match(/h-\[58px\]/g) ?? []).length, 3);
+  // Placeholders carrying the row height, not the old card's.
+  assert.equal((markup.match(/h-\[42px\]/g) ?? []).length, 6);
   assert.doesNotMatch(markup, /Could not load milestones|No milestones/);
 });
 
