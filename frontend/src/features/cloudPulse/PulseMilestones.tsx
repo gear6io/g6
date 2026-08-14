@@ -93,7 +93,15 @@ function Notice({
   );
 }
 
-export function PulseMilestones() {
+export function PulseMilestones({
+  /**
+   * Cloud's own `q` — a milestone's subject, description and keywords. Set by
+   * the ⌘K palette; empty is no filter, which is what Cloud does with it too.
+   */
+  query = "",
+}: {
+  query?: string;
+} = {}) {
   // The panel is the shell's, not this view's — a rail row opens it and the
   // shell renders it beside the content column.
   const { selectEvent, selectedEvent } = useCloudWindow();
@@ -111,7 +119,7 @@ export function PulseMilestones() {
     setState((current) =>
       current.status === "ready" ? current : { status: "loading" },
     );
-    listMilestones({ limit: PAGE_SIZE })
+    listMilestones({ limit: PAGE_SIZE, q: query || undefined })
       .then((res: MilestoneListResponse) => {
         if (!cancelled) {
           setNow(Date.now());
@@ -133,7 +141,7 @@ export function PulseMilestones() {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [query, refreshKey]);
 
   const loadMore = useCallback(() => {
     if (state.status !== "ready" || !state.page.cursor || loadingMore) {
@@ -141,7 +149,14 @@ export function PulseMilestones() {
     }
     setLoadingMore(true);
     setMoreFailed(false);
-    listMilestones({ limit: PAGE_SIZE, cursor: state.page.cursor })
+    // `q` is resent with the cursor: a cursor is a position in a sort, not a
+    // saved query, and Cloud pages the filtered collection only while the
+    // filter is still on the request.
+    listMilestones({
+      limit: PAGE_SIZE,
+      cursor: state.page.cursor,
+      q: query || undefined,
+    })
       .then((res) => {
         setState((current) =>
           current.status === "ready"
@@ -162,7 +177,7 @@ export function PulseMilestones() {
       // reads as a dead control rather than a failed request. It says so now.
       .catch(() => setMoreFailed(true))
       .finally(() => setLoadingMore(false));
-  }, [loadingMore, state]);
+  }, [loadingMore, query, state]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
   const refreshing = refreshKey > 0 && state.status === "loading";
@@ -174,17 +189,27 @@ export function PulseMilestones() {
       : "";
 
   return (
-    <div className="mx-auto w-full max-w-[960px] px-4 pb-10 pt-7 sm:px-7">
+    // The shell's `<main>` is a flex row now, not a scroller: the views under
+    // it own their own scrolling, because a facet column and a list scroll
+    // separately and one scroller over both cannot.
+    <div className="mx-auto w-full max-w-[960px] overflow-y-auto px-4 pb-10 pt-7 sm:px-7">
       {/* Floating chrome rather than an opaque bar with a rule under it: the
           list scrolls *under* a translucent masthead, and the boundary is a
           short fade where the two meet instead of a 1px line. The mesh wash is
           Design.md's gradient, kept to this band alone — behind thirty rows of
           timeline it would cost legibility and buy nothing. */}
       <header className="g6-pulse-mesh g6-pulse-chrome sticky top-0 z-10 -mx-4 px-4 pb-4 after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-pulse-canvas after:to-transparent after:content-[''] sm:-mx-7 sm:px-7">
+        {/* No display heading: the window bar names the view, and a 32px
+            "Pulse" under a bar that already says Pulse is the same word twice
+            in one screen's worth of vertical space. */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-pulse-display font-bold text-pulse-ink">Pulse</h1>
-            <p className="mt-1 text-pulse-body text-pulse-ink-mute">{summary}</p>
+            <p className="text-pulse-body text-pulse-ink-mute">{summary}</p>
+            {query ? (
+              <p className="mt-1 text-pulse-caption text-pulse-ink-mute">
+                Filtered to “{query}”.
+              </p>
+            ) : null}
           </div>
           <button
             aria-label="Refresh milestone progress"

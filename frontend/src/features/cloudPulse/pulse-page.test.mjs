@@ -28,7 +28,11 @@ const page = () =>
 test("the masthead does not invent milestone lifecycle filters", () => {
   const markup = page();
 
-  assert.match(markup, />Pulse</);
+  // The view no longer names itself: the window bar does. What this pins is
+  // that no lifecycle vocabulary appears here — `active` and `pruned` are the
+  // service's own bookkeeping about an identity, not selectable states, and a
+  // request for `status=active` is a `400`.
+  assert.doesNotMatch(markup, />Pulse</);
   assert.doesNotMatch(markup, />Active<|>Pruned<|>All<|Milestone scope/);
 });
 

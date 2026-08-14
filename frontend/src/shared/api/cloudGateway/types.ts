@@ -166,6 +166,17 @@ export type OverviewResponse = {
    * an obligation the viewer owes is counted in both.
    */
   actions: number;
+  /**
+   * Whole-tenant obligations **closed** in the trailing `resolved_days` window.
+   * Null unless `resolved_days` asked for it.
+   *
+   * Obligations, never milestones: a milestone is not recorded as closed
+   * anywhere in this read model, so "closed 18 action items" is the only
+   * sentence this number supports. Abandoned obligations are excluded — they
+   * stalled, and counting a stall as an accomplishment is the one way to read
+   * this field wrongly.
+   */
+  resolved: ActionCounts | null;
   generated_at: string;
 };
 
@@ -195,11 +206,46 @@ export type Milestone = {
    * Includes the obligations nobody was named on.
    */
   open: ActionCounts;
+  open_since: OpenSince;
+};
+
+/**
+ * When each of `open`'s counts started: the opening instant of the **oldest**
+ * still-open obligation of that kind, null where none is open.
+ *
+ * `open.unblock` says a milestone is blocked; `open_since.unblock` says since
+ * when. Oldest rather than newest on purpose — a milestone blocked for a week
+ * that picks up a second blocker this morning has still been blocked for a
+ * week. The age is this client's subtraction, which is what keeps a cached
+ * response honest.
+ */
+export type OpenSince = Record<RequiredAction, string | null>;
+
+/**
+ * Milestone counts per health. All four keys always present; a zero arrives as
+ * a zero rather than as an absent key to default.
+ */
+export type HealthCounts = Record<MilestoneStatus, number>;
+
+/** The whole filtered collection, not the page. Null unless `counts=true`. */
+export type MilestoneCounts = {
+  /** Every milestone the filters admit — the number the page is "14 of". */
+  total: number;
+  /**
+   * Each health's own size, computed with the **health filter lifted**, so a
+   * selected facet keeps reporting its siblings' sizes and the column stays
+   * navigable. Under a `status` filter these sum to more than `total`, which is
+   * the point of them rather than a bug in them.
+   */
+  by_status: HealthCounts;
+  /** Nonzero only under `has_no_activity=true`. Not a health. */
+  no_activity: number;
 };
 
 export type MilestoneListResponse = {
   data: Milestone[];
   page: Page;
+  counts: MilestoneCounts | null;
   generated_at: string;
 };
 
@@ -277,10 +323,52 @@ export type CloudErrorEnvelope = {
  * backend validates this value and writes `X-G6-Actor-ID` itself, so the
  * browser never sends that header and it stays out of the CORS allowlist.
  */
-export type ActorQuery = { account_id: string };
+export type ActorQuery = {
+  account_id: string;
+  /** One milestone identity, 32-hex. Omitted means no filter. */
+  entity_id?: string;
+  /**
+   * Three questions rather than one with a modifier: `me` is the inbox and the
+   * only one whose length is the badge, `unassigned` is the obligations no
+   * source named an account on, `anyone` is the tenant. An unknown value is a
+   * `400`, not a silent `me`.
+   */
+  owner?: "me" | "unassigned" | "anyone";
+};
 
-/** `/v1/milestones` pages on its own sort key and rejects an actions cursor. */
+/** `/v1/overview` takes the actor's filters plus one backward-looking window. */
+export type OverviewQuery = ActorQuery & {
+  /** 1..=365. Absent means `resolved` comes back null and closed rows are never scanned. */
+  resolved_days?: number;
+};
+
+/**
+ * `/v1/milestones` pages on its own sort key and rejects an actions cursor.
+ *
+ * `q`, `status` and `quiet_days` compose and page with the same cursor, so they
+ * are resent alongside it: a cursor is a position in a sort, not a saved query.
+ */
 export type MilestoneListQuery = {
+  /**
+   * Case-insensitive substring over the milestone's own words — `subject`,
+   * `description`, `keywords`. Not `slug`, and not what was *said* on the
+   * milestone: utterances are logs in another database, which is a different
+   * feature rather than a wider match. Over 200 characters is `400
+   * invalid_query`.
+   */
+  q?: string;
+  /** Comma-separated `MilestoneStatus` values. Absent means all of them. */
+  status?: string;
+  /**
+   * Serve only milestones whose newest observed instant is older than N days.
+   * Quietness is not a fifth status: a milestone can be `progress` and silent
+   * for a fortnight, which is exactly the one worth surfacing.
+   */
+  quiet_days?: number;
+  /** Populate `counts`. Off by default — it is a second aggregate over every row. */
+  counts?: boolean;
+  /** Include the milestones nothing was ever observed on. They sort last. */
+  has_no_activity?: boolean;
   limit?: number;
   cursor?: string;
 };
@@ -288,7 +376,11 @@ export type MilestoneListQuery = {
 /** Inclusive UTC days, `YYYY-MM-DD`. Cloud validates them, not this client. */
 export type TimelineQuery = { from?: string; to?: string };
 
-export type GatewayQuery = ActorQuery | MilestoneListQuery | TimelineQuery;
+export type GatewayQuery =
+  | ActorQuery
+  | OverviewQuery
+  | MilestoneListQuery
+  | TimelineQuery;
 
 /**
  * The one write-shaped read. A signal reference, a depth and a cursor do not fit

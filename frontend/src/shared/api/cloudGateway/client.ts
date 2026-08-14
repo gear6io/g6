@@ -11,8 +11,10 @@ import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
 
 import type {
   ActionListResponse,
+  ActorQuery,
   CloudErrorEnvelope,
   GatewayQuery,
+  OverviewQuery,
   MilestoneListQuery,
   MilestoneListResponse,
   MilestoneTimelineResponse,
@@ -144,12 +146,18 @@ export function listDevUsers(): Promise<UserListResponse> {
   return getJson("v1/dev/users");
 }
 
-export function listActions(accountId: string): Promise<ActionListResponse> {
-  return getJson("v1/actions", { account_id: accountId });
+export function listActions(
+  accountId: string,
+  query?: Omit<ActorQuery, "account_id">,
+): Promise<ActionListResponse> {
+  return getJson("v1/actions", { ...query, account_id: accountId });
 }
 
-export function overview(accountId: string): Promise<OverviewResponse> {
-  return getJson("v1/overview", { account_id: accountId });
+export function overview(
+  accountId: string,
+  query?: Omit<OverviewQuery, "account_id">,
+): Promise<OverviewResponse> {
+  return getJson("v1/overview", { ...query, account_id: accountId });
 }
 
 /** No actor: the counts on a milestone are the tenant's, not the viewer's. */

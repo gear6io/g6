@@ -5,7 +5,13 @@
 // `docs/gear6-render-boundary.md`), and the two surfaces this window needs —
 // Pulse and the inbox — cost far less than mounting 29 feature areas and then
 // hiding 27 of them.
-import { Minimize2, Settings, Signal, Inbox as InboxIcon } from "lucide-react";
+import {
+  Minimize2,
+  Search,
+  Settings,
+  Signal,
+  Inbox as InboxIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CloudInboxPane } from "@/features/cloudShell/CloudInboxPane";
@@ -15,16 +21,12 @@ import {
   useCloudWindow,
 } from "@/features/cloudShell/CloudWindowProvider";
 import { CloudThreadPanel } from "@/features/cloudPulse/CloudThreadPanel";
+import {
+  CloudSearchPalette,
+  useSearchHotkey,
+} from "@/features/cloudSearch/CloudSearchPalette";
 import { PulseMilestones } from "@/features/cloudPulse/PulseMilestones";
 import { Button } from "@/shared/ui/button";
-import { Gear6Mark } from "@/shared/ui/g6-logo/Gear6Mark";
-
-const SIDEBAR = {
-  key: "g6.cloud.sidebarWidth",
-  default: 300,
-  min: 220,
-  max: 420,
-};
 
 /**
  * The conversation panel is wider than the nav: it holds message rows, and a
@@ -40,12 +42,19 @@ const THREAD = {
 /** One keypress on a separator. Enough to feel, small enough to aim with. */
 const SIDEBAR_STEP = 16;
 
-type WidthBounds = typeof SIDEBAR;
+type WidthBounds = typeof THREAD;
 
 const NAV: readonly { id: CloudView; label: string; icon: typeof Signal }[] = [
   { id: "pulse", label: "Pulse", icon: Signal },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
 ];
+
+/** What the window bar calls the column under it. */
+const VIEW_TITLE: Record<CloudView, string> = {
+  pulse: "Pulse",
+  inbox: "Inbox",
+  settings: "Settings",
+};
 
 function clampWidth(bounds: WidthBounds, width: number): number {
   return Math.min(bounds.max, Math.max(bounds.min, Math.round(width)));
@@ -158,13 +167,22 @@ function PanelSeparator({
   );
 }
 
+/**
+ * One rail row. The label is the accessible name and the tooltip rather than a
+ * word beside the icon: at 52px there is no room for one, and the rail carries
+ * two destinations plus settings — a set small enough that the icon is the
+ * whole name once you have seen it twice.
+ */
 function NavButton({
   active,
+  count,
   icon: Icon,
   label,
   onSelect,
 }: {
   active: boolean;
+  /** The viewer's own open obligations. Absent on rows that count nothing. */
+  count?: number;
   icon: typeof Signal;
   label: string;
   onSelect: () => void;
@@ -173,108 +191,154 @@ function NavButton({
     <button
       aria-current={active ? "page" : undefined}
       // Selected is the filled aubergine, the same treatment the Pulse scope
-      // pills use for the same meaning. The sidebar sits on the cream surface
-      // and the alt lavender is only 1.05:1 against it, so a tinted-chip
-      // "selected" would have been invisible in light; the fill is also the
-      // one selection language this window already had.
+      // pills use for the same meaning. The rail sits on the cream surface and
+      // the alt lavender is only 1.05:1 against it, so a tinted-chip "selected"
+      // would have been invisible in light; the fill is also the one selection
+      // language this window already had.
       className={[
-        "flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm transition-colors",
+        "relative grid size-[38px] shrink-0 place-items-center rounded-lg transition-colors",
         "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
         active
-          ? "bg-pulse-brand font-medium text-pulse-brand-fg"
+          ? "bg-pulse-brand text-pulse-brand-fg"
           : "text-pulse-ink-mute hover:bg-pulse-canvas hover:text-pulse-ink",
       ].join(" ")}
       onClick={onSelect}
+      title={label}
       type="button"
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      <span className="sr-only">{label}</span>
+      {/* Drawn only when there is something to count: a "0" badge is a red dot
+          that means nothing is wrong. */}
+      {count ? (
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full border-2 border-pulse-surface bg-pulse-error px-0.5 text-3xs font-bold text-pulse-brand-fg"
+        >
+          {count}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+/**
+ * The window bar's search affordance. A button rather than an input: the thing
+ * it opens is the input, and two text fields for one search is one of them
+ * lying about where the typing goes.
+ */
+function SearchTrigger({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      className="flex h-[27px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-full border border-pulse-hairline bg-pulse-surface px-2.5 text-xs text-pulse-ink-mute transition-colors hover:border-pulse-brand-ink focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink"
+      onClick={onOpen}
+      type="button"
+    >
+      <Search aria-hidden="true" className="size-3.5 shrink-0" />
+      <span className="truncate">Search milestones</span>
+      <kbd className="ml-auto shrink-0 rounded-[3px] border border-pulse-hairline px-1 font-mono text-badge">
+        ⌘K
+      </kbd>
     </button>
   );
 }
 
 export function CloudShell() {
-  const { collapse, error, selectEvent, selectedEvent, setView, view } =
+  const { collapse, error, inbox, selectEvent, selectedEvent, setView, view } =
     useCloudWindow();
-  const [width, resize] = usePanelWidth(SIDEBAR);
   const [threadWidth, resizeThread] = usePanelWidth(THREAD);
+  const [searching, setSearching] = useState(false);
+  const [pulseQuery, setPulseQuery] = useState("");
   const closeThread = useCallback(() => selectEvent(null), [selectEvent]);
+  const openSearch = useCallback(() => setSearching(true), []);
+
+  useSearchHotkey(openSearch);
+
+  // The badge is the viewer's own open count — the same number `/v1/actions`
+  // returns rows for — not the tenant's `open` breakdown, which is a different
+  // and much larger question.
+  const owed =
+    inbox.inbox.status === "ready" ? inbox.inbox.value.overview.actions : 0;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-pulse-canvas text-pulse-ink">
-      {/* The sidebar is the second neutral layer: cream against the content
-          column's canvas, so the two panes read as different surfaces without
-          a rule between them. */}
-      <aside
-        className="flex shrink-0 flex-col overflow-hidden bg-pulse-surface"
-        style={{ width }}
+    <div className="relative flex h-dvh overflow-hidden bg-pulse-canvas text-pulse-ink">
+      {/* The rail is the second neutral layer: cream against the content
+          column's canvas, so the two read as different surfaces without a rule
+          between them. `pt-[42px]` clears the close dot at y=13 — the rail runs
+          to the window's own top edge, so the clearance is the rail's rather
+          than a bar drawn above it. */}
+      <nav
+        aria-label="Cloud"
+        className="flex w-[52px] shrink-0 flex-col items-center gap-[3px] bg-pulse-surface pb-2 pt-[42px]"
       >
-        {/* The close dot is overlaid at y=25 over this corner, exactly as in the
-            compact window, so the first row starts below it. `pl-[40px]` is the
-            whole brand inset, written out rather than summed from a container
-            padding: minimize and zoom are hidden (see `hide_minimize_and_zoom`
-            in src-tauri), so the brand clears one dot, not three. */}
-        <div className="flex h-[54px] shrink-0 items-end pb-1 pl-[40px] pr-3">
-          <span className="flex items-center gap-1.5">
-            <Gear6Mark className="size-4 rounded-[4px]" />
-            <span className="text-sm font-semibold tracking-tight">Gear6</span>
-          </span>
-        </div>
-
-        <nav aria-label="Cloud" className="flex-1 space-y-0.5 overflow-y-auto p-2">
-          {NAV.map(({ id, label, icon }) => (
-            <NavButton
-              active={view === id}
-              icon={icon}
-              key={id}
-              label={label}
-              onSelect={() => setView(id)}
-            />
-          ))}
-        </nav>
-
-        <div className="p-2">
+        {NAV.map(({ id, label, icon }) => (
           <NavButton
-            active={view === "settings"}
-            icon={Settings}
-            label="Settings"
-            onSelect={() => setView("settings")}
+            active={view === id}
+            count={id === "inbox" ? owed : undefined}
+            icon={icon}
+            key={id}
+            label={label}
+            onSelect={() => setView(id)}
           />
-        </div>
-      </aside>
-
-      <PanelSeparator
-        bounds={SIDEBAR}
-        label="Resize sidebar"
-        onResize={resize}
-        width={width}
-      />
+        ))}
+        <span className="flex-1" />
+        <NavButton
+          active={view === "settings"}
+          icon={Settings}
+          label="Settings"
+          onSelect={() => setView("settings")}
+        />
+      </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[54px] shrink-0 items-center justify-end gap-2 px-4">
-          {error ? (
-            <p className="truncate text-xs text-pulse-error" role="status">
-              {error}
-            </p>
-          ) : null}
-          <Button
-            aria-label="Return to mini inbox"
-            className="size-7 text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink active:bg-pulse-surface-alt"
-            onClick={collapse}
-            size="icon"
-            title="Return to mini inbox"
-            variant="ghost"
-          >
-            <Minimize2 aria-hidden="true" className="size-3.5" />
-          </Button>
+        <header className="flex h-[42px] shrink-0 items-center gap-2.5 border-b border-pulse-hairline pl-3.5 pr-2.5">
+          <span className="shrink-0 text-sm font-bold tracking-tight">
+            {VIEW_TITLE[view]}
+          </span>
+          <SearchTrigger onOpen={openSearch} />
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {error ? (
+              <p className="truncate text-xs text-pulse-error" role="status">
+                {error}
+              </p>
+            ) : null}
+            {/* Refresh stays with the view that owns the data: the window bar
+                has no way to know whether Pulse or the inbox is the stale one,
+                and one control that reloads whichever happens to be mounted is
+                a control that means something different on each screen. */}
+            <Button
+              aria-label="Return to mini inbox"
+              className="size-7 text-pulse-ink-mute hover:bg-pulse-surface hover:text-pulse-ink active:bg-pulse-surface-alt"
+              onClick={collapse}
+              size="icon"
+              title="Return to mini inbox"
+              variant="ghost"
+            >
+              <Minimize2 aria-hidden="true" className="size-3.5" />
+            </Button>
+          </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto" data-testid="cloud-shell">
-          {view === "pulse" ? <PulseMilestones /> : null}
+        <main className="flex min-h-0 flex-1" data-testid="cloud-shell">
+          {view === "pulse" ? <PulseMilestones query={pulseQuery} /> : null}
           {view === "inbox" ? <CloudInboxPane /> : null}
           {view === "settings" ? <CloudSettingsPane /> : null}
         </main>
       </div>
+
+      {/* A result lands on Pulse filtered to that milestone's own words. The
+          detail panel is not the destination yet; the filtered list is, and it
+          is a real one rather than a control that closes and does nothing. */}
+      {searching ? (
+        <CloudSearchPalette
+          onClose={() => setSearching(false)}
+          onSelect={(milestone) => {
+            setPulseQuery(milestone.subject);
+            setView("pulse");
+            setSearching(false);
+          }}
+        />
+      ) : null}
 
       {/* The source conversation, beside the reading rather than instead of it.
           A sibling of the content column, not a child: the row that opens it

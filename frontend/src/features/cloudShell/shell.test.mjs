@@ -38,48 +38,60 @@ test("the expanded window offers Pulse, Inbox, Settings and a way back", () => {
   // Pulse is the landing view, and the current one is announced as such.
   assert.match(markup, /aria-current="page"[\s\S]{0,900}Pulse/);
   assert.equal(markup.match(/aria-current="page"/g).length, 1);
-  // The sidebar is a real separator, not a decorative line.
-  assert.match(markup, /role="separator"[\s\S]{0,200}tabindex="0"/i);
 });
 
-// Both window modes sit under the same native chrome, and that chrome is now a
-// lone close dot — minimize and zoom are hidden in src-tauri's
-// `hide_minimize_and_zoom`. The two modes no longer clear it by the same
-// number: `trafficLightPosition` moved to x=14, y=13, so compact's 42px bar
-// clears the dot at 36px (`pl-9`) with nothing above it, while the expanded
-// sidebar still starts below the dot on its old 40px inset.
-const BRAND_INSET = { expanded: "pl-[40px]", compact: "pl-9" };
+// The rail is 52px of icons, so every destination's name is its accessible name
+// and its tooltip rather than a word beside it. A rail row whose only label is
+// a picture is a rail row a screen reader announces as "button".
+test("every rail destination is named, not only drawn", () => {
+  const markup = shell();
 
-test("the brand clears the lone close dot in both modes", () => {
-  for (const [mode, markup] of [
-    ["expanded", shell()],
-    ["compact", render(CloudMiniInbox)],
-  ]) {
-    // One brand per window: a second mark would mean the compact header leaked
-    // into the expanded sidebar or vice versa.
-    // `class="g6-mark`, not the asset path: React also emits a `<link
-    // rel="preload">` for the artwork, which is not a second brand.
-    assert.equal(
-      markup.match(/class="g6-mark/g).length,
-      1,
-      `${mode} should show exactly one Gear6 mark`,
-    );
-    assert.equal(
-      markup.match(/>Gear6</g).length,
-      1,
-      `${mode} should show exactly one Gear6 wordmark`,
-    );
-    // The inset is written as one number, so this catches a regression back to
-    // the three-button 68px clearance without re-deriving container padding.
-    assert.ok(
-      markup.includes(BRAND_INSET[mode]),
-      `${mode} should inset the brand by ${BRAND_INSET[mode]}`,
-    );
-    assert.ok(
-      !markup.includes("pl-[68px]"),
-      `${mode} should not keep the obsolete three-button clearance`,
+  for (const label of ["Pulse", "Inbox", "Settings"]) {
+    assert.match(
+      markup,
+      new RegExp(`title="${label}"[\\s\\S]{0,900}<span class="sr-only">${label}</span>`),
+      `${label} should carry both a tooltip and an accessible name`,
     );
   }
+});
+
+// Search is chrome: Pulse, the inbox and anything added later all need it, so it
+// sits in the window bar at every width rather than inside one view.
+test("the window bar carries search and names the view under it", () => {
+  const markup = shell();
+
+  assert.match(markup, /Search milestones/);
+  assert.match(markup, /⌘K/);
+  assert.match(markup, /<span class="shrink-0 text-sm font-bold[^"]*">Pulse<\/span>/);
+});
+
+// The native chrome is now a lone close dot at x=14, y=13 — minimize and zoom
+// are hidden in src-tauri's `hide_minimize_and_zoom`. Compact clears it with
+// `pl-9` on a 42px bar; the expanded window clears it with the rail's own
+// `pt-[42px]`, because the rail runs to the window's top edge rather than
+// starting under a bar.
+test("the compact window brands itself and clears the lone close dot", () => {
+  const markup = render(CloudMiniInbox);
+
+  // One brand per window. `class="g6-mark`, not the asset path: React also
+  // emits a `<link rel="preload">` for the artwork, which is not a second brand.
+  assert.equal(markup.match(/class="g6-mark/g).length, 1);
+  assert.equal(markup.match(/>Gear6</g).length, 1);
+  assert.ok(markup.includes("pl-9"), "the brand should clear the dot at 36px");
+  assert.ok(
+    !markup.includes("pl-[68px]") && !markup.includes("pl-[40px]"),
+    "neither obsolete clearance should come back",
+  );
+});
+
+// The expanded window does not repeat the brand. The rail is navigation, the
+// window bar names the view, and an app that says its own name on every screen
+// is using a row of pixels to tell you what you already opened.
+test("the expanded window is nav, not a second masthead", () => {
+  const markup = shell();
+
+  assert.doesNotMatch(markup, /class="g6-mark/);
+  assert.match(markup, /class="flex w-\[52px\][^"]*pt-\[42px\]"/);
 });
 
 // The 54px of empty header was the close dot's old y=25 plus its clearance, and
