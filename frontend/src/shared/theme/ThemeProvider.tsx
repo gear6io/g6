@@ -636,3 +636,17 @@ export function useTheme() {
   }
   return context;
 }
+
+/**
+ * The theme if there is one, `undefined` if there is not.
+ *
+ * For the handful of components that are shared with surfaces living outside
+ * the workspace tree — the cloud window renders markdown, and so code blocks,
+ * with no `ThemeProvider` anywhere above it. `useTheme` keeps throwing, because
+ * inside the workspace a missing provider really is a bug; this is the opt-in
+ * for callers that must degrade instead, the same bargain
+ * `markdown/navigationContext.ts` strikes for the router.
+ */
+export function useOptionalTheme(): ThemeContextValue | undefined {
+  return useContext(ThemeContext);
+}

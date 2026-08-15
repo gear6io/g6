@@ -9,7 +9,7 @@ import {
   type ThemedToken,
 } from "shiki";
 
-import { useTheme } from "@/shared/theme/ThemeProvider";
+import { useOptionalTheme } from "@/shared/theme/ThemeProvider";
 import { resolveShikiThemeName } from "@/shared/theme/theme-loader";
 import { copyCodeBlockToClipboard } from "@/shared/lib/codeBlockClipboard";
 import { Button } from "@/shared/ui/button";
@@ -138,7 +138,12 @@ export function SyntaxHighlightedCode({
   code: string;
   language: string;
 } & React.ComponentProps<"code">) {
-  const { themeName } = useTheme();
+  // Optional, because markdown is rendered in the cloud window too, and that
+  // tree has no `ThemeProvider` above it — throwing here would white-window the
+  // whole panel over one fenced block. "g6" is the same default the provider
+  // itself starts from, so an unthemed surface highlights identically to a
+  // themed one that has not been switched.
+  const themeName = useOptionalTheme()?.themeName ?? "g6";
   // Gear6 aliases ("g6" / "g6-dark") are not bundled Shiki themes — resolve
   // to the real bundle (github-light / github-dark) before touching Shiki, or
   // it throws and code blocks fall back to plain text.

@@ -63,53 +63,29 @@
     --g6-hosted-community-modal-action-fg: 255 255 255;
     --g6-hosted-community-modal-overlay-bg: 0 0 0;
     --g6-hosted-community-identity-bg: 255 255 255;
-    /*
-     * Cloud Pulse brand surface (Design.md). Pulse is the one surface in the
-     * app that runs its own palette rather than the Catppuccin tokens above,
-     * so these are exact hex rather than HSL triplets, which is how the brand
-     * doc states them. The few call sites that need a translucent tint use
-     * Tailwind's `/NN` modifier, which resolves to `color-mix` and so does not
-     * need the channel-triplet form the Catppuccin tokens above use.
-     *
-     * Every foreground/background pair here is checked for WCAG AA in both
-     * themes. Three values deviate from Design.md on purpose, all for contrast:
-     * `--g6-pulse-error` is darkened from #cc4117 (4.1:1 on cream, under AA),
-     * the dark theme lifts the aubergine off #4a154b, which is a black hole
-     * against the dark canvas, and `--g6-pulse-warning` has no Design.md
-     * equivalent at all (the doc names only error and success).
-     *
-     * The aubergine is split across two tokens because it does two jobs, and
-     * only one of them survives a dark canvas:
-     *   --g6-pulse-brand      fill only. Always paired with -brand-fg on top.
-     *   --g6-pulse-brand-ink  text, borders, focus rings. Must clear 4.5:1 on
-     *                         canvas/surface, which a dark aubergine cannot do
-     *                         against a dark canvas, so dark lifts it far.
-     * Using -brand as ink is the bug this split exists to prevent: at #611f69
-     * on #262a3d it measured 1.29:1 and every focus ring in Pulse vanished.
-     */
-    --g6-pulse-brand: #4a154b;
-    --g6-pulse-brand-ink: #4a154b;
-    --g6-pulse-brand-press: #611f69;
+    /* Cloud uses Design.md's fixed Cobalt and Bone palette rather than the
+       legacy shell's user-selectable Catppuccin themes. Brand is the filled
+       selection colour; brand-ink is the darker text, border and focus colour. */
+    --g6-pulse-brand: #2451b8;
+    --g6-pulse-brand-ink: #2148a5;
+    --g6-pulse-brand-press: #3163d0;
     --g6-pulse-brand-fg: #ffffff;
-    --g6-pulse-brand-mute: #d9bdde;
-    --g6-pulse-brand-tint: #592466;
-    --g6-pulse-surface: #f4ede4;
-    --g6-pulse-surface-alt: #f9f0ff;
-    --g6-pulse-canvas: #ffffff;
-    --g6-pulse-ink: #1d1d1d;
-    --g6-pulse-ink-mute: #696969;
-    --g6-pulse-hairline: #e6e6e6;
-    --g6-pulse-link: #1264a3;
-    --g6-pulse-error: #a83612;
-    --g6-pulse-warning: #7a5200;
-    --g6-pulse-success: #007a5a;
-    /* Design.md's pastel-mesh: peach, lavender, dusty green blurred at large
-       radii. Alpha is capped so the darkest blend still clears AA for the muted
-       ink that sits on it — the wash is atmosphere, never a surface that text
-       has to fight. */
-    --g6-pulse-mesh-a: rgb(255 240 230 / 0.9);
-    --g6-pulse-mesh-b: rgb(233 216 255 / 0.7);
-    --g6-pulse-mesh-c: rgb(227 237 225 / 0.65);
+    --g6-pulse-brand-mute: #b8c6e8;
+    --g6-pulse-brand-tint: #3a63c4;
+    --g6-pulse-surface: #f1efe9;
+    --g6-pulse-surface-alt: #e6ecf9;
+    --g6-pulse-canvas: #fcfbf8;
+    --g6-pulse-ink: #1a1c22;
+    --g6-pulse-ink-mute: #61646f;
+    --g6-pulse-hairline: #e1ddd5;
+    --g6-pulse-link: #2451b8;
+    --g6-pulse-error: #a8503a;
+    --g6-pulse-warning: #7b5a17;
+    --g6-pulse-success: #2a6f54;
+    /* Warm bone, cobalt mist and pale slate: depth without another accent. */
+    --g6-pulse-mesh-a: rgb(247 242 232 / 0.9);
+    --g6-pulse-mesh-b: rgb(227 234 248 / 0.78);
+    --g6-pulse-mesh-c: rgb(236 239 242 / 0.72);
   }
 
   .dark {
@@ -160,36 +136,39 @@
     --sidebar-accent-foreground: 227 68.25% 87.65%;
     --sidebar-border: 231 15.61% 33.92%;
     --sidebar-ring: 231 15.61% 33.92%;
-    /* Pulse brand, dark. The cream canvas becomes an aubergine-tinted
-       near-black and the link blue lifts; see the light block for why.
-       -brand stays dark because it is only ever a fill under white text
-       (11:1). -brand-ink has to carry text and focus rings on that same dark
-       canvas, so it inverts to a light aubergine instead: 6.48:1 on canvas,
-       6.88:1 on surface, 5.03:1 back on the -brand band. -brand-tint lifts for
-       the same reason — it draws the rail's dashed gap span, which at #7a3a84
-       measured 1.98:1 and read as nothing. */
-    --g6-pulse-brand: #611f69;
-    --g6-pulse-brand-ink: #c9a2d4;
-    --g6-pulse-brand-press: #7a2b84;
+    /* Dark rendering is a tuned companion, not an inversion. The fill stays
+       saturated while text, borders and focus rings lift to readable cobalt. */
+    --g6-pulse-brand: #3a67cf;
+    --g6-pulse-brand-ink: #9fb6ef;
+    --g6-pulse-brand-press: #4b79e0;
     --g6-pulse-brand-fg: #ffffff;
-    --g6-pulse-brand-mute: #d9bdde;
-    --g6-pulse-brand-tint: #a06bab;
-    --g6-pulse-surface: #2a2431;
-    --g6-pulse-surface-alt: #332b3d;
-    --g6-pulse-canvas: #262a3d;
-    --g6-pulse-ink: #dfe3f5;
-    --g6-pulse-ink-mute: #a5adce;
-    --g6-pulse-hairline: #453f52;
-    --g6-pulse-link: #8ec2ee;
-    --g6-pulse-error: #f0836a;
-    --g6-pulse-warning: #fbbf24;
-    --g6-pulse-success: #34d399;
-    /* The same three stops, pulled far down. A pastel wash on a dark canvas is
-       a light leak, not atmosphere, so dark keeps the shape of the gradient and
-       almost none of its brightness. */
-    --g6-pulse-mesh-a: rgb(97 31 105 / 0.4);
-    --g6-pulse-mesh-b: rgb(70 58 105 / 0.4);
-    --g6-pulse-mesh-c: rgb(40 62 72 / 0.3);
+    --g6-pulse-brand-mute: #b8c6e8;
+    --g6-pulse-brand-tint: #6c80bb;
+    --g6-pulse-surface: #1f2027;
+    --g6-pulse-surface-alt: #272a35;
+    --g6-pulse-canvas: #16171d;
+    --g6-pulse-ink: #e1e2e9;
+    --g6-pulse-ink-mute: #989cab;
+    --g6-pulse-hairline: #32343f;
+    --g6-pulse-link: #8fb0f0;
+    --g6-pulse-error: #e58f78;
+    --g6-pulse-warning: #dab060;
+    --g6-pulse-success: #57c096;
+    --g6-pulse-mesh-a: color-mix(
+      in srgb,
+      var(--g6-pulse-surface) 72%,
+      transparent
+    );
+    --g6-pulse-mesh-b: color-mix(
+      in srgb,
+      var(--g6-pulse-brand) 18%,
+      transparent
+    );
+    --g6-pulse-mesh-c: color-mix(
+      in srgb,
+      var(--g6-pulse-hairline) 48%,
+      transparent
+    );
   }
 
   * {
@@ -411,9 +390,7 @@
 :root[data-g6-sidebar] [data-testid="app-sidebar"],
 :root[data-g6-sidebar] [data-g6-glass-inset],
 :root[data-g6-sidebar] [data-g6-glass-footer-wrap],
-:root[data-g6-sidebar]
-  .group\/sidebar-wrapper
-  .bg-sidebar:not([data-g6-flat]),
+:root[data-g6-sidebar] .group\/sidebar-wrapper .bg-sidebar:not([data-g6-flat]),
 :root[data-g6-sidebar] [data-testid="community-rail"].bg-sidebar,
 :root[data-g6-sidebar]
   [data-testid="app-sidebar"]
@@ -516,9 +493,7 @@
  * `bg-sidebar-border/35` fill. Its label, shortcut, and magnifying glass share
  * the 40% muted foreground at rest and on hover/focus.
  */
-:root[data-g6-sidebar]
-  [data-testid="app-sidebar"]
-  [data-testid="open-search"],
+:root[data-g6-sidebar] [data-testid="app-sidebar"] [data-testid="open-search"],
 :root[data-g6-sidebar]
   [data-testid="app-sidebar"]
   [data-testid="open-search"]:hover,
@@ -540,15 +515,11 @@
  * App and settings sidebar section headings plus secondary footer text use the
  * same tint. Navigation rows keep their normal foreground in both sidebars.
  */
-:root[data-g6-sidebar]
-  [data-testid="app-sidebar"]
-  [data-sidebar="group-label"],
+:root[data-g6-sidebar] [data-testid="app-sidebar"] [data-sidebar="group-label"],
 :root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
   [data-sidebar="group-label"],
-:root[data-g6-sidebar]
-  [data-testid="app-sidebar"]
-  [data-g6-sidebar-secondary],
+:root[data-g6-sidebar] [data-testid="app-sidebar"] [data-g6-sidebar-secondary],
 :root[data-g6-sidebar]
   [data-testid="settings-sidebar"]
   [data-g6-sidebar-secondary] {
@@ -657,8 +628,7 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--g6-gradient-light-top)
-          var(--g6-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-top) var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
@@ -693,8 +663,7 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--g6-gradient-dark-top)
-          var(--g6-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-top) var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
@@ -731,8 +700,7 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--g6-gradient-light-top)
-          var(--g6-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-light-top) var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
@@ -769,8 +737,7 @@
       to bottom,
       color-mix(
         in srgb,
-        var(--g6-gradient-dark-top)
-          var(--g6-translucency-gradient-alpha, 70%),
+        var(--g6-gradient-dark-top) var(--g6-translucency-gradient-alpha, 70%),
         transparent
       ),
       color-mix(
@@ -808,9 +775,7 @@
 :root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-testid="sidebar-pinned-header"],
-:root[data-g6-translucent]
-  [data-testid="app-sidebar"]
-  [data-sidebar="footer"] {
+:root[data-g6-translucent] [data-testid="app-sidebar"] [data-sidebar="footer"] {
   background-color: transparent;
   background-image: none;
 }
@@ -823,9 +788,7 @@
 :root[data-g6-translucent]
   [data-testid="app-sidebar"]
   [data-g6-glass-footer-wrap],
-:root[data-g6-translucent]
-  [data-testid="app-sidebar"]
-  [data-sidebar="footer"] {
+:root[data-g6-translucent] [data-testid="app-sidebar"] [data-sidebar="footer"] {
   isolation: auto;
   z-index: auto;
 }

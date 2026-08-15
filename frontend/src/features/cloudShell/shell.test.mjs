@@ -38,78 +38,101 @@ test("the expanded window offers Pulse, Inbox, Settings and a way back", () => {
   // Pulse is the landing view, and the current one is announced as such.
   assert.match(markup, /aria-current="page"[\s\S]{0,900}Pulse/);
   assert.equal(markup.match(/aria-current="page"/g).length, 1);
-  // The sidebar is a real separator, not a decorative line.
-  assert.match(markup, /role="separator"[\s\S]{0,200}tabindex="0"/i);
 });
 
-// Both window modes sit under the same native chrome, and that chrome is now a
-// lone close dot — minimize and zoom are hidden in src-tauri's
-// `hide_minimize_and_zoom`. The brand moves into the space the other two dots
-// used to hold, at the same inset in both modes.
-const BRAND_INSET = "pl-[40px]";
+// The rail is 52px of icons, so every destination's name is its accessible name
+// and its tooltip rather than a word beside it. A rail row whose only label is
+// a picture is a rail row a screen reader announces as "button".
+test("every rail destination is named, not only drawn", () => {
+  const markup = shell();
 
-test("the brand clears the lone close dot at the same inset in both modes", () => {
-  for (const [mode, markup] of [
-    ["expanded", shell()],
-    ["compact", render(CloudMiniInbox)],
-  ]) {
-    // One brand per window: a second mark would mean the compact header leaked
-    // into the expanded sidebar or vice versa.
-    // `class="g6-mark`, not the asset path: React also emits a `<link
-    // rel="preload">` for the artwork, which is not a second brand.
-    assert.equal(
-      markup.match(/class="g6-mark/g).length,
-      1,
-      `${mode} should show exactly one Gear6 mark`,
-    );
-    assert.equal(
-      markup.match(/>Gear6</g).length,
-      1,
-      `${mode} should show exactly one Gear6 wordmark`,
-    );
-    // The inset is written as one number, so this catches a regression back to
-    // the three-button 68px clearance without re-deriving container padding.
-    assert.ok(
-      markup.includes(BRAND_INSET),
-      `${mode} should inset the brand by 40px`,
-    );
-    assert.ok(
-      !markup.includes("pl-[68px]"),
-      `${mode} should not keep the obsolete three-button clearance`,
+  for (const label of ["Pulse", "Inbox", "Settings"]) {
+    assert.match(
+      markup,
+      new RegExp(
+        `title="${label}"[\\s\\S]{0,900}<span class="sr-only">${label}</span>`,
+      ),
+      `${label} should carry both a tooltip and an accessible name`,
     );
   }
+});
+
+// Search is chrome: Pulse, the inbox and anything added later all need it, so it
+// sits in the window bar at every width rather than inside one view.
+test("the window bar carries search and names the view under it", () => {
+  const markup = shell();
+
+  assert.match(markup, /Search milestones, events, people/);
+  assert.match(markup, /⌘K/);
+  assert.match(
+    markup,
+    /<span class="shrink-0[^"]*font-semibold[^"]*">Pulse<\/span>/,
+  );
+  assert.match(markup, /aria-label="Timeline window" class="ml-auto/);
+  for (const days of [7, 30, 90]) {
+    assert.match(markup, new RegExp(`>${days}d<`));
+  }
+  assert.match(markup, /aria-pressed="true"[^>]*>30d</);
+});
+
+// The native chrome is now a lone close dot at x=14, y=13 — minimize and zoom
+// are hidden in src-tauri's `hide_minimize_and_zoom`. Compact clears it with
+// `pl-9` on a 42px bar; the expanded window clears it with the rail's own
+// `pt-[42px]`, because the rail runs to the window's top edge rather than
+// starting under a bar.
+test("the compact window brands itself and clears the lone close dot", () => {
+  const markup = render(CloudMiniInbox);
+
+  // One brand per window. `class="g6-mark`, not the asset path: React also
+  // emits a `<link rel="preload">` for the artwork, which is not a second brand.
+  assert.equal(markup.match(/class="g6-mark/g).length, 1);
+  assert.equal(markup.match(/>Gear6</g).length, 1);
+  assert.ok(markup.includes("pl-9"), "the brand should clear the dot at 36px");
+  assert.ok(
+    !markup.includes("pl-[68px]") && !markup.includes("pl-[40px]"),
+    "neither obsolete clearance should come back",
+  );
+});
+
+// The expanded window does not repeat the brand. The rail is navigation, the
+// window bar names the view, and an app that says its own name on every screen
+// is using a row of pixels to tell you what you already opened.
+test("the expanded window is nav, not a second masthead", () => {
+  const markup = shell();
+
+  assert.doesNotMatch(markup, /class="g6-mark/);
+  assert.match(markup, /class="flex w-\[52px\][^"]*pt-\[42px\]"/);
+});
+
+// The 54px of empty header was the close dot's old y=25 plus its clearance, and
+// it cost a whole action row in a 520px window. One bar, and the first content
+// under it.
+test("the compact header is one 42px bar with nothing above it", () => {
+  const markup = render(CloudMiniInbox);
+
+  assert.match(markup, /<header class="g6-pulse-chrome flex h-\[42px\]/);
+  assert.ok(
+    !markup.includes("pt-[54px]"),
+    "the reclaimed band should not come back as padding",
+  );
 });
 
 test("the compact window keeps its own controls beside the brand", () => {
   const markup = render(CloudMiniInbox);
 
-  for (const label of ["Open Pulse", "Inbox options"]) {
+  for (const label of ["Expand to full window", "Inbox options"]) {
     assert.match(markup, new RegExp(`aria-label="${label}"`));
   }
   // The pin reads out whichever action it offers, so either label is the button.
   assert.match(markup, /aria-label="(Unpin window|Keep window on top)"/);
 });
 
-/**
- * The message renderer, and only the message renderer.
- *
- * `CloudThreadPanel` shows a Slack thread with the components the legacy shell
- * uses, because a second implementation of message rendering would drift from
- * the first one within a release. These three modules are safe to cross the
- * boundary with because `MessageRow` takes its profile popover as the
- * `authorSlot` prop rather than importing it — that popover is what used to drag
- * the router, huddles and the relay-backed hooks in behind it. Nothing else from
- * `features/messages/` may be added here without re-checking that graph.
- */
-const MESSAGE_RENDERER = [
-  "@/features/messages/ui/MessageThreadPanel",
-  "@/features/messages/ui/MessageThreadPanelSkeleton",
-  "@/features/messages/types",
-];
+// `thread.ts` reuses the erased TimelineMessage type, not the legacy renderer.
+const CLOUD_TYPE_IMPORTS = ["@/features/messages/types"];
 
 test("the cloud surfaces never reach into the legacy tree", () => {
-  const dirs = ["cloudShell", "cloudPulse", "cloudInbox"].map((name) =>
-    path.join(here, "..", name),
+  const dirs = ["cloudShell", "cloudPulse", "cloudInbox", "cloudSearch"].map(
+    (name) => path.join(here, "..", name),
   );
 
   const banned =
@@ -124,7 +147,7 @@ test("the cloud surfaces never reach into the legacy tree", () => {
       // Blanked before the scan rather than excepted in the pattern: the ban
       // stays a single readable regex, and an import one character off an
       // allowed specifier still trips it.
-      const scanned = MESSAGE_RENDERER.reduce(
+      const scanned = CLOUD_TYPE_IMPORTS.reduce(
         (text, allowed) => text.split(allowed).join(""),
         source,
       );
@@ -143,10 +166,8 @@ test("the cloud surfaces never reach into the legacy tree", () => {
  * specifier reachable from it.
  *
  * The per-file scan above only reads the cloud directories, so it cannot see a
- * legacy dependency two modules deep — and the message renderer put two there
- * (`MessageComposer` reaching the router, `useKnownAgentPubkeys` reaching the
- * Tauri bridge). `import type` is skipped: types are erased and never evaluate
- * their module.
+ * legacy dependency two modules deep. `import type` is skipped: types are
+ * erased and never evaluate their module.
  */
 function legacyReachableFrom(entry) {
   // `@/app/navigation` is named too: `useAppNavigation` is the router by
@@ -155,9 +176,8 @@ function legacyReachableFrom(entry) {
     /@\/app\/(App|AppShell|LegacyAppRoot|router|routes|navigation)|@tanstack\/react-router|@\/shared\/api\/invoke|rtm-client/;
   const srcDir = path.join(here, "..", "..");
 
-  // Relative specifiers resolve too. An earlier version handled only `@/`, so
-  // the walk stopped dead at `MessageThreadPanel`'s `./MessageRow` and reported
-  // 47 clean modules for a graph that is really 322 and reaches the router.
+  // Relative specifiers resolve too, so an indirect import cannot evade the
+  // same boundary check applied to an aliased one.
   const resolve = (specifier, importer) => {
     let base;
     if (specifier.startsWith("@/")) {
@@ -207,22 +227,29 @@ function legacyReachableFrom(entry) {
 }
 
 /**
- * Legacy modules the cloud window still evaluates, and why each is tolerated.
+ * What the expanded window is allowed to pull in behind `markdown.tsx`, and why
+ * each one is inert here.
  *
- * All five are reached through `@/shared/ui/markdown`, which renders message
- * bodies and is the one module the cloud window genuinely needs from the legacy
- * side. None of them *runs*: nothing here renders a profile popover (rows take
- * `authorSlot` and the cloud passes none), a composer (`composerSlot`, same), or
- * a config nudge, and the Tauri bridge answers unmapped commands with `[]`.
- * They cost bundle weight, not correctness.
+ * The thread reader renders message bodies through the workspace's `Markdown`,
+ * which is the whole point — reimplementing markdown, links, code highlighting
+ * and media for the cloud window would be a lookalike that drifts. Four of its
+ * imports sit in the legacy graph, and every one of them is behind a prop the
+ * cloud reader does not pass:
  *
- * This is a ledger, not an amnesty. A new entry means a new legacy dependency
- * crossed the boundary and wants the same argument made for it — most likely by
- * giving markdown another injected seam, the way
- * `markdown/navigationContext` replaced its `useAppNavigation` import after
- * that one took the whole window down with a `useLocation` throw.
+ * - `MarkdownVideoPlayer` reaches `MessageComposer` for frame-accurate video
+ *   comments, mounted only when `canComment` — which needs `videoReviewContext`.
+ * - `UserProfilePopover` wraps a mention chip only when `opensProfile`, which
+ *   needs a pubkey resolved through `mentionPubkeysByName`.
+ * - `config-nudge-attachment` renders only when `configNudgeAuthorPubkey` is
+ *   set, which for third-party content it must never be.
+ * - `shared/api/tauri` is an IPC wrapper evaluated at import; the cloud window
+ *   is a Tauri window, so `invoke` is there.
+ *
+ * So none of them can throw in render, which is the failure this file exists to
+ * catch. The list stays exact rather than becoming a regex: a fifth leak, or a
+ * newly renderable fourth, still fails here.
  */
-const TOLERATED_LEAKS = [
+const MARKDOWN_LEGACY_EDGES = [
   "features/agents/useOpenAgentActivity.ts imports @/app/navigation/useAppNavigation",
   "features/messages/lib/useLinkEditor.tsx imports @/app/navigation/useAppNavigation",
   "features/profile/ui/UserProfilePopover.tsx imports @/app/navigation/useAppNavigation",
@@ -240,9 +267,30 @@ test("nothing the cloud window evaluates pulls the router or the relay in behind
 
   assert.deepEqual(
     [...new Set(legacyReachableFrom(path.join(here, "CloudShell.tsx")))].sort(),
-    TOLERATED_LEAKS,
+    MARKDOWN_LEGACY_EDGES,
     "the expanded window's legacy dependencies changed",
   );
+});
+
+test("the cloud reader passes none of the props that would wake the legacy imports", () => {
+  // The allowlist above is only safe while these stay unpassed. A comment
+  // cannot enforce that, so this does: each prop is the gate that keeps one
+  // legacy subtree from ever rendering in a window that has no router.
+  const reader = fs.readFileSync(
+    path.join(here, "../cloudPulse/CloudThreadPanel.tsx"),
+    "utf8",
+  );
+
+  for (const prop of [
+    "videoReviewContext",
+    "mentionPubkeysByName",
+    "configNudgeAuthorPubkey",
+  ]) {
+    assert.ok(
+      !new RegExp(`^\\s*${prop}=`, "m").test(reader),
+      `CloudThreadPanel passes ${prop}, which makes a legacy subtree renderable`,
+    );
+  }
 });
 
 test("markdown takes its navigation injected, so a message body never needs a router", () => {

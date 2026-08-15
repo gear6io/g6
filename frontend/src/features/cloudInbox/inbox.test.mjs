@@ -9,12 +9,27 @@ import { CloudMiniInbox, InboxBody } from "./CloudMiniInbox.tsx";
 import {
   ACTION_LABEL,
   EMPTY_ACTIONS_COPY,
+  LANE_LABEL,
+  LANE_ORDER,
+  actionLane,
+  laneGroups,
   priorityLabel,
   relativeAge,
   summaryLabel,
   updatedLabel,
   userLabel,
 } from "./inbox.ts";
+import {
+  NO_INBOX_FILTER,
+  applyFilter,
+  inboxChip,
+  isNewToday,
+  kindFacets,
+  milestoneFacets,
+  newTodayCount,
+  providerFacets,
+  siblingsOnMilestone,
+} from "./inboxFacets.ts";
 
 function action(overrides = {}) {
   return {
@@ -72,7 +87,7 @@ test("the updated label reads Cloud's own generation time", () => {
 });
 
 test("a user falls back from display name to handle to account id", () => {
-  const base = { account_id: "U1", actor_id: "U1", kind: "human", email: "" };
+  const base = { account_id: "U1", actor_id: "U1", kind: "human" };
   assert.equal(userLabel({ ...base, display_name: "Alex", handle: "alex" }), "Alex");
   assert.equal(userLabel({ ...base, display_name: "", handle: "alex" }), "alex");
   assert.equal(userLabel({ ...base, display_name: "", handle: "" }), "U1");
@@ -97,6 +112,44 @@ test("every required_action Cloud serves has a label, and nothing else does", ()
   ]);
   // The two-class taxonomy is gone; a client branching on it branches on air.
   assert.equal(ACTION_LABEL.act_on_handoff, undefined);
+});
+
+test("a lane is a priority tier renamed, and every tier lands in one", () => {
+  assert.deepEqual(
+    ["p0", "p1", "p2", "p3"].map(actionLane),
+    ["blocked", "today", "later", "later"],
+  );
+  // A lane with no label is a heading rendered as `undefined`.
+  for (const lane of LANE_ORDER) {
+    assert.equal(typeof LANE_LABEL[lane], "string");
+  }
+});
+
+test("lane groups keep Cloud's order and drop the empty lanes", () => {
+  const rows = [
+    action({ id: "a", priority: { level: "p2", evidence: [] } }),
+    action({ id: "b", priority: { level: "p0", evidence: [] } }),
+    action({ id: "c", priority: { level: "p3", evidence: [] } }),
+  ];
+  const groups = laneGroups(rows);
+
+  // Lane order is `LANE_ORDER`, not arrival order; `today` is absent entirely
+  // rather than present and empty.
+  assert.deepEqual(
+    groups.map(({ lane }) => lane),
+    ["blocked", "later"],
+  );
+  // Inside a lane the rows stay in the order the API returned them.
+  assert.deepEqual(
+    groups[1].actions.map(({ id }) => id),
+    ["a", "c"],
+  );
+  // The lanes partition the list: nothing is dropped and nothing is counted twice.
+  assert.equal(
+    groups.reduce((total, group) => total + group.actions.length, 0),
+    rows.length,
+  );
+  assert.deepEqual(laneGroups([]), []);
 });
 
 test("the priority chip is uppercased for display only", () => {
@@ -295,4 +348,120 @@ test("an empty inbox explains itself rather than showing an empty list", () => {
   assert.match(markup, /Nothing open here/);
   assert.match(markup, new RegExp(EMPTY_ACTIONS_COPY));
   assert.doesNotMatch(markup, /<ul/, "no list element with nothing in it");
+});
+
+/* ------------------------------------------------------------ wide inbox -- */
+
+function entity(id, subject) {
+  return { id, subject, slug: subject, description: "", keywords: [] };
+}
+
+function referent(provider, summary) {
+  return { summary, provider, url: null, thread_id: null };
+}
+
+const ROWS = [
+  action({
+    id: "a",
+    required_action: "unblock",
+    priority: { level: "p0", evidence: [] },
+    entity: entity("m1", "Read-state convergence"),
+    referent: referent("slack", "#incidents"),
+    age_seconds: 3600,
+  }),
+  action({
+    id: "b",
+    required_action: "review",
+    priority: { level: "p1", evidence: [] },
+    entity: entity("m1", "Read-state convergence"),
+    referent: referent("github", "gear6#809"),
+    age_seconds: 200_000,
+  }),
+  action({
+    id: "c",
+    required_action: "review",
+    priority: { level: "p2", evidence: [] },
+    entity: null,
+    referent: null,
+    age_seconds: 400_000,
+  }),
+];
+
+test("a facet counts with its own dimension lifted and the others applied", () => {
+  const filter = { ...NO_INBOX_FILTER, kind: "review" };
+
+  // Under a `review` filter the Action group still reports `unblock`'s size:
+  // a facet column that zeroes its siblings is a column you cannot navigate
+  // back out of. This is the same rule Cloud applies to `by_status`.
+  assert.deepEqual(
+    kindFacets(ROWS, filter).map(({ id, count }) => [id, count]),
+    [
+      ["review", 2],
+      ["unblock", 1],
+    ],
+  );
+
+  // The Milestone group *is* narrowed by the kind filter, because that is a
+  // different dimension: two reviews, one on m1 and one on nothing.
+  assert.deepEqual(
+    milestoneFacets(ROWS, filter).map(({ id, count }) => [id, count]),
+    [
+      ["m1", 1],
+      ["", 1],
+    ],
+  );
+});
+
+test("no milestone is a bucket, not a gap, and it sorts last", () => {
+  const facets = milestoneFacets(ROWS, NO_INBOX_FILTER);
+
+  // Hiding the unresolved rows would make the facet counts fail to sum to the
+  // list they sit beside.
+  assert.equal(
+    facets.reduce((total, entry) => total + entry.count, 0),
+    ROWS.length,
+  );
+  assert.equal(facets.at(-1).id, "");
+  assert.equal(facets.at(-1).label, "No milestone");
+});
+
+test("a source facet is drawn only where Cloud resolved a record", () => {
+  const facets = providerFacets(ROWS, NO_INBOX_FILTER);
+
+  // The row with no referent is absent rather than counted under an empty
+  // provider: Cloud resolved no record, so there is no source to filter by.
+  assert.deepEqual(
+    facets.map(({ id }) => id).sort(),
+    ["github", "slack"],
+  );
+});
+
+test("filters compose, and the chip names every one of them", () => {
+  const filter = {
+    ...NO_INBOX_FILTER,
+    kind: "review",
+    milestoneId: "m1",
+  };
+  assert.deepEqual(
+    applyFilter(ROWS, filter).map(({ id }) => id),
+    ["b"],
+  );
+  assert.equal(inboxChip(filter, ROWS), "Review · Read-state convergence");
+  assert.equal(inboxChip(NO_INBOX_FILTER, ROWS), null);
+});
+
+test("the reader's siblings are the same milestone, minus the row being read", () => {
+  assert.deepEqual(
+    siblingsOnMilestone(ROWS, ROWS[0]).map(({ id }) => id),
+    ["b"],
+  );
+  // A row Cloud resolved no milestone for has no siblings — not every other
+  // unresolved row as siblings, which is what grouping on a null id would do.
+  assert.deepEqual(siblingsOnMilestone(ROWS, ROWS[2]), []);
+});
+
+test("new today is derived from the age Cloud sends, not from a parsed date", () => {
+  assert.equal(newTodayCount(ROWS, NO_INBOX_FILTER), 1);
+  assert.equal(isNewToday(ROWS[0]), true);
+  assert.equal(isNewToday(ROWS[2]), false);
 });

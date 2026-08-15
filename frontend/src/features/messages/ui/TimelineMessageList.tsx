@@ -12,10 +12,9 @@ import {
   type TimelineNonDayItem,
 } from "@/features/messages/lib/timelineItems";
 import {
+  VIRTUALIZED_TIMELINE_ITEM_ESTIMATE,
   buildVirtualizedItems,
   didPrependVirtualizedTimeline,
-  estimateVirtualizedTimelineItemHeight,
-  type VirtualizedTimelineItem,
   virtualizedItemKey,
 } from "@/features/messages/lib/virtualizedTimelineItems";
 import { THREAD_REPLY_ROW_MARGIN_INLINE_REM } from "@/features/messages/lib/threadTreeLayout";
@@ -434,20 +433,6 @@ function VirtualizedTimelineRows({
     typeof window === "undefined" ? 1_000 : window.innerHeight,
   );
   const hasInitialPositionedRef = React.useRef(false);
-  const estimateCallCountRef = React.useRef(0);
-  const estimateItemSize = React.useCallback(
-    (item: VirtualizedTimelineItem) => {
-      estimateCallCountRef.current += 1;
-      const scroller = hostRef.current?.firstElementChild;
-      if (scroller instanceof HTMLDivElement) {
-        scroller.dataset.virtuaEstimateCallCount = String(
-          estimateCallCountRef.current,
-        );
-      }
-      return estimateVirtualizedTimelineItemHeight(item);
-    },
-    [],
-  );
   const items = React.useMemo(
     () => buildVirtualizedItems(dayGroups, leadingContent, historyExhausted),
     [dayGroups, historyExhausted, leadingContent],
@@ -612,9 +597,6 @@ function VirtualizedTimelineRows({
     if (element) {
       element.dataset.g6ConversationScroll = "true";
       element.dataset.testid = "message-timeline";
-      element.dataset.virtuaEstimateCallCount = String(
-        estimateCallCountRef.current,
-      );
     }
     onVirtualizerScrollerChange?.(element);
     return () => onVirtualizerScrollerChange?.(null);
@@ -703,7 +685,7 @@ function VirtualizedTimelineRows({
           className="h-full min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-contain px-2 pt-[var(--channel-top-chrome-height,4.5rem)]"
           data={items}
           item={VirtualizedTimelineItemShell}
-          itemSize={estimateItemSize}
+          itemSize={VIRTUALIZED_TIMELINE_ITEM_ESTIMATE}
           bufferSize={offscreenBufferSize}
           keepMounted={retainedIndices}
           style={{ overflowAnchor: "none" }}

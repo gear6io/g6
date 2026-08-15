@@ -11,8 +11,14 @@ import { relayHttpFromWs } from "@/shared/api/inviteHelpers";
 
 import type {
   ActionListResponse,
+  ActorQuery,
+  AttentionQuery,
+  AttentionResponse,
   CloudErrorEnvelope,
   GatewayQuery,
+  OverviewQuery,
+  SearchQuery,
+  SearchResponse,
   MilestoneListQuery,
   MilestoneListResponse,
   MilestoneTimelineResponse,
@@ -136,20 +142,48 @@ async function getJson<T>(path: string, query?: GatewayQuery): Promise<T> {
 }
 
 /**
- * The development user directory. The route is compiled out of a release
- * backend, so this rejects with the gateway's 404 there rather than returning
- * an empty list — callers gate the call on the build, not on the answer.
+ * The app's development user directory. The local route is compiled out of a
+ * release backend, so this rejects with the gateway's 404 there rather than
+ * returning an empty list — callers gate the call on the build, not the answer.
  */
-export function listDevUsers(): Promise<UserListResponse> {
-  return getJson("v1/dev/users");
+export function listUsers(): Promise<UserListResponse> {
+  return getJson("v1/users");
 }
 
-export function listActions(accountId: string): Promise<ActionListResponse> {
-  return getJson("v1/actions", { account_id: accountId });
+export function listActions(
+  accountId: string,
+  query?: Omit<ActorQuery, "account_id">,
+): Promise<ActionListResponse> {
+  return getJson("v1/actions", { ...query, account_id: accountId });
 }
 
-export function overview(accountId: string): Promise<OverviewResponse> {
-  return getJson("v1/overview", { account_id: accountId });
+export function overview(
+  accountId: string,
+  query?: Omit<OverviewQuery, "account_id">,
+): Promise<OverviewResponse> {
+  return getJson("v1/overview", { ...query, account_id: accountId });
+}
+
+/**
+ * The four tiles above the list. No actor, like `/v1/overview`'s `open`: what
+ * is regressing is not a fact about the viewer.
+ *
+ * The thresholds are left to Cloud's defaults unless a caller has a reason —
+ * and the response echoes whichever were used, so a label is rendered from
+ * `blocked.blocked_days` rather than from what was asked for.
+ */
+export function attention(query?: AttentionQuery): Promise<AttentionResponse> {
+  return getJson("v1/attention", query);
+}
+
+/**
+ * One query across milestones, rail events and people. One route rather than
+ * three because a palette showing counts per scope needs all three answers per
+ * keystroke, and three round trips are three chances to draw counts from
+ * different instants.
+ */
+export function search(query: SearchQuery): Promise<SearchResponse> {
+  return getJson("v1/search", query);
 }
 
 /** No actor: the counts on a milestone are the tenant's, not the viewer's. */

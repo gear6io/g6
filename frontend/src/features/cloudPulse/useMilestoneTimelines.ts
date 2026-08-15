@@ -4,7 +4,13 @@
 // source activities. Fetching them all at mount would spend the landing view's
 // first second on rows below the fold, so each panel asks for its own when it
 // nears the viewport, and no more than four are ever in flight.
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { milestoneTimeline } from "@/shared/api/cloudGateway/client";
 import type {
@@ -23,9 +29,8 @@ export type TimelineLoad =
 export type Timelines = {
   get: (milestoneId: string) => TimelineLoad | undefined;
   /**
-   * Idempotent: a milestone already asked for is not asked for again. `query` is
-   * omitted for Cloud's default window and only sent for a panel that renders a
-   * shifted one.
+   * Idempotent inside one cache key: a milestone already asked for is not asked
+   * for again until refresh or the selected window changes.
    */
   request: (milestoneId: string, query?: TimelineQuery) => void;
   retry: (milestoneId: string, query?: TimelineQuery) => void;
@@ -43,14 +48,17 @@ function failure(err: unknown): { code: string; message: string } {
 }
 
 /**
- * `refreshKey` changing drops every cached timeline, which is what a manual
- * refresh means. Panels re-request as they are seen, so a background refresh
- * costs the visible rows and not the whole page.
+ * `cacheKey` changing drops every cached timeline. It includes both manual
+ * refreshes and the selected time window, so a response for 30d can never be
+ * reused after the reader switches to 7d or 90d.
  */
-export function useMilestoneTimelines(refreshKey: number): Timelines {
+export function useMilestoneTimelines(cacheKey: string | number): Timelines {
   const [byId, setById] = useState<Record<string, TimelineLoad>>({});
   const asked = useRef(new Set<string>());
-  const queue = useRef<{ id: string; query?: TimelineQuery }[]>([]);
+  const generation = useRef(0);
+  const queue = useRef<
+    { generation: number; id: string; query?: TimelineQuery }[]
+  >([]);
   const inFlight = useRef(0);
   const live = useRef(true);
 
@@ -61,34 +69,38 @@ export function useMilestoneTimelines(refreshKey: number): Timelines {
     };
   }, []);
 
-  useEffect(() => {
-    if (refreshKey === 0) {
-      return;
-    }
+  // Reset before row effects ask for the new window. A passive reset would run
+  // after child effects and could discard their newly queued requests.
+  useLayoutEffect(() => {
+    generation.current += 1;
     asked.current = new Set();
     queue.current = [];
     setById({});
-  }, [refreshKey]);
+  }, [cacheKey]);
 
   const pump = useCallback(() => {
     while (inFlight.current < MAX_IN_FLIGHT && queue.current.length > 0) {
-      const { id, query } = queue.current.shift() as {
+      const queued = queue.current.shift() as {
+        generation: number;
         id: string;
         query?: TimelineQuery;
       };
+      const { id, query } = queued;
       inFlight.current += 1;
-      // Usually no `from`/`to`: Cloud's own default is the 30-day window a panel
-      // renders, and dates computed from the webview's clock would make the
-      // range disagree with the one Cloud describes. A panel only sends a range
-      // when it has shifted the window onto Cloud's own `last_activity.date`.
+      // Window dates come from the list response's generated instant, never the
+      // webview clock. The query is omitted only for legacy callers that still
+      // rely on Cloud's default window.
       milestoneTimeline(id, query)
         .then((value) => {
-          if (live.current) {
-            setById((current) => ({ ...current, [id]: { status: "ready", value } }));
+          if (live.current && queued.generation === generation.current) {
+            setById((current) => ({
+              ...current,
+              [id]: { status: "ready", value },
+            }));
           }
         })
         .catch((err: unknown) => {
-          if (live.current) {
+          if (live.current && queued.generation === generation.current) {
             setById((current) => ({
               ...current,
               [id]: { status: "error", ...failure(err) },
@@ -108,11 +120,20 @@ export function useMilestoneTimelines(refreshKey: number): Timelines {
         return;
       }
       asked.current.add(milestoneId);
-      setById((current) => ({ ...current, [milestoneId]: { status: "loading" } }));
-      queue.current.push({ id: milestoneId, query });
+      setById((current) => ({
+        ...current,
+        [milestoneId]: { status: "loading" },
+      }));
+      queue.current.push({
+        generation: generation.current,
+        id: milestoneId,
+        query,
+      });
       pump();
     },
-    [pump],
+    // Changing the key also changes this callback, so mounted rows ask again
+    // after the layout reset above (including on manual refresh).
+    [cacheKey, pump],
   );
 
   const retry = useCallback(

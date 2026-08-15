@@ -9,7 +9,7 @@ import {
   gatewayOrigin,
   health,
   listActions,
-  listDevUsers,
+  listUsers,
   listMilestones,
   milestoneTimeline,
   overview,
@@ -202,13 +202,13 @@ test("the actor-scoped routes send the account as a query, never a header", asyn
   try {
     await listActions("U024BE7LH");
     await overview("U024BE7LH");
-    await listDevUsers();
+    await listUsers();
 
     const paths = fetchStub.calls.map((call) => new URL(call.url).pathname);
     assert.deepEqual(paths, [
       "/api/cloud/v1/actions",
       "/api/cloud/v1/overview",
-      "/api/cloud/v1/dev/users",
+      "/api/cloud/v1/users",
     ]);
 
     for (const call of fetchStub.calls.slice(0, 2)) {

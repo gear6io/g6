@@ -20,7 +20,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** `YYYY-MM-DD` → epoch milliseconds at UTC midnight. NaN for a loose date. */
 export function dayValue(date: string): number {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
+  return /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? Date.parse(`${date}T00:00:00Z`)
+    : NaN;
 }
 
 export function toDay(value: number): string {
@@ -33,13 +35,25 @@ export function utcToday(now: number): string {
 }
 
 /** The 30-day window ending on `to`. */
-function rangeEndingOn(to: string): { from: string; to: string } {
-  return { from: toDay(dayValue(to) - (RANGE_DAYS - 1) * DAY_MS), to };
+function rangeEndingOn(
+  to: string,
+  days = RANGE_DAYS,
+): { from: string; to: string } {
+  return { from: toDay(dayValue(to) - (days - 1) * DAY_MS), to };
 }
 
 /** The 30-day window ending on the UTC day `now` falls on. */
 export function defaultRange(now: number): { from: string; to: string } {
   return rangeEndingOn(utcToday(now));
+}
+
+/** A user-selected window ending on Cloud's own generated UTC day. */
+export function selectedRange(
+  generatedAt: string,
+  days: number,
+): { from: string; to: string } | undefined {
+  const to = generatedAt.slice(0, 10);
+  return Number.isNaN(dayValue(to)) ? undefined : rangeEndingOn(to, days);
 }
 
 /**
@@ -121,13 +135,10 @@ export type Stage = {
 };
 
 function sumCounts(list: readonly ActionCounts[]): ActionCounts {
-  return ACTION_ORDER.reduce(
-    (total, kind) => {
-      total[kind] = list.reduce((sum, counts) => sum + counts[kind], 0);
-      return total;
-    },
-    {} as ActionCounts,
-  );
+  return ACTION_ORDER.reduce((total, kind) => {
+    total[kind] = list.reduce((sum, counts) => sum + counts[kind], 0);
+    return total;
+  }, {} as ActionCounts);
 }
 
 function toStage(days: readonly TimelineDay[], gapBefore: number): Stage {
@@ -214,7 +225,9 @@ export function longDayLabel(date: string): string {
 }
 
 export function crossesYears(days: readonly string[]): boolean {
-  return days.length > 0 && days[0].slice(0, 4) !== days[days.length - 1].slice(0, 4);
+  return (
+    days.length > 0 && days[0].slice(0, 4) !== days[days.length - 1].slice(0, 4)
+  );
 }
 
 /** "today", "yesterday", "6 days ago" — for "Last observed …". */
@@ -307,16 +320,16 @@ export type StatusToken = {
 
 /**
  * Design.md names exactly two semantics, error and success, and forbids a third
- * accent — the aubergine and the link blue are the whole chromatic system. So
+ * accent — cobalt and the link blue are the whole chromatic system. So
  * status runs on the semantic tokens rather than four families out of stock
  * Tailwind, and `dependency` borrows the one colour Design.md does not define
  * (`--g6-pulse-warning`, declared in theme.css alongside the rest).
  *
- * There used to be a third slot here, a separate value for text on the cream
- * surface, because an emerald-600 landed near 3:1 on cream and had to drop two
+ * There used to be a third slot here, a separate value for text on the bone
+ * surface, because an emerald-600 landed near 3:1 on bone and had to drop two
  * steps while the canvas kept -600. That was a missing-token workaround: one
  * semantic token now clears AA on both backgrounds in both themes (the tightest
- * pair is success on cream at 4.6:1), so the slot is gone rather than ported.
+ * pair is success on bone at 4.6:1), so the slot is gone rather than ported.
  */
 export const STATUS_TOKENS: Record<MilestoneStatus, StatusToken> = {
   progress: {

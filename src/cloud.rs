@@ -53,6 +53,8 @@ const HEALTHZ: &str = "healthz";
 const ACTIONS: &str = "v1/actions";
 const OVERVIEW: &str = "v1/overview";
 const MILESTONES: &str = "v1/milestones";
+const ATTENTION: &str = "v1/attention";
+const SEARCH: &str = "v1/search";
 /// The one upstream path built at runtime rather than compiled in. This constant
 /// is the label the logs and the allowlist reason about; the concrete path is
 /// assembled in `milestone_timeline` from an id validated against
@@ -61,7 +63,7 @@ const MILESTONES: &str = "v1/milestones";
 const MILESTONE_TIMELINE: &str = "v1/milestones/{id}/timeline";
 const EXTRACTIONS_RESOLVE: &str = "v1/extractions/resolve";
 #[cfg(debug_assertions)]
-const DEV_USERS: &str = "v1/dev/users";
+const USERS: &str = "v1/users";
 
 /// The resolve request is `{provider, reference, depth, limit, cursor}` — a few
 /// hundred bytes at most. The cap is enforced here rather than upstream so a
@@ -172,17 +174,19 @@ pub fn routes() -> Router<AppState> {
         .route("/v1/actions", get(actions))
         .route("/v1/overview", get(overview))
         .route("/v1/milestones", get(milestones))
+        .route("/v1/attention", get(attention))
+        .route("/v1/search", get(search))
         .route(
             "/v1/milestones/{milestone_id}/timeline",
             get(milestone_timeline),
         )
         .route("/v1/extractions/resolve", post(resolve_extraction));
 
-    // Compiled out of release builds, exactly as Cloud gates its own copy: the
-    // route enumerates the tenant's people, handles and emails, and a config
-    // flag would still ship the code in the production binary.
+    // The selector is development-only even though Cloud's user directory is
+    // now a regular endpoint. Keeping this local route out of release builds
+    // keeps the development control private without inventing another store.
     #[cfg(debug_assertions)]
-    let routes = routes.route("/v1/dev/users", get(dev_users));
+    let routes = routes.route("/v1/users", get(users));
 
     routes
 }
@@ -220,10 +224,41 @@ async fn relay_healthz(state: &AppState) -> Result<Response, GatewayError> {
 /// `/v1/milestones` has its own sort and its own cursor shape, so it gets its
 /// own parameter set: `entity_id` means nothing on a list of entities, and
 /// forwarding it would be a filter Cloud rejects.
+///
+/// The filters are strings and are not validated here, matching [`TimelineQuery`]:
+/// Cloud answers its own `invalid_query`, `invalid_status`, `invalid_quiet_days`
+/// and `invalid_counts`, and a second validator on this side could only reword
+/// the same rejection — or accept a value Cloud will not.
 #[derive(Deserialize)]
 pub struct MilestoneListQuery {
     limit: Option<String>,
     cursor: Option<String>,
+    q: Option<String>,
+    status: Option<String>,
+    quiet_days: Option<String>,
+    counts: Option<String>,
+    has_no_activity: Option<String>,
+}
+
+/// `/v1/attention`'s four thresholds. No actor: the tiles are whole-tenant.
+#[derive(Deserialize)]
+pub struct AttentionQuery {
+    since_days: Option<String>,
+    blocked_days: Option<String>,
+    quiet_days: Option<String>,
+    closed_days: Option<String>,
+}
+
+/// `/v1/search`'s query, scope, and per-collection cap.
+///
+/// `q` is required upstream and is **not** defaulted here: a gateway that turned
+/// an absent query into some value would turn Cloud's `400 missing_query` into a
+/// read of every collection.
+#[derive(Deserialize)]
+pub struct SearchQuery {
+    q: Option<String>,
+    scope: Option<String>,
+    limit: Option<String>,
 }
 
 /// The timeline's two date bounds. Strings, deliberately: Cloud answers its own
@@ -252,7 +287,45 @@ fn append_pairs(url: &mut Url, pairs: &[(&str, &Option<String>)]) {
 
 impl MilestoneListQuery {
     fn apply(&self, url: &mut Url) {
-        append_pairs(url, &[("limit", &self.limit), ("cursor", &self.cursor)]);
+        append_pairs(
+            url,
+            &[
+                ("limit", &self.limit),
+                ("cursor", &self.cursor),
+                ("q", &self.q),
+                ("status", &self.status),
+                ("quiet_days", &self.quiet_days),
+                ("counts", &self.counts),
+                ("has_no_activity", &self.has_no_activity),
+            ],
+        );
+    }
+}
+
+impl AttentionQuery {
+    fn apply(&self, url: &mut Url) {
+        append_pairs(
+            url,
+            &[
+                ("since_days", &self.since_days),
+                ("blocked_days", &self.blocked_days),
+                ("quiet_days", &self.quiet_days),
+                ("closed_days", &self.closed_days),
+            ],
+        );
+    }
+}
+
+impl SearchQuery {
+    fn apply(&self, url: &mut Url) {
+        append_pairs(
+            url,
+            &[
+                ("q", &self.q),
+                ("scope", &self.scope),
+                ("limit", &self.limit),
+            ],
+        );
     }
 }
 
@@ -273,6 +346,42 @@ async fn milestones(
         let mut url = state.cloud.url(MILESTONES)?;
         query.apply(&mut url);
         relay(&state, MILESTONES, url, None, None, MILESTONE_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+/// The attention strip and the search palette. Both are whole-tenant reads with
+/// plain query strings, so neither needs the actor header nor the runtime-path
+/// handling `milestone_timeline` has: the upstream path is compiled in and the
+/// only runtime input is a query string `Url` encodes.
+async fn attention(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Query(query): Query<AttentionQuery>,
+) -> Response {
+    let relayed = async {
+        let mut url = state.cloud.url(ATTENTION)?;
+        query.apply(&mut url);
+        relay(&state, ATTENTION, url, None, None, JSON_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
+async fn search(
+    State(state): State<AppState>,
+    _auth: Auth,
+    Query(query): Query<SearchQuery>,
+) -> Response {
+    let relayed = async {
+        let mut url = state.cloud.url(SEARCH)?;
+        query.apply(&mut url);
+        relay(&state, SEARCH, url, None, None, JSON_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -409,10 +518,10 @@ async fn actor_scoped(
 /// Development only, and unparameterised: the list is capped upstream at 1000
 /// rows and does not page.
 #[cfg(debug_assertions)]
-async fn dev_users(State(state): State<AppState>, _auth: Auth) -> Response {
+async fn users(State(state): State<AppState>, _auth: Auth) -> Response {
     let relayed = async {
-        let url = state.cloud.url(DEV_USERS)?;
-        relay(&state, DEV_USERS, url, None, None, JSON_STATUSES).await
+        let url = state.cloud.url(USERS)?;
+        relay(&state, USERS, url, None, None, JSON_STATUSES).await
     };
     match relayed.await {
         Ok(res) => res,
@@ -719,16 +828,104 @@ mod tests {
         Cloud::new(Some("ftp://cloud.example.com"));
     }
 
+    /// The allowlist is the whole point: a parameter this gateway does not name is not forwarded,
+    /// whatever the webview attached to the request.
+    ///
+    /// `status` is a *milestone* filter here — Cloud's health vocabulary — and is forwarded
+    /// unvalidated, like every other filter on this route. A value Cloud does not accept comes back
+    /// as Cloud's own `400 invalid_status`; rejecting it here would only reword that.
     #[test]
-    fn only_the_two_allowlisted_parameters_are_forwarded() {
+    fn only_the_allowlisted_parameters_are_forwarded() {
         let query: MilestoneListQuery = serde_urlencoded::from_str(
-            "status=active&limit=1000&cursor=abc%3D%3D&token=xoxb-secret&actor=U1",
+            "status=regression&limit=1000&cursor=abc%3D%3D&token=xoxb-secret&actor=U1",
         )
         .unwrap();
         let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         query.apply(&mut url);
 
-        assert_eq!(url.query().unwrap(), "limit=1000&cursor=abc%3D%3D");
+        assert_eq!(
+            url.query().unwrap(),
+            "limit=1000&cursor=abc%3D%3D&status=regression"
+        );
+
+        // Every filter the list route has, and nothing else.
+        let full: MilestoneListQuery = serde_urlencoded::from_str(
+            "q=read+state&status=regression&quiet_days=14&counts=true&has_no_activity=false\
+             &token=xoxb-secret&entity_id=deadbeef",
+        )
+        .unwrap();
+        let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
+        full.apply(&mut url);
+        let seen = url.query().unwrap();
+        assert!(seen.contains("q=read+state"), "{seen}");
+        assert!(seen.contains("quiet_days=14"), "{seen}");
+        assert!(seen.contains("counts=true"), "{seen}");
+        assert!(seen.contains("has_no_activity=false"), "{seen}");
+        assert!(!seen.contains("token"), "{seen}");
+        assert!(!seen.contains("entity_id"), "{seen}");
+    }
+
+    /// Both new routes are registered, reach their compiled-in upstream path, and send no viewer —
+    /// what is regressing and what a word matches are the same answers for everyone.
+    ///
+    /// A parameter allowlist test cannot catch a route that was never added to the router, which is
+    /// the failure this one exists for.
+    #[tokio::test]
+    async fn the_attention_and_search_routes_reach_cloud_with_no_viewer() {
+        let (base, seen) = mock_cloud(json_body(200, PAGE)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        for (uri, upstream) in [
+            (
+                "/api/cloud/v1/attention?since_days=1&account_id=U024BE7LH",
+                "/v1/attention?since_days=1",
+            ),
+            (
+                "/api/cloud/v1/search?q=read+state&scope=events&account_id=U024BE7LH",
+                "/v1/search?q=read+state&scope=events",
+            ),
+        ] {
+            let (status, _, _) = get(&app, uri, Some(&token)).await;
+            assert_eq!(status, StatusCode::OK, "{uri}");
+
+            let (seen_uri, headers) = seen.last();
+            assert_eq!(seen_uri, upstream);
+            assert!(headers.get("x-g6-actor-id").is_none(), "no actor identity");
+            assert!(
+                headers.get(header::AUTHORIZATION).is_none(),
+                "no inbound auth"
+            );
+        }
+    }
+
+    /// The two whole-tenant routes forward their own thresholds and nothing else.
+    ///
+    /// `q` is not defaulted when absent: a gateway that invented one would turn Cloud's
+    /// `400 missing_query` into a read of every collection.
+    #[test]
+    fn the_attention_and_search_routes_forward_only_their_own_parameters() {
+        let a: AttentionQuery = serde_urlencoded::from_str(
+            "since_days=1&blocked_days=5&quiet_days=14&closed_days=7&account_id=U1&token=x",
+        )
+        .unwrap();
+        let mut url = Url::parse("http://cloud/v1/attention").unwrap();
+        a.apply(&mut url);
+        assert_eq!(
+            url.query().unwrap(),
+            "since_days=1&blocked_days=5&quiet_days=14&closed_days=7"
+        );
+
+        let s: SearchQuery =
+            serde_urlencoded::from_str("q=read+state&scope=events&limit=8&actor=U1").unwrap();
+        let mut url = Url::parse("http://cloud/v1/search").unwrap();
+        s.apply(&mut url);
+        assert_eq!(url.query().unwrap(), "q=read+state&scope=events&limit=8");
+
+        let empty: SearchQuery = serde_urlencoded::from_str("").unwrap();
+        let mut url = Url::parse("http://cloud/v1/search").unwrap();
+        empty.apply(&mut url);
+        assert_eq!(url.query(), None, "no bare ? and no invented q");
     }
 
     fn actor(query: &str) -> Result<String, &'static str> {
@@ -1052,16 +1249,17 @@ mod tests {
         );
         assert!(!is_milestone_id("g123456789abcdef0123456789abcdef"), "hex");
         // The reason the check exists: nothing may add a segment or a query.
-        assert!(!is_milestone_id("../../v1/dev/users0123456789abcde"));
+        assert!(!is_milestone_id("../../0123456789abcdef0123456789"));
         assert!(!is_milestone_id("0123456789abcdef0123456789abcd?x"));
     }
 
     #[test]
     fn the_milestone_routes_forward_only_their_own_parameters() {
-        let list: MilestoneListQuery = serde_urlencoded::from_str(
-            "status=active&limit=12&cursor=AbC%3D&entity_id=deadbeef&account_id=U1",
-        )
-        .unwrap();
+        // `entity_id` means nothing on a list of entities and `account_id` is the actor the
+        // milestone routes deliberately never send. Neither reaches Cloud.
+        let list: MilestoneListQuery =
+            serde_urlencoded::from_str("limit=12&cursor=AbC%3D&entity_id=deadbeef&account_id=U1")
+                .unwrap();
         let mut url = Url::parse("http://cloud/v1/milestones").unwrap();
         list.apply(&mut url);
         assert_eq!(url.query().unwrap(), "limit=12&cursor=AbC%3D");
@@ -1086,7 +1284,7 @@ mod tests {
 
         for (uri, upstream) in [
             (
-                "/api/cloud/v1/milestones?status=active&limit=12&account_id=U024BE7LH",
+                "/api/cloud/v1/milestones?limit=12&account_id=U024BE7LH",
                 "/v1/milestones?limit=12",
             ),
             (
@@ -1237,7 +1435,7 @@ mod tests {
         let app = gateway(Some(&base)).await;
         let token = token(&app).await;
 
-        let (status, _, got) = get(&app, "/api/cloud/v1/dev/users?limit=5", Some(&token)).await;
+        let (status, _, got) = get(&app, "/api/cloud/v1/users?limit=5", Some(&token)).await;
 
         // Present because the test profile is a debug build; a release binary
         // has no such route and answers 404.
@@ -1245,7 +1443,7 @@ mod tests {
         assert_eq!(got, PAGE);
 
         let (uri, headers) = seen.last();
-        assert_eq!(uri, "/v1/dev/users", "no paging, no forwarded query");
+        assert_eq!(uri, "/v1/users", "no paging, no forwarded query");
         assert!(
             headers.get("x-g6-actor-id").is_none(),
             "the directory has no viewer"

@@ -15,6 +15,21 @@
   background-color: var(--g6-pulse-canvas);
 }
 
+/* Cobalt-tinted lift keeps floating chrome in the same colour world as the
+   surface beneath it instead of dropping a generic black shadow on the page. */
+.g6-pulse-elevated {
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--g6-pulse-ink) 8%, transparent),
+    0 20px 56px -28px color-mix(in srgb, var(--g6-pulse-brand) 44%, transparent);
+}
+
+.g6-pulse-side-panel {
+  box-shadow:
+    -1px 0 0 var(--g6-pulse-hairline),
+    -18px 0 42px -28px
+      color-mix(in srgb, var(--g6-pulse-brand) 38%, transparent);
+}
+
 /*
  * Design.md's pastel-mesh backdrop: three stops blurred at large radii, as a
  * radial-gradient stack rather than an image. The brand doc puts this behind
@@ -28,9 +43,21 @@
  */
 .g6-pulse-mesh {
   background-image:
-    radial-gradient(62% 130% at 10% 0%, var(--g6-pulse-mesh-a) 0%, transparent 62%),
-    radial-gradient(52% 110% at 58% 0%, var(--g6-pulse-mesh-b) 0%, transparent 58%),
-    radial-gradient(48% 100% at 100% 8%, var(--g6-pulse-mesh-c) 0%, transparent 62%);
+    radial-gradient(
+      62% 130% at 10% 0%,
+      var(--g6-pulse-mesh-a) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      52% 110% at 58% 0%,
+      var(--g6-pulse-mesh-b) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      48% 100% at 100% 8%,
+      var(--g6-pulse-mesh-c) 0%,
+      transparent 62%
+    );
   background-repeat: no-repeat;
 }
 
@@ -50,8 +77,8 @@
  * whole reason there is no rule under it.
  */
 .g6-pulse-chrome {
-  background-color: color-mix(in srgb, var(--g6-pulse-canvas) 85%, transparent);
-  backdrop-filter: blur(12px);
+  background-color: color-mix(in srgb, var(--g6-pulse-canvas) 90%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
 }
 
 /*

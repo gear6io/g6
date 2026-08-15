@@ -202,7 +202,13 @@ function expectAnchorOrderUnchanged(
   expect(after.rowsFromAnchor).toEqual(before.rowsFromAnchor);
 }
 
-test("timeline does not recompute row estimates during ordinary scroll", async ({
+// This used to count calls into a per-item estimate callback and assert the
+// count did not move while scrolling. `virtua`'s `itemSize` is a single number
+// for the whole list, not a callback — the instrumentation could never fire, so
+// what it proved was that a broken build was broken. What survives is the fact
+// the test was actually about: ordinary scrolling does not move the rows under
+// the reader, which is observable from the rows themselves.
+test("timeline does not shift rows during ordinary scroll", async ({
   page,
 }) => {
   await installMockBridge(page);
@@ -229,10 +235,13 @@ test("timeline does not recompute row estimates during ordinary scroll", async (
     return element && element.scrollHeight > element.clientHeight * 3;
   });
 
-  const estimateCallsBefore = await timeline.evaluate((element) =>
-    Number((element as HTMLDivElement).dataset.virtuaEstimateCallCount ?? "0"),
+  // The observable consequence of a stable estimate: scrolling back and forth
+  // over already-measured rows does not change how tall the list thinks it is.
+  // A re-estimate that disagreed with a measured row would move this number,
+  // and the scrollbar under the reader's thumb with it.
+  const heightBefore = await timeline.evaluate(
+    (element) => (element as HTMLDivElement).scrollHeight,
   );
-  expect(estimateCallsBefore).toBeGreaterThan(0);
 
   await timeline.evaluate(async (element) => {
     const scroller = element as HTMLDivElement;
@@ -246,10 +255,10 @@ test("timeline does not recompute row estimates during ordinary scroll", async (
     }
   });
 
-  const estimateCallsAfter = await timeline.evaluate((element) =>
-    Number((element as HTMLDivElement).dataset.virtuaEstimateCallCount ?? "0"),
+  const heightAfter = await timeline.evaluate(
+    (element) => (element as HTMLDivElement).scrollHeight,
   );
-  expect(estimateCallsAfter).toBe(estimateCallsBefore);
+  expect(heightAfter).toBe(heightBefore);
 });
 
 test("timeline reserves mixed-media rows before fast scrollback", async ({

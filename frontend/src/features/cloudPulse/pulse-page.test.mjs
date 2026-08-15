@@ -12,6 +12,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { CloudWindowProvider } from "../cloudShell/CloudWindowProvider.tsx";
+import { MilestoneRowHeader } from "./MilestoneRow.tsx";
 import { PulseMilestones, milestoneSummary } from "./PulseMilestones.tsx";
 
 // The page reads the window's selected event, so it renders inside the window —
@@ -28,26 +29,33 @@ const page = () =>
 test("the masthead does not invent milestone lifecycle filters", () => {
   const markup = page();
 
-  assert.match(markup, />Pulse</);
+  // The view no longer names itself: the window bar does. What this pins is
+  // that no lifecycle vocabulary appears here — `active` and `pruned` are the
+  // service's own bookkeeping about an identity, not selectable states, and a
+  // request for `status=active` is a `400`.
+  assert.doesNotMatch(markup, />Pulse</);
   assert.doesNotMatch(markup, />Active<|>Pruned<|>All<|Milestone scope/);
 });
 
-test("the window Cloud reads is stated as a fact, not offered as a control", () => {
-  const markup = page();
-  assert.match(markup, /Last 30 UTC days/);
-  // It used to sit in the header looking like something to press.
-  assert.doesNotMatch(markup, /<button[^>]*>[^<]*Last 30 UTC days/);
+test("the sparkline heading follows the selected window", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(MilestoneRowHeader, { days: 7 }),
+  );
+  assert.match(markup, />Last 7 days</);
+  assert.doesNotMatch(markup, /<button/);
 });
 
-test("the first paint is the card's own shape, so it does not resize under you", () => {
+test("the first paint is the row's own shape, so it does not resize under you", () => {
   const markup = page();
-  // Three placeholders, each carrying the rail's row height like the real card.
-  assert.equal((markup.match(/aria-hidden="true"/g) ?? []).length >= 3, true);
-  assert.equal((markup.match(/h-\[58px\]/g) ?? []).length, 3);
+  // Placeholders carrying the row height, not the old card's.
+  assert.equal((markup.match(/h-\[42px\]/g) ?? []).length, 6);
   assert.doesNotMatch(markup, /Could not load milestones|No milestones/);
 });
 
 test("the summary counts milestones without a backend lifecycle", () => {
   assert.equal(milestoneSummary(9, "4m ago"), "9 milestones. Updated 4m ago.");
-  assert.equal(milestoneSummary(1, "just now"), "1 milestone. Updated just now.");
+  assert.equal(
+    milestoneSummary(1, "just now"),
+    "1 milestone. Updated just now.",
+  );
 });

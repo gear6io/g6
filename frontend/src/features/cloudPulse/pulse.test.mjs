@@ -5,6 +5,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { MilestonePanel } from "./MilestonePanel.tsx";
+import { Sparkline, sparklineLabel } from "./MilestoneRow.tsx";
 import { MilestoneRail } from "./MilestoneRail.tsx";
 import { StageRecord } from "./StageRecord.tsx";
 import { railStages } from "./milestones.ts";
@@ -120,6 +121,7 @@ function quiet(date, overrides = {}) {
 
 test("a panel names the milestone, its total, and the kinds actually open", () => {
   const markup = panel({
+    onClose: () => {},
     timeline: { status: "ready", value: { days: [day("2026-08-08")] } },
   });
 
@@ -138,6 +140,15 @@ test("a panel names the milestone, its total, and the kinds actually open", () =
   assert.doesNotMatch(markup, /Pruned/);
   // No completion figure: Cloud derives none.
   assert.doesNotMatch(markup, /\d+%/);
+  assert.match(markup, /aria-label="Close detail"/);
+  assert.doesNotMatch(
+    markup,
+    /rounded-2xl/,
+    "the reader is not a card in a panel",
+  );
+  // The mockup opens on the newest record instead of leaving an empty lower half.
+  assert.match(markup, /Aug 8/);
+  assert.match(markup, /6 open at start of range/);
 });
 
 test("a milestone with nothing open says zero rather than showing no counts", () => {
@@ -217,7 +228,10 @@ test("the rail draws a column per stage and one marker per quiet run", () => {
   assert.match(markup, />18d</, "the days nobody looked at are still counted");
   assert.match(markup, /18 days with nothing observed/, "and are named");
   // Colour is never the only cue: the accessible name carries the status.
-  assert.match(markup, /aria-label="Monday, Jul 20, Progress, 4 observed events"/);
+  assert.match(
+    markup,
+    /aria-label="Monday, Jul 20, Progress, 4 observed events"/,
+  );
 
   // Adjacent days need no marker between them.
   const adjacent = rail([day("2026-08-07"), day("2026-08-08")]);
@@ -255,7 +269,11 @@ test("a run of neutral days is one stage, and a classified day is never folded",
     day("2026-08-04"),
   ]);
 
-  assert.equal(markup.match(/<button/g).length, 2, "three quiet days, one node");
+  assert.equal(
+    markup.match(/<button/g).length,
+    2,
+    "three quiet days, one node",
+  );
   assert.match(markup, /Aug 1-3/, "the run names the days it covers");
   assert.match(
     markup,
@@ -277,7 +295,7 @@ test("every node names its own dates, and no unobserved day is named", () => {
   assert.doesNotMatch(markup, /Jul 21|Aug 1</);
 });
 
-test("a record states the reading and never argues for it", () => {
+test("a compact record states the reading and never argues for it", () => {
   const markup = record(
     [
       day("2026-08-08", {
@@ -302,7 +320,7 @@ test("a record states the reading and never argues for it", () => {
     "2026-07-31",
   );
 
-  assert.match(markup, /Saturday, Aug 8/);
+  assert.match(markup, /Aug 8/);
   // The day's own classification, once.
   assert.match(markup, /Progress/);
   // Cloud's evidence is not drawn: no rationale, no rule name, no provenance
@@ -310,25 +328,19 @@ test("a record states the reading and never argues for it", () => {
   assert.doesNotMatch(markup, /Deployment completed successfully/);
   assert.doesNotMatch(markup, /Decision closed/);
   assert.doesNotMatch(markup, /Workflow fact|Analysis/);
-  assert.doesNotMatch(markup, /Dependency/, "a second classification is evidence");
+  assert.doesNotMatch(
+    markup,
+    /Dependency/,
+    "a second classification is evidence",
+  );
   assert.doesNotMatch(markup, /\d+% confidence/);
 
-  // The snapshot leads with the total, then only the kinds actually open.
-  assert.match(markup, /Total open/);
-  assert.match(markup, />6</);
-  assert.match(markup, /Change since Friday, Jul 31/);
-  assert.match(markup, />-1</, "a negative delta is signed");
-  assert.match(markup, />\+1</, "a positive delta is signed");
+  // The mockup keeps the record header to one movement sentence.
+  assert.match(markup, /4 observed events/);
+  assert.match(markup, /no net change since Jul 31/);
+  assert.doesNotMatch(markup, /Total open|Change since/);
   // Cloud dropped `constraint_work_items` in 2.0; nothing stands in for it.
   assert.doesNotMatch(markup, /Constraint reach|work items/);
-  // A falling count is not always good and a rising one is not always bad, so
-  // no value is coloured by the direction it moved.
-  for (const value of markup.match(/<dd class="[^"]*"/g)) {
-    // The strip sits on the brand band, so the neutral colour is the band's
-    // own foreground; the rule it enforces is unchanged.
-    assert.match(value, /text-pulse-brand-fg/);
-    assert.doesNotMatch(value, /emerald|rose|amber/);
-  }
 });
 
 test("a compressed stage dates every event and nets its movement", () => {
@@ -341,37 +353,46 @@ test("a compressed stage dates every event and nets its movement", () => {
     url: null,
   });
 
-  const markup = record([
-    quiet("2026-08-01", {
-      events: [event("a", "2026-08-01", "09")],
-      changes: counts({ review: 2 }),
-    }),
-    quiet("2026-08-02", { events: [], changes: counts({ review: -1 }) }),
-    quiet("2026-08-03", {
-      events: [event("b", "2026-08-03", "16")],
-      changes: counts({ review: 1 }),
-    }),
-  ]);
+  const markup = record(
+    [
+      quiet("2026-08-01", {
+        events: [event("a", "2026-08-01", "09")],
+        changes: counts({ review: 2 }),
+      }),
+      quiet("2026-08-02", { events: [], changes: counts({ review: -1 }) }),
+      quiet("2026-08-03", {
+        events: [event("b", "2026-08-03", "16")],
+        changes: counts({ review: 1 }),
+      }),
+    ],
+    "2026-07-31",
+  );
 
   assert.match(markup, /Aug 1-3/);
   assert.match(markup, /3 days/);
   // Each event is read against the day it landed on, and that day's own state.
   assert.match(markup, /Saturday, Aug 1/);
   assert.match(markup, /Monday, Aug 3/);
-  assert.doesNotMatch(markup, /Sunday, Aug 2/, "a day with no events has no group");
+  assert.doesNotMatch(
+    markup,
+    /Sunday, Aug 2/,
+    "a day with no events has no group",
+  );
   assert.equal(markup.match(/Neutral/g).length, 3, "the stage and both days");
   // Movement nets across the run rather than showing the last day's alone.
-  assert.match(markup, />\+2</);
+  assert.match(markup, /2 more open than Jul 31/);
 });
 
 test("the first returned stage has no previous one to be measured against", () => {
   const markup = record([day("2026-07-10")]);
-  assert.match(markup, /Change at start of range/);
+  assert.match(markup, /6 open at start of range/);
   assert.doesNotMatch(markup, /Change since/);
 });
 
 test("a truncated event list says so and is never mistaken for a quiet stage", () => {
-  const cut = record([day("2026-08-08", { events: [], events_truncated: true })]);
+  const cut = record([
+    day("2026-08-08", { events: [], events_truncated: true }),
+  ]);
   assert.match(cut, /Cloud limited events/);
   assert.match(cut, /No events were returned/);
   assert.match(cut, /4 observed events/, "the day's own count is complete");
@@ -421,7 +442,7 @@ test("only the first six events render until they are asked for", () => {
   assert.match(markup, /Show all 9 events/);
 });
 
-test("a resolvable event opens in place, and still offers the way out", () => {
+test("a resolvable event is one conversation target, not a button plus link", () => {
   const event = {
     id: "s1",
     type: "log",
@@ -436,9 +457,8 @@ test("a resolvable event opens in place, and still offers the way out", () => {
 
   assert.match(markup, /<button[^>]*aria-pressed="false"/);
   assert.match(markup, /Show conversation/);
-  // Reading here and acting at the source are two errands, so the link stays.
-  assert.match(markup, /href="https:\/\/slack\.example\.com\/archives\/C1\/p1"/);
-  assert.match(markup, /Open in slack/);
+  assert.doesNotMatch(markup, /<a /);
+  assert.doesNotMatch(markup, /Open in slack/);
 });
 
 test("the open event says so, and the others do not", () => {
@@ -518,4 +538,59 @@ test("an unresolved thread is a link, not a button that opens nothing", () => {
 
   assert.doesNotMatch(markup, /Show conversation/);
   assert.match(markup, /Open in slack/);
+});
+
+/* --------------------------------------------------------------- the row -- */
+
+/**
+ * The sparkline is `railStages()` output drawn small with the labels dropped.
+ * There is deliberately no second compression pass: two of them would disagree
+ * the first time either one moved, and the row and the panel would then tell
+ * different stories about the same milestone.
+ */
+test("the row's sparkline is the rail's own stages, not a second pass", () => {
+  const days = [
+    day("2026-07-02"),
+    day("2026-07-03", { status: "neutral" }),
+    day("2026-07-04", { status: "neutral" }),
+    day("2026-07-05", { status: "neutral" }),
+    // A gap: Cloud observed nothing on the 6th through the 8th.
+    day("2026-07-09", { status: "regression" }),
+  ];
+  const stages = railStages(days);
+
+  const markup = renderToStaticMarkup(
+    React.createElement(Sparkline, { stages }),
+  );
+
+  // Three stages: one progress day, one compressed neutral run, one regression.
+  assert.equal(stages.length, 3);
+  // The run is one wide pip rather than three, which is the whole point of the
+  // compression — a quiet stretch is one fact, not one per day.
+  assert.equal((markup.match(/w-\[18px\]/g) ?? []).length, 1);
+  assert.equal((markup.match(/w-\[7px\]/g) ?? []).length, 2);
+  // The gap is a dash, and there is exactly one.
+  assert.equal((markup.match(/border-dashed/g) ?? []).length, 1);
+  // The newest stage is ringed, in its own health's colour rather than a
+  // neutral "selected" ring that would read as selection on an unselected row.
+  assert.equal((markup.match(/ring-1/g) ?? []).length, 1);
+  assert.match(markup, /ring-pulse-error/);
+});
+
+test("the sparkline's pips are hidden and the shape is named instead", () => {
+  const stages = railStages([day("2026-07-02"), day("2026-07-03")]);
+  const label = sparklineLabel(stages);
+
+  // Eight unlabelled dots announce as nothing useful, so the pips are hidden
+  // and one sentence carries what the shape conveys at a glance.
+  assert.match(label, /^2 observed stages, newest /);
+  assert.match(label, /Progress/);
+
+  const markup = renderToStaticMarkup(
+    React.createElement(Sparkline, { stages }),
+  );
+  assert.equal(
+    (markup.match(/aria-hidden="true"/g) ?? []).length,
+    stages.length,
+  );
 });

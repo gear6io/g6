@@ -16,11 +16,37 @@ export type WindowSize = {
  * `compact` repeats `tauri.conf.json`'s startup window on purpose: that file is
  * the contract for the *first* frame, and this module is the contract for every
  * one after it. They are checked against each other in the tests.
+ *
+ * Compact is the only mode with a size here. Expanded has none: it fills the
+ * monitor's work area, so its size is a property of the monitor rather than a
+ * number this file can hold. See `EXPANDED_MIN` and `expandedSize`.
  */
-export const WINDOW_SIZES: Record<WindowMode, WindowSize> = {
+export const WINDOW_SIZES: Record<"compact", WindowSize> = {
   compact: { width: 380, height: 520, minWidth: 320, minHeight: 360 },
-  expanded: { width: 1180, height: 760, minWidth: 960, minHeight: 640 },
 };
+
+/**
+ * Expanded's fixed part. A window holding a nav rail, a facet column, a table
+ * and a detail panel stops being any of those below this, so the minimum is a
+ * real floor rather than the old 1180×760 default's smaller sibling.
+ */
+export const EXPANDED_MIN = { minWidth: 960, minHeight: 640 } as const;
+
+/**
+ * Expanded is the work area, floored at the minimum — a monitor smaller than
+ * the floor gets a window that overhangs it, which `clampToWorkArea` then pins
+ * to the top-left corner rather than hiding the controls that live there.
+ *
+ * `null` is a monitor that could not be read: the floor is the only honest
+ * size left, and it is one the window is guaranteed to be allowed.
+ */
+export function expandedSize(area: Area | null): WindowSize {
+  return {
+    width: Math.max(EXPANDED_MIN.minWidth, area?.width ?? 0),
+    height: Math.max(EXPANDED_MIN.minHeight, area?.height ?? 0),
+    ...EXPANDED_MIN,
+  };
+}
 
 export type Point = { x: number; y: number };
 
@@ -66,17 +92,23 @@ export function clampToWorkArea(
  * see, so the failure has to be visible rather than swallowed.
  *
  * `pinned` is the compact window's own always-on-top state. Expanded is never
- * pinned: a 1180×760 window on top of everything is not a floating inbox any
- * more, it is a window that will not get out of the way.
+ * pinned: a work-area-sized window on top of everything is not a floating inbox
+ * any more, it is a window that will not get out of the way.
+ *
+ * The monitor is read first now, not last. It used to be a position clamp
+ * applied after the fact; expanded's *size* comes from it, so it has to be in
+ * hand before anything is set.
  */
 export async function applyWindowMode(
   port: WindowPort,
   mode: WindowMode,
   pinned: boolean,
 ): Promise<void> {
-  const size = WINDOW_SIZES[mode];
-
   await port.setAlwaysOnTop(mode === "compact" && pinned);
+
+  const area = await port.workArea();
+  const size =
+    mode === "compact" ? WINDOW_SIZES.compact : expandedSize(area);
 
   // Minimum first, both directions: a minimum larger than the requested size
   // clamps it, so collapsing while the expanded minimum is still in force would
@@ -84,7 +116,6 @@ export async function applyWindowMode(
   await port.setMinSize(size.minWidth, size.minHeight);
   await port.setSize(size.width, size.height);
 
-  const area = await port.workArea();
   if (!area) {
     return;
   }

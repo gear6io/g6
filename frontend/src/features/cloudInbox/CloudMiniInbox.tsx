@@ -13,7 +13,6 @@
 // drawn only where Cloud resolved one.
 import {
   CheckCheck,
-  ChevronDown,
   CornerUpRight,
   EllipsisVertical,
   GitPullRequestArrow,
@@ -23,7 +22,7 @@ import {
   Scale,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   Action,
@@ -45,11 +44,15 @@ import { ProviderIcon, hasProviderIcon } from "@/shared/ui/ProviderIcon";
 import {
   ACTION_LABEL,
   EMPTY_ACTIONS_COPY,
+  LANE_LABEL,
+  LANE_ORDER,
+  type Lane,
+  actionLane,
+  laneGroups,
   priorityLabel,
   relativeAge,
   summaryLabel,
   updatedLabel,
-  userLabel,
 } from "@/features/cloudInbox/inbox";
 import {
   CAN_LIST_USERS,
@@ -91,6 +94,18 @@ const PRIORITY_TINT: Record<Action["priority"]["level"], string> = {
   p3: "border-pulse-hairline text-pulse-ink-mute",
 };
 
+/**
+ * The lane counter's tint, which is `PRIORITY_TINT`'s two accents restated on
+ * one number each. `later` stays ink because a count with no accent is the
+ * baseline the other two are read against — three tinted numbers is three
+ * alarms, which is none.
+ */
+const LANE_TINT: Record<Lane, string> = {
+  blocked: "text-pulse-error",
+  today: "text-pulse-warning",
+  later: "text-pulse-ink",
+};
+
 /* ---------------------------------------------------------------- chrome -- */
 
 function PinButton() {
@@ -100,7 +115,7 @@ function PinButton() {
     <Button
       aria-label={pinned ? "Unpin window" : "Keep window on top"}
       aria-pressed={pinned}
-      className="size-7 text-pulse-ink-mute"
+      className="size-7 text-pulse-ink-mute transition-[background-color,color,transform] duration-150 hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.94]"
       onClick={togglePin}
       size="icon"
       variant="ghost"
@@ -112,23 +127,88 @@ function PinButton() {
   );
 }
 
-/** The one way into the full window. Stays live during the resize; a second
- * press is dropped by the provider rather than by a disabled attribute. */
+/**
+ * The one way into the full window. Stays live during the resize; a second
+ * press is dropped by the provider rather than by a disabled attribute.
+ *
+ * Icon only, like the two beside it, but drawn on the surface fill: a word on
+ * one of three same-weight controls is chrome a 42px bar cannot spare, and the
+ * fill already says which of the three is the primary one. The label it lost
+ * lives in `aria-label` and `title`, so nothing is lost to a screen reader or
+ * to a hover.
+ */
 function ExpandButton() {
   const { expand } = useCloudWindow();
 
   return (
     <Button
-      aria-label="Open Pulse"
-      className="size-7 text-pulse-ink-mute"
+      aria-label="Expand to full window"
+      className="size-7 bg-pulse-surface text-pulse-ink transition-[background-color,color,transform] duration-150 hover:bg-pulse-brand hover:text-pulse-brand-fg active:scale-[0.94]"
       // Not `onClick={expand}`: that hands the click event over as the view.
       onClick={() => expand()}
       size="icon"
-      title="Open Pulse"
+      title="Expand to full window"
       variant="ghost"
     >
       <Maximize2 aria-hidden="true" className="size-3.5" />
     </Button>
+  );
+}
+
+/**
+ * The three lane counters, and the filter for each. Counts are of the rows
+ * actually returned, so the three of them always sum to the list below — a lane
+ * total that disagreed with what you can scroll to is worse than no lane at all.
+ *
+ * A pressed lane filters to it; pressing it again clears. Unfiltered is the
+ * default because the grouped list already answers "what is blocked" without a
+ * click, and a filter that is on before you touch anything is a list quietly
+ * hiding rows.
+ */
+function Lanes({
+  actions,
+  lane,
+  onSelect,
+}: {
+  actions: readonly Action[];
+  lane: Lane | null;
+  onSelect: (next: Lane | null) => void;
+}) {
+  const counts = useMemo(() => {
+    const tally: Record<Lane, number> = { blocked: 0, today: 0, later: 0 };
+    for (const action of actions) {
+      tally[actionLane(action.priority.level)] += 1;
+    }
+    return tally;
+  }, [actions]);
+
+  return (
+    <div className="flex shrink-0 gap-1.5 px-3.5 pb-2.5">
+      {LANE_ORDER.map((id) => (
+        <button
+          aria-pressed={lane === id}
+          className={[
+            "flex-1 rounded-lg border bg-pulse-canvas/80 px-2.5 py-1.5 text-left transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.98]",
+            "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-pulse-brand-ink",
+            lane === id
+              ? "border-pulse-brand-ink bg-pulse-surface-alt shadow-[inset_0_0_0_1px_var(--g6-pulse-brand-tint)]"
+              : "border-pulse-hairline hover:border-pulse-brand-ink hover:bg-pulse-surface-alt/60",
+          ].join(" ")}
+          key={id}
+          onClick={() => onSelect(lane === id ? null : id)}
+          type="button"
+        >
+          <span
+            className={`block text-lg font-bold leading-tight tabular-nums ${LANE_TINT[id]}`}
+          >
+            {counts[id]}
+          </span>
+          <span className="block text-xs font-bold uppercase tracking-wider text-pulse-ink-mute">
+            {LANE_LABEL[id]}
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -138,7 +218,7 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Inbox options"
-          className="size-7 text-pulse-ink-mute"
+          className="size-7 text-pulse-ink-mute transition-[background-color,color,transform] duration-150 hover:bg-pulse-surface-alt hover:text-pulse-ink active:scale-[0.94]"
           size="icon"
           variant="ghost"
         >
@@ -154,47 +234,6 @@ function OverflowMenu({ onRefresh }: { onRefresh: () => void }) {
         <DropdownMenuItem onSelect={onRefresh}>Refresh</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-/**
- * A native `<select>` with its chrome removed: it keeps platform keyboard
- * behaviour and escapes the panel's scroll clipping for free, which a custom
- * popover in a 342px panel would have to re-earn.
- */
-export function UserSelect({
-  onSelect,
-  selected,
-  users,
-}: {
-  onSelect: (accountId: string) => void;
-  selected: string;
-  users: readonly CloudUser[];
-}) {
-  const label = useMemo(() => {
-    const user = users.find((candidate) => candidate.account_id === selected);
-    return user ? userLabel(user) : selected;
-  }, [selected, users]);
-
-  return (
-    <div className="relative flex h-8 items-center gap-1">
-      <span className="truncate text-xs font-medium text-pulse-ink">
-        {label}
-      </span>
-      <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-pulse-ink-mute" />
-      <select
-        aria-label="View actions as user"
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-        onChange={(event) => onSelect(event.target.value)}
-        value={selected}
-      >
-        {users.map((user) => (
-          <option key={user.account_id} value={user.account_id}>
-            {userLabel(user)}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 
@@ -248,9 +287,12 @@ function ReferentLine({ referent }: { referent: Action["referent"] }) {
  */
 function ActionRow({
   action,
+  first,
   onOpenThread,
 }: {
   action: Action;
+  /** First row under a lane heading: the heading is already the separator. */
+  first?: boolean;
   onOpenThread?: () => void;
 }) {
   const Icon = ACTION_ICON[action.required_action];
@@ -277,7 +319,9 @@ function ActionRow({
             aria-hidden="true"
             className={`size-3.5 shrink-0 ${actionIconTint(action.required_action)}`}
           />
-          <span className="truncate">{ACTION_LABEL[action.required_action]}</span>
+          <span className="truncate">
+            {ACTION_LABEL[action.required_action]}
+          </span>
         </span>
         <span className="shrink-0">{relativeAge(action.age_seconds)}</span>
       </div>
@@ -295,10 +339,12 @@ function ActionRow({
 
   // The 1px rule is a border on an inset wrapper rather than a `Separator`
   // element: a `<div>` between two `<li>`s is not a list, and the divider has to
-  // start and end 16px in rather than running into the panel's corners.
+  // start and end 14px in rather than running into the panel's corners.
   return (
-    <li className="px-4 first:[&>div]:border-t-0">
-      <div className="border-t border-pulse-hairline pb-3 pt-3.5">
+    <li className="px-3.5">
+      <div
+        className={`pb-2.5 pt-2.5 ${first ? "" : "border-t border-pulse-hairline"}`}
+      >
         {slack && onOpenThread ? (
           // ponytail: expanding is all this can do today. Cloud's referent
           // carries no channel id and no thread ts, so there is nothing to
@@ -367,10 +413,13 @@ function Notice({
 
 export function CloudMiniInbox() {
   const { error, expand, inbox: data } = useCloudWindow();
-  const { inbox, refresh, retryInbox, retryUsers, select, selected, users } =
-    data;
+  const { inbox, refresh, retryInbox, retryUsers, selected, users } = data;
+  const [lane, setLane] = useState<Lane | null>(null);
 
-  const visible = inbox.status === "ready" ? inbox.value.actions : [];
+  const all = inbox.status === "ready" ? inbox.value.actions : [];
+  const visible = lane
+    ? all.filter((action) => actionLane(action.priority.level) === lane)
+    : all;
 
   return (
     // `h-dvh`, not `min-h-dvh`: the panel is `flex-1` over a scrolling list, and
@@ -382,44 +431,28 @@ export function CloudMiniInbox() {
         // Edge to edge: no rounding and no shadow of its own, because the
         // window already supplies both. A card inset inside a 380px window is
         // what produced the border being complained about.
-        className="g6-cloud-panel flex min-h-0 flex-1 flex-col overflow-hidden"
+        className="g6-cloud-panel g6-pulse-mesh flex min-h-0 flex-1 flex-col overflow-hidden"
         data-testid="cloud-mini-inbox"
       >
-        {/* The close dot is overlaid on the content at y=25, so the header
-            starts below it rather than behind it. */}
-        <header className="shrink-0 px-4 pt-[54px]">
-          {/* `-ml-4 pl-[40px]` states the brand inset as the one number that
-              matters — 40px from the window edge, clearing the lone close dot —
-              instead of a remainder left over after the header's own padding.
-              Minimize and zoom are hidden in src-tauri's
-              `hide_minimize_and_zoom`; the right-hand controls keep `px-4`. */}
-          <div className="-ml-4 flex items-center justify-between gap-2 pl-[40px]">
-            <span className="flex items-center gap-1.5">
-              {/* `rust-gear.avif` has no alpha — its #e6e6e6 matte is a visible
-                  square on the white panel. Rounding it reads as a deliberate
-                  app-icon tile instead of a stray box. */}
-              <Gear6Mark className="size-5 rounded-[5px]" />
-              <h1 className="text-lg font-semibold tracking-tight text-pulse-ink">
-                Gear6
-              </h1>
-            </span>
-            <span className="flex items-center gap-0.5">
-              <ExpandButton />
-              <PinButton />
-              <OverflowMenu onRefresh={refresh} />
-            </span>
-          </div>
-
-          {users.status === "loading" ? (
-            <div aria-hidden="true" className="my-2 h-4 w-28 rounded bg-pulse-surface-alt animate-pulse motion-reduce:animate-none" />
-          ) : null}
-          {users.status === "ready" && selected ? (
-            <UserSelect
-              onSelect={select}
-              selected={selected}
-              users={users.value}
-            />
-          ) : null}
+        {/* One 42px bar, and nothing above it. The close dot sits at x=14, y=13
+            (`trafficLightPosition` in tauri.conf.json), so `pl-9` — 36px —
+            clears it and the bar's own height centres the dot in it. The
+            previous 54px of padding existed only because the dot was parked
+            25px down; moving the dot is what deleted the band, not this class.
+            Minimize and zoom are hidden in src-tauri's `hide_minimize_and_zoom`,
+            so the brand clears one dot rather than three. */}
+        <header className="g6-pulse-chrome flex h-[42px] shrink-0 items-center gap-2 border-b border-pulse-hairline/70 pl-9 pr-2">
+          {/* The mark draws its own cobalt tile, so the rounding is the tile's
+              own corner radius rather than a patch over an opaque matte. */}
+          <Gear6Mark className="size-4.5 rounded-[5px]" />
+          <h1 className="text-sm font-semibold tracking-tight text-pulse-ink">
+            Gear6
+          </h1>
+          <span className="ml-auto flex items-center gap-px">
+            <ExpandButton />
+            <PinButton />
+            <OverflowMenu onRefresh={refresh} />
+          </span>
         </header>
 
         {/* A resize that did not happen leaves the window as it was, so this
@@ -434,8 +467,17 @@ export function CloudMiniInbox() {
           </p>
         ) : null}
 
+        {/* The counts sit in what used to be the dead band: the first row now
+            starts around y=100 rather than y=175, which is one whole action row
+            back in a 520px window. */}
         {inbox.status === "ready" && selected ? (
-          <InboxSummary className="px-4 pb-3" overview={inbox.value.overview} />
+          <>
+            <InboxSummary
+              className="px-3.5 pb-2 pt-2"
+              overview={inbox.value.overview}
+            />
+            <Lanes actions={all} lane={lane} onSelect={setLane} />
+          </>
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto pb-3">
@@ -452,7 +494,7 @@ export function CloudMiniInbox() {
 
         <p aria-live="polite" className="sr-only">
           {inbox.status === "ready"
-            ? `${visible.length} actions shown`
+            ? `${visible.length} actions shown${lane ? `, filtered to ${LANE_LABEL[lane]}` : ""}`
             : "Loading actions"}
         </p>
       </section>
@@ -537,14 +579,27 @@ export function InboxBody({
     return <Notice title="Nothing open here">{EMPTY_ACTIONS_COPY}</Notice>;
   }
 
+  // Lane headings are `<li>`s inside the same list rather than a `<ul>` per
+  // lane: the rows are one sequence to arrow through, and three lists would
+  // announce three. Sticky, so "Blocked" is still overhead ten rows into it.
   return (
     <ul>
-      {visible.map((action) => (
-        <ActionRow
-          action={action}
-          key={action.id}
-          onOpenThread={onOpenThread}
-        />
+      {laneGroups(visible).map(({ lane, actions }) => (
+        <li key={lane}>
+          <p className="sticky top-0 z-[2] bg-pulse-canvas/95 px-3.5 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-pulse-ink-mute backdrop-blur-sm">
+            {LANE_LABEL[lane]}
+          </p>
+          <ul>
+            {actions.map((action, index) => (
+              <ActionRow
+                action={action}
+                first={index === 0}
+                key={action.id}
+                onOpenThread={onOpenThread}
+              />
+            ))}
+          </ul>
+        </li>
       ))}
     </ul>
   );

@@ -1,0 +1,629 @@
+<title>Gear6 — desktop app icon</title>
+<style>
+  /* Design.md's palette, verbatim. */
+  :root {
+    --cobalt: #2451b8;
+    --cobalt-deep: #2148a5;
+    --cobalt-press: #3163d0;
+    --cobalt-tint: #3a63c4;
+    --bone: #f1efe9;
+    --mist: #e6ecf9;
+    --link: #2451b8;
+    --ink: #1a1c22;
+    --ink-mute: #61646f;
+    --hairline: #e1ddd5;
+    --ok: #2a6f54;
+    --bad: #a8503a;
+    --ground: #f1efe9;
+    --panel: #fcfbf8;
+    --font: "Inter Variable", Inter, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+    /* artwork constants — these never theme */
+    --art-ground: #2451b8;
+    --art-mark: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e1e2e9; --ink-mute: #989cab; --hairline: #32343f;
+      --ground: #16171d; --panel: #1f2027;
+      --link: #9fb6ef; --ok: #57c096; --bad: #e58f78;
+      --cobalt: #9fb6ef;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e1e2e9; --ink-mute: #989cab; --hairline: #32343f;
+    --ground: #16171d; --panel: #1f2027;
+    --link: #9fb6ef; --ok: #57c096; --bad: #e58f78;
+    --cobalt: #9fb6ef;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font);
+    font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--cobalt); outline-offset: 3px; }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px 100px; }
+
+  /* the brand's own atmosphere: peach, mist, dusty green, blurred large */
+  .mesh {
+    background-image:
+      radial-gradient(58% 76% at 16% 6%, rgb(241 239 233 / .30), transparent 62%),
+      radial-gradient(52% 68% at 72% 0%, rgb(230 236 249 / .34), transparent 60%),
+      radial-gradient(46% 62% at 96% 44%, rgb(184 198 232 / .20), transparent 64%);
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    background: var(--cobalt-deep); color: var(--bone); padding: 66px 28px 58px;
+    margin-bottom: 58px; position: relative; overflow: hidden;
+  }
+  .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; }
+  .hero-in {
+    max-width: 1060px; margin: 0 auto; display: flex; align-items: center; gap: 58px; flex-wrap: wrap;
+    position: relative; z-index: 1;
+  }
+  .hero .mark { width: 204px; height: 204px; flex: none; }
+  .hero .eyebrow {
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px;
+    color: #b8c6e8;
+  }
+  .hero h1 { font-size: clamp(38px, 6.6vw, 60px); font-weight: 800; letter-spacing: -.032em; line-height: 1.04; margin-top: 12px; }
+  .hero .lede { margin-top: 18px; color: #b8c6e8; font-size: 17px; max-width: 46ch; }
+  .hero .meta {
+    margin-top: 26px; display: flex; gap: 10px 26px; flex-wrap: wrap; font-family: var(--mono);
+    font-size: 11.5px; color: #b8c6e8; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .hero .meta b { color: #b8c6e8; font-weight: 400; }
+  .themebtn {
+    position: absolute; top: 20px; right: 24px; z-index: 2; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 1px; text-transform: uppercase; color: #b8c6e8; border: 1px solid #3a63c4;
+    border-radius: 90px; padding: 6px 15px;
+  }
+  .themebtn:hover { color: var(--bone); border-color: var(--bone); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 62px; }
+  .shead { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .shead .num { font-family: var(--mono); font-size: 12px; color: var(--cobalt); flex: none; }
+  .shead h2 { font-size: 25px; font-weight: 700; letter-spacing: -.02em; }
+  .sdesc { color: var(--ink-mute); max-width: 68ch; margin-left: 32px; font-size: 15.5px; }
+  .body { margin-left: 32px; margin-top: 24px; }
+
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  code { background: var(--panel); border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 5px; }
+
+  /* ---------- readings ---------- */
+  .readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+  .reading { background: var(--panel); border: 1px solid var(--hairline); border-radius: 16px; padding: 20px; }
+  .reading .face {
+    background: var(--art-ground); border-radius: 12px; display: grid; place-items: center;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .reading .face svg { width: 118px; height: 118px; display: block; }
+  .reading h4 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+  .reading p { font-size: 13.5px; color: var(--ink-mute); line-height: 1.55; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--hairline); border-radius: 16px; padding: 20px 22px; }
+  .card h4 { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .card p { font-size: 13.5px; color: var(--ink-mute); line-height: 1.55; }
+  .card .fig { display: grid; place-items: center; height: 100px; margin-bottom: 14px; }
+
+  /* ---------- construction ---------- */
+  .constr { display: grid; grid-template-columns: minmax(0, 316px) 1fr; gap: 32px; align-items: start; }
+  .constr .plate { background: var(--panel); border: 1px solid var(--hairline); border-radius: 16px; padding: 16px; }
+  .specs { list-style: none; margin: 0; padding: 0; }
+  .specs li {
+    display: grid; grid-template-columns: 124px 1fr; gap: 16px; padding: 9px 0;
+    border-bottom: 1px solid var(--hairline); font-size: 13.5px;
+  }
+  .specs li:last-child { border-bottom: 0; }
+  .specs .k {
+    font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: .9px;
+    color: var(--ink-mute); padding-top: 2px;
+  }
+  .specs .v { color: var(--ink-mute); }
+  .specs .v b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- ladder ---------- */
+  .ladder {
+    display: flex; align-items: flex-end; gap: 30px; flex-wrap: wrap;
+    background: var(--cobalt-deep); border-radius: 16px; padding: 30px 28px 20px;
+  }
+  .rung { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .rung .px { font-family: var(--mono); font-size: 10.5px; color: #b8c6e8; font-variant-numeric: tabular-nums; }
+  .rung svg { display: block; }
+
+  /* ---------- shells ---------- */
+  .tiles { display: flex; gap: 26px; flex-wrap: wrap; }
+  .tile { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .tile .cap { font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); letter-spacing: .8px; text-transform: uppercase; }
+  .icn { width: 134px; height: 134px; background: var(--art-ground); display: grid; place-items: center; }
+  .icn.mac { border-radius: 23.5%; }
+  .icn.round { border-radius: 50%; }
+  .icn svg { width: 78%; height: 78%; }
+
+  .dock {
+    margin-top: 24px; display: flex; align-items: flex-end; gap: 12px; padding: 10px 14px 12px;
+    background: rgb(120 112 98 / .24); border: 1px solid var(--hairline); border-radius: 20px;
+    width: max-content; max-width: 100%; flex-wrap: wrap;
+  }
+  .dock .slot { width: 56px; height: 56px; border-radius: 13px; display: grid; place-items: center; }
+  .dock .slot.ghost { background: linear-gradient(160deg, #d5cfc4, #61646f); }
+  .dock .slot.g6 { background: var(--art-ground); position: relative; }
+  .dock .slot.g6 svg { width: 78%; height: 78%; }
+  .dock .slot.g6::after {
+    content: ""; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--ink-mute);
+  }
+
+  /* ---------- variants ---------- */
+  .vgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 14px; }
+  .swatch { border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; background: var(--panel); }
+  .swatch .face { height: 132px; display: grid; place-items: center; }
+  .swatch .face svg { width: 78px; height: 78px; }
+  .swatch .lbl { padding: 11px 15px; border-top: 1px solid var(--hairline); }
+  .swatch .lbl b { display: block; font-size: 13px; font-weight: 700; }
+  .swatch .lbl span { font-size: 11.5px; color: var(--ink-mute); }
+
+  /* ---------- lockup ---------- */
+  .lockups { display: flex; gap: 44px; flex-wrap: wrap; align-items: center; }
+  .lockup { display: flex; align-items: center; gap: 14px; }
+  .lockup .plate { border-radius: 22%; background: var(--art-ground); padding: 9px; display: grid; place-items: center; }
+  .lockup .plate svg { display: block; }
+  .lockup .wm { font-size: 31px; font-weight: 800; letter-spacing: -.036em; }
+  .lockup.sm .wm { font-size: 19px; letter-spacing: -.03em; }
+  .lockup .wm i { font-style: normal; color: var(--cobalt); }
+
+  /* ---------- rules ---------- */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .rule { border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; background: var(--panel); }
+  .rule .face { height: 118px; display: grid; place-items: center; background: var(--art-ground); }
+  .rule .face svg { width: 66px; height: 66px; }
+  .rule .txt { padding: 12px 15px; display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
+  .rule .txt .m { font-weight: 700; flex: none; }
+  .rule[data-v="no"] .txt .m { color: var(--bad); }
+  .rule[data-v="yes"] .txt .m { color: var(--ok); }
+  .rule .txt span { color: var(--ink-mute); }
+
+  /* ---------- export ---------- */
+  .files { border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; background: var(--panel); }
+  .files .fr {
+    display: grid; grid-template-columns: 236px 92px 1fr; gap: 16px; padding: 10px 18px;
+    border-bottom: 1px solid var(--hairline); font-size: 13px; align-items: baseline;
+  }
+  .files .fr:last-child { border-bottom: 0; }
+  .files .fr.h { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .9px; color: var(--ink-mute); }
+  .files .fr .p { font-family: var(--mono); font-size: 12px; }
+  .files .fr .s { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); }
+  .files .fr .n { color: var(--ink-mute); }
+  .warn {
+    margin-top: 18px; border-left: 3px solid var(--cobalt); background: var(--panel);
+    border-radius: 0 12px 12px 0; padding: 15px 19px; font-size: 14px; color: var(--ink-mute);
+  }
+  .warn b { color: var(--ink); }
+  .warn + .warn { margin-top: 10px; }
+
+  @media (max-width: 760px) {
+    .constr { grid-template-columns: 1fr; }
+    .sdesc, .body { margin-left: 0; }
+  }
+</style>
+
+<!-- ==================== the monogram ====================
+     One ligature. The ring with a gap and a bar is the G; the ring with the
+     shoulder rising off it is the 6. They share the bowl, so it is one letter
+     that answers to both.
+
+     Every terminal is a full half-round cap — the same geometry as Design.md's
+     90px pill buttons, which is where the warmth in this brand actually lives.
+     Counters are deliberately over-wide, for the same reason those buttons are
+     over-padded.
+================================================================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- G, drawn about its own origin. Ring r27 at stroke 17, open 60° on the
+         right; spur and bar turn in on the midline. -->
+    <g id="p-G" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22.52,13 A 26,26 0 1 1 22.52,-13" />
+      <path d="M 6,0 L 22.52,0 L 22.52,13" />
+    </g>
+    <!-- 6, same stroke. Bowl sits low; the shoulder is a wide lazy arc, not a
+         hook, and stops short of the cap line's full width. -->
+    <g id="p-6" fill="none" stroke-width="12" stroke-linecap="round">
+      <circle cx="0" cy="11" r="15" />
+      <path d="M 7,-26 A 42.11,42.11 0 0 0 -15,11" />
+    </g>
+    <!-- the pair, kerned: G at -38, 6 at +32, whole thing nudged +7.75 so the
+         optical centre lands on the tile's centre. -->
+    <g id="p-pair">
+      <g transform="translate(-25,0)"><use href="#p-G" /></g>
+      <g transform="translate(36,0)"><use href="#p-6" /></g>
+    </g>
+  </defs>
+
+  <!-- primary -->
+  <symbol id="mk" viewBox="-84 -84 168 168">
+    <g stroke="var(--art-mark)"><use href="#p-pair" /></g>
+  </symbol>
+
+  <!-- the two letters, shown apart -->
+  <symbol id="mk-g" viewBox="-84 -84 168 168">
+    <g stroke="var(--art-mark)" stroke-opacity=".22"><use href="#p-pair" /></g>
+    <g stroke="var(--art-mark)" transform="translate(-25,0)"><use href="#p-G" /></g>
+  </symbol>
+  <symbol id="mk-6" viewBox="-84 -84 168 168">
+    <g stroke="var(--art-mark)" stroke-opacity=".22"><use href="#p-pair" /></g>
+    <g stroke="var(--art-mark)" transform="translate(36,0)"><use href="#p-6" /></g>
+  </symbol>
+
+  <!-- simplified: 24px and under. Two letters inside sixteen pixels is two
+       smudges, so the pair drops to the G alone, drawn heavier. -->
+  <symbol id="mk-sm" viewBox="-84 -84 168 168">
+    <g fill="none" stroke="var(--art-mark)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38.97,22.5 A 45,45 0 1 1 38.97,-22.5" />
+      <path d="M 10,0 L 38.97,0 L 38.97,22.5" />
+    </g>
+  </symbol>
+
+  <!-- monochrome, one colour -->
+  <symbol id="mk-mono" viewBox="-84 -84 168 168">
+    <g stroke="currentColor"><use href="#p-pair" /></g>
+  </symbol>
+
+  <!-- construction overlay -->
+  <symbol id="mk-constr" viewBox="-92 -92 184 184">
+    <g stroke="var(--cobalt)" stroke-opacity=".18" stroke-width="1">
+      <line x1="-84" y1="-35.5" x2="84" y2="-35.5" />
+      <line x1="-84" y1="35.5" x2="84" y2="35.5" />
+      <line x1="-84" y1="0" x2="84" y2="0" />
+      <line x1="-65.75" y1="-56" x2="-65.75" y2="56" />
+      <line x1="5.25" y1="-56" x2="5.25" y2="56" />
+      <line x1="13.75" y1="-56" x2="13.75" y2="56" />
+      <line x1="65.75" y1="-56" x2="65.75" y2="56" />
+    </g>
+    <g transform="translate(-25,0)">
+      <circle cx="0" cy="0" r="27" fill="none" stroke="var(--cobalt)" stroke-opacity=".32"
+              stroke-width="1" stroke-dasharray="4 4" />
+      <line x1="0" y1="0" x2="46.8" y2="27" stroke="var(--cobalt)" stroke-opacity=".3" stroke-width="1" />
+      <line x1="0" y1="0" x2="46.8" y2="-27" stroke="var(--cobalt)" stroke-opacity=".3" stroke-width="1" />
+    </g>
+    <g transform="translate(36,0)">
+      <circle cx="0" cy="9.5" r="17.5" fill="none" stroke="var(--cobalt)" stroke-opacity=".32"
+              stroke-width="1" stroke-dasharray="4 4" />
+    </g>
+    <g stroke="var(--cobalt)" stroke-opacity=".9" stroke-width="1.2">
+      <g fill="none" stroke-width="1.2">
+        <g transform="translate(-25,0)">
+          <path d="M 23.38,13.5 A 27,27 0 1 1 23.38,-13.5" fill="none" stroke-width="1.2" />
+          <path d="M 4,0 L 23.38,0 L 23.38,13.5" fill="none" stroke-width="1.2" />
+        </g>
+        <g transform="translate(36,0)">
+          <circle cx="0" cy="9.5" r="17.5" fill="none" stroke-width="1.2" />
+          <path d="M -16.44,3.51 A 40,40 0 0 1 9,-27" fill="none" stroke-width="1.2" />
+        </g>
+      </g>
+    </g>
+    <g fill="var(--cobalt)">
+      <circle cx="-25" cy="0" r="2" /><circle cx="36" cy="9.5" r="2" />
+      <circle cx="-6.87" cy="13.5" r="1.6" /><circle cx="-6.87" cy="-13.5" r="1.6" />
+      <circle cx="-26.25" cy="0" r="1.6" /><circle cx="48.75" cy="-27" r="1.6" />
+    </g>
+  </symbol>
+</svg>
+
+<header class="hero mesh">
+  <button class="themebtn" id="theme">Dark / light</button>
+  <div class="hero-in">
+    <svg class="mark" viewBox="-84 -84 168 168" role="img" aria-label="Gear6 app icon">
+      <use href="#mk" x="-84" y="-84" width="168" height="168" />
+    </svg>
+    <div>
+      <p class="eyebrow">Desktop application icon</p>
+      <h1>G6.<br />Said plainly.</h1>
+      <p class="lede">
+        Two letters, side by side, drawn soft: every terminal a full half-round, every counter
+        wider than it strictly needs to be. It is the pill button from Design.md turned into
+        type — no metaphor to decode, and nothing to explain to anyone.
+      </p>
+      <div class="meta">
+        <span>Ground <b>#2451b8</b></span>
+        <span>Mark <b>#f1efe9</b></span>
+        <span>Terminals <b>fully round</b></span>
+        <span>Source <b>Design.md</b></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <div class="shead"><span class="num">01</span><h2>The pair</h2></div>
+    <p class="sdesc">
+      Two letters that share a stroke weight and nothing else. They are not forced into a ligature and
+      not squeezed to match widths — a round G is naturally wide and a 6 is naturally narrow, and
+      letting each keep its own width is what stops the pair looking engineered.
+    </p>
+    <div class="body readings">
+      <div class="reading">
+        <div class="face"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-g" x="-84" y="-84" width="168" height="168" /></svg></div>
+        <h4>The G</h4>
+        <p>Ring, a 60° gap on the right, spur and bar turning in on the midline — not tucked up under
+          the top. Wide gap on purpose: it is the first thing to close up at small sizes.</p>
+      </div>
+      <div class="reading">
+        <div class="face"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-6" x="-84" y="-84" width="168" height="168" /></svg></div>
+        <h4>The 6</h4>
+        <p>A closed bowl sitting low, with a wide lazy shoulder rather than a tight hook. It stops short
+          of the G's width, which is what keeps the pair from reading as two circles.</p>
+      </div>
+      <div class="reading">
+        <div class="face"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+        <h4>Kerned, not spaced</h4>
+        <p>8 units between them — tight, because the G's open right side already reads as air. Equal
+          metric spacing would have left a visible hole in the middle of the tile.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">02</span><h2>Where the warmth comes from</h2></div>
+    <p class="sdesc">
+      Warmth in this brand is not a colour choice, it is a geometry choice, and Design.md already
+      states it: pills at 90px radius with 28–30px of horizontal padding, “over-padded by SaaS-default
+      standards, deliberately so.” The monogram inherits that, not the palette alone.
+    </p>
+    <div class="body grid3">
+      <div class="card">
+        <div class="fig">
+          <svg width="150" height="64" viewBox="0 0 150 64" aria-hidden="true">
+            <rect x="8" y="14" width="90" height="36" rx="18" fill="var(--cobalt)" />
+            <text x="53" y="37" font-size="13" font-weight="700" fill="#fff" text-anchor="middle"
+                  dominant-baseline="middle" font-family="var(--font)">Try For Free</text>
+            <circle cx="124" cy="32" r="10.5" fill="none" stroke="var(--cobalt)" stroke-width="3" />
+          </svg>
+        </div>
+        <h4>Terminals are pill caps</h4>
+        <p>Every stroke ends in a full half-round — the same 1:1 cap the brand's buttons use. No flat
+          cuts, no angled shears. That single decision is most of the friendliness.</p>
+      </div>
+      <div class="card">
+        <div class="fig">
+          <svg width="118" height="90" viewBox="-84 -60 168 120" aria-hidden="true">
+            <circle cx="-25" cy="0" r="20" fill="var(--cobalt)" fill-opacity=".13" />
+            <circle cx="36" cy="11" r="9" fill="var(--cobalt)" fill-opacity=".13" />
+            <g stroke="var(--cobalt)" stroke-opacity=".45"><use href="#p-pair" /></g>
+          </svg>
+        </div>
+        <h4>Counters run wide</h4>
+        <p>The G's hole is 37 units across against a 17-unit stroke. A tighter counter would be more
+          “designed” and would read as pinched at every size — the 6's is held open for the same reason.</p>
+      </div>
+      <div class="card">
+        <div class="fig">
+          <div class="mesh" style="width:104px;height:76px;border-radius:12px;background-color:var(--cobalt-deep)"></div>
+        </div>
+        <h4>The ground breathes</h4>
+        <p>Design.md's peach–mist–green mesh sits behind the mark rather than a flat fill. It is the
+          brand's stated way of making depth without shadows, and it keeps the tile from going dead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">03</span><h2>Construction</h2></div>
+    <p class="sdesc">
+      Three strokes on one circle. Nothing is drawn by eye, and redrawing from these numbers gets the
+      identical file.
+    </p>
+    <div class="body constr">
+      <div class="plate">
+        <svg viewBox="-92 -92 184 184" width="100%" role="img" aria-label="Construction grid">
+          <use href="#mk-constr" x="-92" y="-92" width="184" height="184" />
+        </svg>
+      </div>
+      <ul class="specs">
+        <li><span class="k">Stroke</span><span class="v"><b>12</b> on both letters, caps and joins <span class="mono">round</span>. One weight, no optical thinning</span></li>
+        <li><span class="k">G</span><span class="v">Ring radius <b>26</b> at (−25, 0), open <b>−30°</b> to <b>+30°</b>; bar on the midline in to x = 6</span></li>
+        <li><span class="k">6</span><span class="v">Bowl radius <b>15</b> at (36, 11); shoulder arc radius <b>42.11</b> from (7, −26), landing on the bowl’s leftmost point</span></li>
+        <li><span class="k">Cap line</span><span class="v">Both letters run <b>−32</b> to <b>+32</b>. The 6's bowl sits low so its shoulder reaches the same top</span></li>
+        <li><span class="k">Kern</span><span class="v"><b>8</b> units. Metric spacing left a hole; the G's open side is already half the gap</span></li>
+        <li><span class="k">Optical</span><span class="v">Extents are symmetric at ±57, so no optical shift is needed once the 6 sits at 36</span></li>
+        <li><span class="k">Canvas</span><span class="v"><code>-84 -84 168 168</code> — extent <b>114 × 64</b>, a landscape band on a square tile</span></li>
+        <li><span class="k">Colour</span><span class="v">Ground <span class="mono">#2451b8</span> surface-cobalt + mesh · mark <span class="mono">#f1efe9</span> canvas-bone</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">04</span><h2>The size ladder</h2></div>
+    <p class="sdesc">
+      True pixel sizes, and the honest part of this direction. Two letters inside sixteen pixels is two
+      smudges — no kerning saves it. So the simplified cut drops to the G alone, drawn heavier, and the
+      pair returns at 32. This is the cost of side-by-side, and it is a normal cost to pay.
+    </p>
+    <div class="body">
+      <div class="ladder mesh">
+        <div class="rung">
+          <svg width="128" height="128" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">128</span>
+        </div>
+        <div class="rung">
+          <svg width="64" height="64" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">64</span>
+        </div>
+        <div class="rung">
+          <svg width="48" height="48" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">48</span>
+        </div>
+        <div class="rung">
+          <svg width="32" height="32" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">32</span>
+        </div>
+        <div class="rung">
+          <svg width="24" height="24" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-sm" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">24 · G only</span>
+        </div>
+        <div class="rung">
+          <svg width="16" height="16" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-sm" x="-84" y="-84" width="168" height="168" /></svg>
+          <span class="px">16 · G only</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">05</span><h2>Shells, dock, lockup</h2></div>
+    <p class="sdesc">
+      The cobalt ground travels with the mark everywhere. Bone on cobalt is Design.md's own
+      pairing and the bone has nothing to give on a light desktop.
+    </p>
+    <div class="body">
+      <div class="tiles">
+        <div class="tile">
+          <div class="icn mac mesh"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+          <span class="cap">macOS · squircle</span>
+        </div>
+        <div class="tile">
+          <div class="icn mesh"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+          <span class="cap">Windows · square</span>
+        </div>
+        <div class="tile">
+          <div class="icn round mesh"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+          <span class="cap">Android · adaptive</span>
+        </div>
+      </div>
+
+      <div class="dock" role="img" aria-label="Dock preview">
+        <div class="slot ghost"></div>
+        <div class="slot ghost"></div>
+        <div class="slot g6 mesh"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+        <div class="slot ghost"></div>
+        <div class="slot ghost"></div>
+      </div>
+
+      <div class="lockups" style="margin-top:32px;">
+        <div class="lockup">
+          <span class="plate mesh"><svg width="40" height="40" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></span>
+          <span class="wm">Gear<i>6</i></span>
+        </div>
+        <div class="lockup sm">
+          <span class="plate mesh"><svg width="24" height="24" viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-sm" x="-84" y="-84" width="168" height="168" /></svg></span>
+          <span class="wm">Gear<i>6</i></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">06</span><h2>Variants</h2></div>
+    <p class="sdesc">Four, and no more.</p>
+    <div class="body vgrid">
+      <div class="swatch">
+        <div class="face mesh" style="background-color:var(--cobalt-deep)">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="lbl"><b>Primary</b><span>App icon, splash, about</span></div>
+      </div>
+      <div class="swatch">
+        <div class="face" style="background:var(--bone);color:var(--cobalt-deep)">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-mono" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="lbl"><b>Inverse</b><span>On bone and mist bands</span></div>
+      </div>
+      <div class="swatch">
+        <div class="face" style="background:var(--panel);color:var(--ink)">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-mono" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="lbl"><b>Monochrome</b><span>Tray, print, one-colour</span></div>
+      </div>
+      <div class="swatch">
+        <div class="face mesh" style="background-color:var(--cobalt-deep)">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk-sm" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="lbl"><b>G only</b><span>24px and under, favicon, menu bar</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">07</span><h2>Rules</h2></div>
+    <p class="sdesc">Three that matter.</p>
+    <div class="body rules">
+      <div class="rule" data-v="yes">
+        <div class="face mesh"><svg viewBox="-84 -84 168 168" aria-hidden="true"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg></div>
+        <div class="txt"><span class="m">Do</span><span>Keep the gap wide. Narrowing it makes a smarter G and a worse 32px.</span></div>
+      </div>
+      <div class="rule" data-v="no">
+        <div class="face">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true" style="transform:scaleY(1.5)"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="txt"><span class="m">Don't</span><span>Stretch it to fill the square. The band shape is the composition.</span></div>
+      </div>
+      <div class="rule" data-v="no">
+        <div class="face" style="background:var(--bone)">
+          <svg viewBox="-84 -84 168 168" aria-hidden="true" style="opacity:.85"><use href="#mk" x="-84" y="-84" width="168" height="168" /></svg>
+        </div>
+        <div class="txt"><span class="m">Don't</span><span>Put bone on bone. Inverse exists for light grounds.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="num">08</span><h2>What to ship</h2></div>
+    <p class="sdesc">
+      The bundle list in <code>tauri.conf.json</code> does not change; only what these files contain does.
+    </p>
+    <div class="body">
+      <div class="files">
+        <div class="fr h"><span>Path</span><span>Size</span><span>Cut</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/32x32.png</span><span class="s">32</span><span class="n">Primary — the smallest size the pair survives</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/128x128.png</span><span class="s">128</span><span class="n">Primary</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/128x128@2x.png</span><span class="s">256</span><span class="n">Primary</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/icon.icns</span><span class="s">16–1024</span><span class="n">Pair at 32 and up, G only at 16</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/icon.ico</span><span class="s">16–256</span><span class="n">Same split</span></div>
+        <div class="fr"><span class="p">src-tauri/icons/Square*Logo.png</span><span class="s">30–310</span><span class="n">Primary, square shell</span></div>
+        <div class="fr"><span class="p">public/g6.svg</span><span class="s">vector</span><span class="n">G only — it renders at 16px in a tab</span></div>
+        <div class="fr"><span class="p">public/rust-gear.avif</span><span class="s">—</span><span class="n">Delete; Gear6Mark takes the SVG</span></div>
+      </div>
+
+      <div class="warn">
+        <b>Three unrelated marks ship today.</b> A yellow bee in
+        <span class="mono">src-tauri/icons/</span> and <span class="mono">public/app-icon@Nx.png</span>,
+        an amber hex cluster in <span class="mono">public/g6.svg</span>, and a raster gear in
+        <span class="mono">public/rust-gear.avif</span> that <span class="mono">Gear6Mark</span> renders.
+      </div>
+      <div class="warn">
+        <b>rust-gear.avif has no alpha</b> — <span class="mono">Gear6Mark</span> rounds its corners
+        specifically to hide the <span class="mono">#e1ddd5</span> matte, and its own comment notes that
+        <span class="mono">currentColor</span> tinting was lost when the mark went raster. The monochrome
+        variant restores both, and 60KB becomes under 1KB.
+      </div>
+      <div class="warn">
+        <b>The mesh needs baking, not CSS.</b> The ground here is three CSS radial gradients. Export it
+        into the 1024 master as pixels; an icon file cannot carry a stylesheet, and a flat cobalt
+        fallback loses the depth the brand's own guidance asks for.
+      </div>
+      <div class="warn">
+        <b>Squircle caution.</b> The macOS tile is CSS <span class="mono">border-radius: 23.5%</span>, a
+        rounded rectangle rather than Apple's superellipse. Generate the real
+        <span class="mono">.icns</span> from the 1024 master with a proper squircle mask.
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.getElementById("theme").addEventListener("click", () => {
+    const root = document.documentElement;
+    const systemDark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const current = root.getAttribute("data-theme") || (systemDark ? "dark" : "light");
+    root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+  });
+</script>
