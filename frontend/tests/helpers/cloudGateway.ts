@@ -202,6 +202,7 @@ function day(
         provider: "slack",
         url: null,
         thread_id: null,
+        record_id: null,
       },
       {
         id: hex(901),
@@ -211,6 +212,7 @@ function day(
         provider: "github",
         url: null,
         thread_id: null,
+        record_id: null,
       },
     ],
     events_truncated: false,
@@ -262,6 +264,10 @@ function action(
           provider,
           url: "https://example.invalid/record",
           thread_id: "t1",
+          // The third row of `THREAD_ROWS`, deliberately not the head: the
+          // reader has to open on the record the obligation names, and a
+          // fixture pointing at the head would pass whether it does or not.
+          record_id: hex(703),
         }
       : null,
     work_item_ids: [],
@@ -468,15 +474,13 @@ const OVERVIEW = {
 const USERS = {
   data: [
     {
-      account_id: "U024BE7LH",
-      actor_id: "U024BE7LH",
+      provider_id: "U024BE7LH",
       kind: "human" as const,
       handle: "priya",
       display_name: "Priya Raman",
     },
     {
-      account_id: "U08MORGAN2",
-      actor_id: "U08MORGAN2",
+      provider_id: "U08MORGAN2",
       kind: "human" as const,
       handle: "morgan",
       display_name: "Morgan Lee",
@@ -604,6 +608,7 @@ export async function installCloudGateway(page: Page): Promise<void> {
               provider: "slack",
               url: null,
               thread_id: "t1",
+              record_id: null,
               milestone_id: MILESTONES[0].id,
             },
             {
@@ -615,17 +620,16 @@ export async function installCloudGateway(page: Page): Promise<void> {
               provider: "github",
               url: null,
               thread_id: "t2",
+              record_id: null,
               milestone_id: MILESTONES[0].id,
             },
           ],
           people: [
             {
-              account_id: "U024BE7LH",
-              actor_id: "U024BE7LH",
+              provider_id: "U024BE7LH",
               kind: "human",
               handle: "priya",
               display_name: "Priya Raman",
-              email: "",
               milestones: 3,
               open_actions: 4,
               milestone_ids: [MILESTONES[0].id],

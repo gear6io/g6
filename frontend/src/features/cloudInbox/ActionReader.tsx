@@ -90,6 +90,9 @@ export function ActionReader({
             id: action.id,
             occurred_at: action.updated_at,
             provider,
+            // The row this obligation came from, so the reader opens on it
+            // rather than on whatever the conversation happened to start with.
+            record_id: referent.record_id,
             summary: referent.summary || action.subject,
             thread_id: referent.thread_id,
             type: "log",

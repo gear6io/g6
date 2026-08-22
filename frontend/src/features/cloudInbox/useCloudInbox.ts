@@ -116,7 +116,7 @@ export function useCloudInbox(): CloudInbox {
         setUsers({ status: "ready", value: res.data });
         // First returned account, and only ever here: the selection is session
         // state and is never persisted.
-        setSelected(res.data[0]?.account_id ?? null);
+        setSelected(res.data[0]?.provider_id ?? null);
       })
       .catch((err: unknown) => {
         if (!cancelled) {

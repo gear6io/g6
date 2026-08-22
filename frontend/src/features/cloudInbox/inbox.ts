@@ -57,12 +57,12 @@ export function updatedLabel(generatedAt: string, now: number): string {
 }
 
 /**
- * Display name, then handle, then the account id. Cloud documents display name
+ * Display name, then handle, then the provider id. Cloud documents display name
  * as "empty when unknown" and handle as changeable, so neither is guaranteed;
- * the account id always exists because it is the key the row is fetched by.
+ * the provider id always exists because it is the key the row is fetched by.
  */
 export function userLabel(user: CloudUser): string {
-  return user.display_name || user.handle || user.account_id;
+  return user.display_name || user.handle || user.provider_id;
 }
 
 /**

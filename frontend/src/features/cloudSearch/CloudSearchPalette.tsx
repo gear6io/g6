@@ -464,7 +464,7 @@ export function CloudSearchPalette({
                 {people.map((person) => (
                   <li
                     className="grid grid-cols-[18px_1fr] items-center gap-2.5 px-4 py-1.5"
-                    key={person.account_id}
+                    key={person.provider_id}
                   >
                     <span
                       aria-hidden="true"

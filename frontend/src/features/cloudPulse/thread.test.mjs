@@ -3,7 +3,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toThread, toTimelineMessages } from "./thread.ts";
+import {
+  highlightedMessageId,
+  toThread,
+  toTimelineMessages,
+} from "./thread.ts";
 
 /** Epoch nanoseconds, which is what Cloud sends and what the adapter must halve. */
 function nanos(iso) {
@@ -250,4 +254,48 @@ test("attributes arrive nested, which is the shape Cloud actually sends", () => 
   assert.equal(replies.length, 1);
   assert.equal(replies[0].parentId, "n1", "nested slack.thread.ts still threads");
   assert.equal(replies[0].author, "UDKU51ZHQ");
+});
+
+test("a record_id names its own row, by id or by span", () => {
+  const rows = [HEAD, REPLY];
+  const messages = toTimelineMessages(rows);
+
+  assert.equal(highlightedMessageId(rows, "b2", messages), "b2");
+  assert.equal(highlightedMessageId(rows, null, messages), null);
+  assert.equal(
+    highlightedMessageId(rows, "zz", messages),
+    null,
+    "a record on a page not fetched yet is not a match",
+  );
+
+  // A signal reconstructed from a span boundary names the span, not the log.
+  const spanned = structuredClone(REPLY);
+  spanned.data.span_id = "s9";
+  const withSpan = [HEAD, spanned];
+  assert.equal(
+    highlightedMessageId(withSpan, "s9", toTimelineMessages(withSpan)),
+    "b2",
+  );
+});
+
+test("a record folded away as a reaction highlights nothing", () => {
+  // The reaction is a real row and is found — but it is folded into the message
+  // it names, so there is no row of its own to tint. Falling back beats
+  // pointing at a `key` that is not in the list.
+  const reaction = slack(
+    "r3",
+    "2026-07-01T09:06:00Z",
+    "100.2",
+    "100.1",
+    undefined,
+    {
+      "g6.log.kind": "reaction",
+      "slack.item.ts": "100.2",
+      "slack.reaction.action": "added",
+      "slack.reaction.name": "eyes",
+    },
+  );
+  const rows = [HEAD, REPLY, reaction];
+
+  assert.equal(highlightedMessageId(rows, "r3", toTimelineMessages(rows)), null);
 });

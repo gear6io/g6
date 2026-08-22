@@ -9,9 +9,9 @@
 // Read-only by construction: Cloud serves landed records and has no write path
 // back to Slack, so no affordance implies one.
 import { ExternalLink, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { toThread } from "@/features/cloudPulse/thread";
+import { highlightedMessageId, toThread } from "@/features/cloudPulse/thread";
 import type { TimelineMessage } from "@/features/messages/types";
 import {
   CloudGatewayError,
@@ -345,14 +345,38 @@ function ConversationSkeleton() {
  * are third-party content, which is precisely when the destination should stay
  * auditable.
  */
-export function ThreadMessages({ messages }: { messages: TimelineMessage[] }) {
+export function ThreadMessages({
+  highlightId,
+  messages,
+}: {
+  /**
+   * The record the event or obligation actually points at. Null falls back to
+   * the head, which is the best guess available when nothing named a row.
+   */
+  highlightId?: string | null;
+  messages: TimelineMessage[];
+}) {
+  const marked = useRef<HTMLLIElement | null>(null);
+
+  // The tint is useless on a row below the fold, and a 50-record page has
+  // plenty of those. Not a smooth scroll: this runs before the reader has
+  // looked at anything, so there is no position to animate away from.
+  useEffect(() => {
+    marked.current?.scrollIntoView({ behavior: "auto", block: "center" });
+  }, [highlightId]);
+
   return (
     <TooltipProvider>
       <ol>
-        {messages.map((message, index) => (
+        {messages.map((message, index) => {
+          const highlighted = highlightId
+            ? message.id === highlightId
+            : index === 0;
+          return (
           <li
-            className={`grid grid-cols-[26px_1fr] gap-2.5 py-2 ${index === 0 ? "-mx-2 rounded-lg bg-pulse-surface-alt px-2" : ""}`}
+            className={`grid grid-cols-[26px_1fr] gap-2.5 py-2 ${highlighted ? "-mx-2 rounded-lg bg-pulse-surface-alt px-2" : ""}`}
             key={message.id}
+            ref={highlighted ? marked : undefined}
           >
             <span
               aria-hidden="true"
@@ -380,7 +404,8 @@ export function ThreadMessages({ messages }: { messages: TimelineMessage[] }) {
               />
             </div>
           </li>
-        ))}
+          );
+        })}
       </ol>
     </TooltipProvider>
   );
@@ -410,6 +435,10 @@ export function CloudThreadConversation({ event }: { event: TimelineEvent }) {
   const messages = thread
     ? [thread.head, ...thread.replies].filter((message) => message !== null)
     : [];
+  const highlightId =
+    state.status === "ready"
+      ? highlightedMessageId(state.loaded.rows, event.record_id, messages)
+      : null;
   const sourceDate = messages[0]?.createdAt
     ? new Date(messages[0].createdAt * 1000)
     : new Date(event.occurred_at);
@@ -442,7 +471,7 @@ export function CloudThreadConversation({ event }: { event: TimelineEvent }) {
           No readable messages were returned for this conversation.
         </p>
       ) : (
-        <ThreadMessages messages={messages} />
+        <ThreadMessages highlightId={highlightId} messages={messages} />
       )}
 
       {state.loaded.nextCursor ? (

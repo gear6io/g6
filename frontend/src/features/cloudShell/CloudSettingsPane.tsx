@@ -115,7 +115,7 @@ function DevelopmentUserControl({
           value={selected}
         >
           {users.value.map((user) => (
-            <option key={user.account_id} value={user.account_id}>
+            <option key={user.provider_id} value={user.provider_id}>
               {userLabel(user)}
             </option>
           ))}

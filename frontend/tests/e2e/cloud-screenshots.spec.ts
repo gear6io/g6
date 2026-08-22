@@ -415,8 +415,7 @@ test("development user setting retries directory failures", async ({ page }) => 
       body: JSON.stringify({
         data: [
           {
-            account_id: "U024BE7LH",
-            actor_id: "U024BE7LH",
+            provider_id: "U024BE7LH",
             kind: "human",
             handle: "priya",
             display_name: "Priya Raman",

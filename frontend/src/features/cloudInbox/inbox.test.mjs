@@ -87,7 +87,7 @@ test("the updated label reads Cloud's own generation time", () => {
 });
 
 test("a user falls back from display name to handle to account id", () => {
-  const base = { account_id: "U1", actor_id: "U1", kind: "human" };
+  const base = { provider_id: "U1", kind: "human" };
   assert.equal(userLabel({ ...base, display_name: "Alex", handle: "alex" }), "Alex");
   assert.equal(userLabel({ ...base, display_name: "", handle: "alex" }), "alex");
   assert.equal(userLabel({ ...base, display_name: "", handle: "" }), "U1");

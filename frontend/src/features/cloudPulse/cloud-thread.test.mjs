@@ -79,13 +79,24 @@ const RICH = [
   ),
 ];
 
-function renderCloudThread(rows) {
+function renderCloudThread(rows, highlightId) {
   const { head, replies } = toThread(rows);
   const messages = [head, ...replies].filter((message) => message !== null);
 
   return renderToStaticMarkup(
-    React.createElement(ThreadMessages, { messages }),
+    React.createElement(ThreadMessages, { highlightId, messages }),
   );
+}
+
+/** The one class the tinted row carries, and nothing else does. */
+const TINT = "bg-pulse-surface-alt";
+
+/** The body of the `<li>` that carries the tint, so a test can say which row. */
+function tinted(markup) {
+  const match = markup.match(
+    new RegExp(`<li class="[^"]*${TINT}[^"]*">(.*?)</li>`, "s"),
+  );
+  return match?.[1] ?? "";
 }
 
 test("a cloud thread renders without the providers only the workspace has", () => {
@@ -134,4 +145,20 @@ test("authors are plain, not a popover the cloud window cannot mount", () => {
 
   assert.doesNotMatch(markup, /data-testid="user-profile-popover"/);
   assert.doesNotMatch(markup, /<button/);
+});
+
+test("the record an obligation names is the row that is tinted, not the head", () => {
+  // The reply, chosen precisely because it is not the head: a fallback that
+  // ignored `highlightId` entirely would still tint row one and pass a weaker
+  // assertion than this one.
+  const marked = tinted(renderCloudThread(ROWS, "r1"));
+
+  assert.match(marked, /reproduced on/, "the named record is tinted");
+  assert.doesNotMatch(marked, /Shipping/, "and the head is not");
+});
+
+test("no record_id falls back to the head rather than tinting nothing", () => {
+  const marked = tinted(renderCloudThread(ROWS, null));
+
+  assert.match(marked, /Shipping/, "the head keeps the tint when nothing named a row");
 });

@@ -8,10 +8,11 @@
 //! the URL is built, so the only runtime input to an upstream path is 32
 //! characters from a fixed alphabet.
 //!
-//! One route is a POST, and it is still a read: `v1/extractions/resolve` takes a
-//! signal reference, a depth and a cursor, which do not fit a query string. It is
-//! the only route whose request body crosses this gateway, and it crosses capped
-//! and otherwise untouched — see `resolve_extraction`.
+//! Two routes are POSTs, and both are still reads: `v1/extractions/resolve`
+//! takes a signal reference, a depth and a cursor, and `v1/actors/resolve` takes
+//! a batch of provider accounts. Neither fits a query string. They are the only
+//! routes whose request body crosses this gateway, and each crosses capped and
+//! otherwise untouched — see `resolve_extraction` and `resolve_actors`.
 //!
 //! The actor-scoped routes take the viewer as a query parameter and this
 //! backend turns it into `X-G6-Actor-ID` on the way out. The browser never
@@ -62,6 +63,7 @@ const SEARCH: &str = "v1/search";
 /// a segment, a query, or a traversal to it.
 const MILESTONE_TIMELINE: &str = "v1/milestones/{id}/timeline";
 const EXTRACTIONS_RESOLVE: &str = "v1/extractions/resolve";
+const ACTORS_RESOLVE: &str = "v1/actors/resolve";
 #[cfg(debug_assertions)]
 const USERS: &str = "v1/users";
 
@@ -69,6 +71,12 @@ const USERS: &str = "v1/users";
 /// hundred bytes at most. The cap is enforced here rather than upstream so a
 /// large body is refused before it becomes an outbound request.
 const MAX_RESOLVE_BODY: usize = 4 * 1024;
+
+/// Cloud caps the batch at 500 accounts and answers `400 invalid_limit` above
+/// it. A `{provider, provider_id}` pair is well under 128 bytes, so this is the
+/// generous size that still refuses a body Cloud could never accept — the same
+/// "before an outbound request exists" reasoning as `MAX_RESOLVE_BODY`.
+const MAX_ACTORS_BODY: usize = 64 * 1024;
 
 /// The header Cloud reads the viewer from. Written here, from a validated query
 /// value, and never copied from anything the webview sent.
@@ -180,7 +188,8 @@ pub fn routes() -> Router<AppState> {
             "/v1/milestones/{milestone_id}/timeline",
             get(milestone_timeline),
         )
-        .route("/v1/extractions/resolve", post(resolve_extraction));
+        .route("/v1/extractions/resolve", post(resolve_extraction))
+        .route("/v1/actors/resolve", post(resolve_actors));
 
     // The selector is development-only even though Cloud's user directory is
     // now a regular endpoint. Keeping this local route out of release builds
@@ -448,6 +457,30 @@ async fn resolve_extraction(State(state): State<AppState>, _auth: Auth, body: By
     }
 }
 
+/// The second body-carrying route, and the same shape as `resolve_extraction`
+/// above: forwarded byte-for-byte, size-capped here, validated only by Cloud.
+///
+/// No actor header. The mapper's account-to-person join reads the same for every
+/// viewer, and sending one would imply the answer is scoped to them.
+///
+/// The 200 body is a bare JSON array rather than an envelope — `relay` parses it
+/// as a `Value` and does not care, and translating it into one here would be
+/// this gateway inventing a shape the client would have to undo.
+async fn resolve_actors(State(state): State<AppState>, _auth: Auth, body: Bytes) -> Response {
+    let relayed = async {
+        if body.len() > MAX_ACTORS_BODY {
+            log(ACTORS_RESOLVE, "oversized_request", None);
+            return Err(GatewayError::request_too_large());
+        }
+        let url = state.cloud.url(ACTORS_RESOLVE)?;
+        relay(&state, ACTORS_RESOLVE, url, None, Some(body), JSON_STATUSES).await
+    };
+    match relayed.await {
+        Ok(res) => res,
+        Err(e) => e.into_response(),
+    }
+}
+
 /// Exactly 32 lowercase hex characters — Cloud's `^[0-9a-f]{32}$`. Uppercase is
 /// rejected rather than lowercased: a client sending it is not reading the same
 /// contract, and normalising input is how a validator starts accepting things
@@ -517,6 +550,12 @@ async fn actor_scoped(
 
 /// Development only, and unparameterised: the list is capped upstream at 1000
 /// rows and does not page.
+///
+/// Cloud's `has_open_actions` is deliberately not forwarded. Its default —
+/// `true` — is the promise this picker needs: every account listed owes at least
+/// one open Action Item, so a selection can never land on an inbox that is empty
+/// for a reason the reader cannot see. `false` serves the whole roster instead,
+/// which is what an @-mention list wants and this is not.
 #[cfg(debug_assertions)]
 async fn users(State(state): State<AppState>, _auth: Auth) -> Response {
     let relayed = async {
@@ -1504,6 +1543,57 @@ mod tests {
             &huge,
         )
         .await;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        assert!(body.contains("request_too_large"), "{body}");
+        assert_eq!(seen.count(), 0, "nothing reached Cloud");
+    }
+
+    const ACTORS_REQUEST: &str = r#"{"accounts":[{"provider":"github","provider_id":"octocat"}]}"#;
+    const ACTORS_REPLY: &str =
+        r#"[{"provider":"github","provider_id":"octocat","observed":false,"slack":[]}]"#;
+
+    #[tokio::test]
+    async fn the_actor_resolve_body_reaches_cloud_byte_for_byte() {
+        let (base, seen) = mock_cloud(json_body(200, ACTORS_REPLY)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let (status, content_type, got) = post_json(
+            &app,
+            "/api/cloud/v1/actors/resolve",
+            Some(&token),
+            ACTORS_REQUEST,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            content_type.starts_with("application/json"),
+            "{content_type}"
+        );
+        // A bare array rather than an envelope, relayed as one: wrapping it
+        // here would be this gateway inventing a shape the client must undo.
+        assert_eq!(got, ACTORS_REPLY);
+
+        let (uri, headers) = seen.last();
+        assert_eq!(uri, "/v1/actors/resolve", "no query string is added");
+        assert_eq!(String::from_utf8(seen.last_body()).unwrap(), ACTORS_REQUEST);
+        assert!(
+            headers.get("x-g6-actor-id").is_none(),
+            "the mapper's join reads the same for every viewer"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_oversized_actor_batch_never_becomes_an_outbound_request() {
+        let (base, seen) = mock_cloud(json_body(200, ACTORS_REPLY)).await;
+        let app = gateway(Some(&base)).await;
+        let token = token(&app).await;
+
+        let huge = format!(r#"{{"accounts":"{}"}}"#, "A".repeat(MAX_ACTORS_BODY));
+        let (status, _, body) =
+            post_json(&app, "/api/cloud/v1/actors/resolve", Some(&token), &huge).await;
 
         assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
         assert!(body.contains("request_too_large"), "{body}");

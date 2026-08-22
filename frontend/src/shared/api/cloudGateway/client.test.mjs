@@ -13,6 +13,7 @@ import {
   listMilestones,
   milestoneTimeline,
   overview,
+  resolveActors,
   resolveExtraction,
 } from "./client.ts";
 
@@ -381,6 +382,52 @@ test("a resolve failure throws with Cloud's own code, like every other route", a
         return true;
       },
     );
+  } finally {
+    fetchStub.restore();
+  }
+});
+
+test("resolving actors posts the batch and returns Cloud's bare array", async () => {
+  const reply = [
+    { provider: "github", provider_id: "octocat", observed: false, slack: [] },
+    {
+      provider: "slack",
+      provider_id: "U024BE7LH",
+      observed: true,
+      slack: [
+        {
+          provider_id: "U024BE7LH",
+          kind: "human",
+          handle: "priya",
+          display_name: "Priya Raman",
+        },
+      ],
+    },
+  ];
+  const fetchStub = stubFetch(
+    () =>
+      new Response(JSON.stringify(reply), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const request = {
+      accounts: [
+        { provider: "github", provider_id: "octocat" },
+        { provider: "slack", provider_id: "U024BE7LH" },
+      ],
+    };
+    // A bare array, not an envelope: nothing unwraps it on the way through.
+    assert.deepEqual(await resolveActors(request), reply);
+
+    const [call] = fetchStub.calls;
+    assert.equal(call.url, "http://localhost:3000/api/cloud/v1/actors/resolve");
+    assert.equal(call.init.method, "POST");
+    assert.equal(call.init.headers["content-type"], "application/json");
+    // The accounts travel in the body — 500 of them do not fit a query string,
+    // which is the whole reason this read is a POST.
+    assert.deepEqual(JSON.parse(call.init.body), request);
   } finally {
     fetchStub.restore();
   }

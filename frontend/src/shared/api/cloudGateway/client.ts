@@ -24,6 +24,8 @@ import type {
   MilestoneTimelineResponse,
   OverviewResponse,
   QueryRangeResponse,
+  ResolveActorsRequest,
+  ResolvedActor,
   ResolveExtractionRequest,
   TimelineQuery,
   UserListResponse,
@@ -207,18 +209,14 @@ export function milestoneTimeline(
 }
 
 /**
- * The conversation behind an event, in place of a link out.
- *
- * The only POST, and it is still a read — a signal reference, a depth and a
- * cursor do not fit a query string. The request is sent as written: the backend
- * caps its size and forwards the bytes, and Cloud's schema is the validator.
+ * The two POSTs, and both are reads: what does not fit a query string is a
+ * body, not a mutation. The request is sent as written — the backend caps its
+ * size and forwards the bytes, and Cloud's schema is the validator.
  */
-export async function resolveExtraction(
-  request: ResolveExtractionRequest,
-): Promise<QueryRangeResponse> {
+async function postJson<T>(path: string, request: unknown): Promise<T> {
   let res: Response;
   try {
-    res = await globalThis.fetch(gatewayUrl("v1/extractions/resolve"), {
+    res = await globalThis.fetch(gatewayUrl(path), {
       body: JSON.stringify(request),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -230,5 +228,27 @@ export async function resolveExtraction(
   if (!res.ok) {
     throw await failure(res);
   }
-  return (await res.json()) as QueryRangeResponse;
+  return (await res.json()) as T;
+}
+
+/** The conversation behind an event, in place of a link out. */
+export function resolveExtraction(
+  request: ResolveExtractionRequest,
+): Promise<QueryRangeResponse> {
+  return postJson("v1/extractions/resolve", request);
+}
+
+/**
+ * Provider accounts to the Slack accounts a viewer can be selected by — the
+ * join the mapper already made. Answers come back in the order asked, each
+ * echoing what it answers.
+ *
+ * ponytail: no caller yet — this is the gateway's half of a Cloud route, kept
+ * in step with the wire rather than waiting for the first surface that hydrates
+ * a GitHub login.
+ */
+export function resolveActors(
+  request: ResolveActorsRequest,
+): Promise<ResolvedActor[]> {
+  return postJson("v1/actors/resolve", request);
 }

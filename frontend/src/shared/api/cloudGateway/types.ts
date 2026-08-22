@@ -89,6 +89,12 @@ export type Referent = {
    * reference does not resolve.
    */
   thread_id: string | null;
+  /**
+   * The exact record inside `thread_id` — the row to highlight once the thread
+   * is rendered. Match it against a returned record's `id`, or its `span_id`
+   * for a span-scoped signal. Null where the obligation carried no pointer.
+   */
+  record_id: string | null;
 };
 
 /**
@@ -115,7 +121,13 @@ export type Action = {
   priority: Priority;
   /** Fixed copy for the `required_action`. Not per-obligation and not generated. */
   instruction: string;
-  /** Null when the obligation has no resolved entity, or the projection has no row. */
+  /**
+   * The milestone the lattice last resolved for this obligation, rewritten in
+   * place each time that answer moves — including when two identities are
+   * folded into one. A pointer, not part of the obligation's identity: an
+   * Action Item may carry none at all, permanently. A folded id held from
+   * before a fold still answers `410 milestone_merged` on its timeline.
+   */
   entity: Entity | null;
   /** Null where the reference does not resolve. Nothing is ever substituted for it. */
   referent: Referent | null;
@@ -136,9 +148,15 @@ export type ActionListResponse = {
 
 /** One Slack account worth sending as the viewer. */
 export type CloudUser = {
-  /** The value the gateway turns into `X-G6-Actor-ID`. */
-  account_id: string;
-  actor_id: string;
+  /**
+   * The provider's own id for this account, and the value the gateway turns
+   * into `X-G6-Actor-ID`.
+   *
+   * The only id on this shape. Cloud also holds a G6 id per account — what a
+   * stored obligation points at, and what owner filtering compares against —
+   * but it is internal and never serialized.
+   */
+  provider_id: string;
   kind: "human" | "bot" | "app" | "agent";
   /** Login or username. Changeable upstream; not an identity. */
   handle: string;
@@ -288,6 +306,12 @@ export type TimelineEvent = {
    * reference does not resolve.
    */
   thread_id: string | null;
+  /**
+   * The exact record inside `thread_id` — the row to highlight once the thread
+   * is rendered. Match it against a returned record's `id`, or its `span_id`
+   * for a span-scoped signal. Null where the event carried no pointer.
+   */
+  record_id: string | null;
 };
 
 export type TimelineDay = {
@@ -417,7 +441,7 @@ export type SearchResponse = {
    * these are the best hits, not every hit.
    */
   events: SearchEvent[];
-  /** Handle and display name, never `account_id`. */
+  /** Handle and display name, never `provider_id`. */
   people: Person[];
   scope: SearchScope;
   generated_at: string;
@@ -448,6 +472,11 @@ export type CloudErrorEnvelope = {
  * browser never sends that header and it stays out of the CORS allowlist.
  */
 export type ActorQuery = {
+  /**
+   * This gateway's own parameter name, not Cloud's — Cloud has no such
+   * parameter, only the header. The value put here is a `CloudUser`'s
+   * `provider_id`; the two spellings are the two hops, not a mismatch.
+   */
   account_id: string;
   /** One milestone identity, 32-hex. Omitted means no filter. */
   entity_id?: string;
@@ -538,6 +567,48 @@ export type ResolveExtractionRequest = {
   limit?: number;
   /** From a previous response's `nextCursor`. Bound to its provider and thread. */
   cursor?: string;
+};
+
+/**
+ * Provider accounts to resolve to their Slack accounts — the join the mapper
+ * already made. A POST for the same reason `resolveExtraction` is one: it is a
+ * read, and a list does not belong in a query string. Batched because hydrating
+ * a page of GitHub logins one request at a time is a page-sized burst of round
+ * trips for one join.
+ */
+export type ResolveActorsRequest = {
+  /**
+   * At most 500; an oversized batch is `400 invalid_limit`. An empty array is a
+   * legitimate question with an empty answer, not a malformed request.
+   *
+   * `provider` is required because an account id is unique only within its own
+   * platform — a GitHub login and a Slack id that read the same are two
+   * different people. Anything but `slack` or `github` is `400 invalid_provider`.
+   */
+  accounts: { provider: "slack" | "github"; provider_id: string }[];
+};
+
+/**
+ * One answer, in the order asked. `provider` and `provider_id` are echoed so a
+ * client never has to trust positional alignment alone.
+ */
+export type ResolvedActor = {
+  provider: string;
+  provider_id: string;
+  /**
+   * Whether the mapper has ever seen this account. `false` is an answer — an
+   * unobserved account — not an error, which is why this is a `200`.
+   */
+  observed: boolean;
+  /**
+   * Every Slack account this person holds. A **list**, because one person can
+   * genuinely hold several and serving the first would be a guess.
+   *
+   * Empty in two different situations, both real, and `observed` is what
+   * separates them: the account was never seen at all, versus a known account
+   * with no Slack side — a GitHub-only contributor.
+   */
+  slack: CloudUser[];
 };
 
 /** One landed log. `body` and `attribute` are the stored cold and promoted JSON, merged. */

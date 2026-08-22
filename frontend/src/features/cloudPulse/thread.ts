@@ -283,3 +283,31 @@ export function toThread(rows: RawRow[]): {
     replies: head ? messages.filter((entry) => entry.id !== head.id) : messages,
   };
 }
+
+/**
+ * The message a `record_id` names, or null.
+ *
+ * Cloud says to match it against a returned record's `id`, or its `span_id` for
+ * a span-scoped signal, so both are checked — a signal reconstructed from a span
+ * boundary carries the span's id and no log's.
+ *
+ * Null is a normal answer in three ways, and the caller treats them alike: the
+ * obligation carried no pointer, the record it points at is on a page not
+ * fetched yet, or it was folded away as an edit, a delete or a reaction and is
+ * no longer a row of its own. Checking against `messages` rather than against
+ * `rows` alone is what catches that last one.
+ */
+export function highlightedMessageId(
+  rows: RawRow[],
+  recordId: string | null,
+  messages: TimelineMessage[],
+): string | null {
+  if (!recordId) {
+    return null;
+  }
+  const row = rows.find(
+    (entry) => entry.data.id === recordId || entry.data.span_id === recordId,
+  );
+  const id = row?.data.id;
+  return id && messages.some((message) => message.id === id) ? id : null;
+}
